@@ -1,8 +1,8 @@
 import { supabase } from './supabase.js';
 
 /**
- * Obtiene el usuario actual desde el almacenamiento local del navegador.
- * @returns {object|null} El objeto del usuario si existe, o null.
+ * Obtiene el administrador actual desde el almacenamiento local del navegador.
+ * @returns {object|null} El objeto del administrador si existe, o null.
  */
 export function getCurrentUser() {
   try {
@@ -15,43 +15,45 @@ export function getCurrentUser() {
 }
 
 /**
- * Inicia sesión de un usuario y obtiene su perfil.
+ * Inicia sesión de un usuario y verifica si tiene el rol de 'admin'.
  * @param {string} email - El correo electrónico del usuario.
  * @param {string} password - La contraseña del usuario.
- * @returns {Promise<object>} El objeto del usuario con su rol.
+ * @returns {Promise<object>} El objeto del usuario si es admin.
  */
 export async function login(email, password) {
-  // 1. Inicia sesión con Supabase Auth
   const { data: loginData, error: loginError } = await supabase.auth.signInWithPassword({
-    email: email,
-    password: password,
+    email,
+    password,
   });
 
   if (loginError) {
-    throw new Error('Credenciales incorrectas o el usuario no existe.');
+    throw new Error('Credenciales incorrectas.');
   }
-  
   if (!loginData.user) {
-    throw new Error("No se pudo verificar el usuario. Inténtalo de nuevo.");
+    throw new Error("No se pudo verificar el usuario.");
   }
 
-  // 2. Obtiene el perfil y rol del usuario desde la tabla 'profiles'
-  const { data: userData, error: userError } = await supabase
+  const { data: profile, error: profileError } = await supabase
     .from('profiles')
     .select('role')
     .eq('id', loginData.user.id)
     .single();
   
-  if (userError) {
-    await supabase.auth.signOut(); // Cierra la sesión si no se encuentra el perfil
-    throw new Error('El perfil del usuario no fue encontrado en la base de datos.');
+  if (profileError || !profile) {
+    await supabase.auth.signOut();
+    throw new Error('El perfil del usuario no fue encontrado.');
   }
 
-  // 3. Crea y guarda el objeto de usuario completo en el almacenamiento local
+  // Verificación clave: solo los administradores pueden pasar.
+  if (profile.role !== 'admin') {
+    await supabase.auth.signOut();
+    throw new Error('Acceso denegado. Esta sección es solo para administradores.');
+  }
+
   const userToStore = {
     email: loginData.user.email,
     id: loginData.user.id,
-    role: userData.role,
+    role: profile.role,
   };
   localStorage.setItem('user', JSON.stringify(userToStore));
   
@@ -59,10 +61,10 @@ export async function login(email, password) {
 }
 
 /**
- * Cierra la sesión del usuario y lo redirige a la página de inicio.
+ * Cierra la sesión del administrador y lo redirige a la página de inicio.
  */
 export async function logout() {
   await supabase.auth.signOut();
   localStorage.removeItem('user');
-  window.location.href = '/index.html'; // Redirige al login principal
+  window.location.href = '/index.html';
 }

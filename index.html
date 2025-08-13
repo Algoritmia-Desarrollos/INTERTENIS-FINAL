@@ -3,68 +3,34 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Club de Tenis - Iniciar Sesión</title>
+  <title>Club de Tenis - Torneos</title>
   <link rel="icon" href="public/assets/img/logohead.webp" type="image/png">
 
   <link rel="stylesheet" href="src/common/styles.css" />
   <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
   <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"/>
-  <style>
-    :root {
-      --primary-color: #0d9488; /* Un color verde azulado para el tenis */
-      --primary-dark: #0f766e;
-      --background-color: #f8fafc;
-    }
-    body {
-      background: var(--background-color);
-      font-family: 'Inter', sans-serif;
-    }
-    .login-container {
-      background: white;
-    }
-    .btn-primary {
-      background: var(--primary-color);
-    }
-     .btn-primary:hover {
-      background: var(--primary-dark);
-    }
-  </style>
 </head>
-<body>
-  <div class="min-h-screen flex items-center justify-center p-4">
-    <div class="login-container w-full max-w-md p-8 rounded-2xl shadow-lg">
-      <div class="text-center mb-8">
-        <div class="mb-6">
-          <img src="public/assets/img/logotipo.png" alt="Logo Club" class="mx-auto h-20 w-auto">
-        </div>
-        <h1 class="text-3xl font-bold text-gray-800 mb-2">Bienvenido al Club</h1>
-        <p class="text-gray-600">Ingresa para gestionar los torneos</p>
-      </div>
-      
-      <div id="errorMessage" class="hidden p-3 rounded-lg mb-4 bg-red-100 text-red-700 border border-red-200">
-        <div class="flex items-center">
-          <span class="material-icons mr-2">error</span>
-          <span id="errorText"></span>
-        </div>
-      </div>
-      
-      <form id="loginForm" class="space-y-6">
-        <div>
-          <label for="email" class="block text-sm font-semibold text-gray-700 mb-2">Correo electrónico</label>
-          <input type="email" id="email" class="input-field w-full p-3 rounded-lg" placeholder="tu@email.com" required autocomplete="email">
-        </div>
-        <div>
-          <label for="password" class="block text-sm font-semibold text-gray-700 mb-2">Contraseña</label>
-          <input type="password" id="password" class="input-field w-full p-3 rounded-lg" placeholder="••••••••" required autocomplete="current-password">
-        </div>
-        <button type="submit" id="loginBtn" class="w-full btn btn-primary text-white font-semibold p-3 rounded-lg flex items-center justify-center transition-all">
-          <span id="loginText">Iniciar Sesión</span>
-          <div id="loadingSpinner" class="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin hidden"></div>
-        </button>
-      </form>
-    </div>
-  </div>
+<body class="bg-gray-50 text-gray-800">
   
-  <script type="module" src="login.js"></script>
+  <header class="flex items-center justify-between border-b bg-white px-4 sm:px-6 py-3 shadow-sm sticky top-0 z-50">
+    <div class="flex items-center gap-4">
+      <img src="/public/assets/img/logotipo.png" alt="Logo" class="h-10">
+      <h1 class="text-lg font-bold text-gray-800 hidden sm:block">Torneos del Club</h1>
+    </div>
+    <a href="/src/admin/login.html" class="text-sm font-medium text-gray-600 hover:text-teal-600 flex items-center gap-2">
+      <span class="hidden sm:inline">Admin Login</span>
+      <span class="material-icons">login</span>
+    </a>
+  </header>
+
+  <main class="flex-1 py-8">
+    <div class="content-container max-w-6xl mx-auto space-y-8">
+      <h1 class="text-3xl font-bold text-gray-900">Torneos Abiertos</h1>
+      <div id="tournaments-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        </div>
+    </div>
+  </main>
+  
+  <script type="module" src="public.js"></script>
 </body>
 </html>
