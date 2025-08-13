@@ -23,7 +23,8 @@ export function renderHeader() {
         <a class="${getLinkClasses('matches.html')}" href="/src/admin/matches.html">Partidos</a>
         <a class="${getLinkClasses('programs.html')}" href="/src/admin/programs.html">Programas</a>
         <a class="${getLinkClasses('teams.html')}" href="/src/admin/teams.html">Equipos</a>
-        <a class="${getLinkClasses('categories.html')}" href="/src/admin/categories.html">Categorías</a>
+  <a class="${getLinkClasses('categories.html')}" href="/src/admin/categories.html">Categorías</a>
+  <a class="${getLinkClasses('ranking.html')}" href="/src/admin/ranking.html">Ranking</a>
     `;
   } else if (user?.role === 'profesor') {
     navLinks = `

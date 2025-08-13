@@ -13,22 +13,30 @@
 <body class="bg-gray-50 text-gray-800">
   <header id="header"></header>
   <main class="flex-1 py-8">
-    <div class="content-container max-w-4xl mx-auto space-y-8">
+    <div class="content-container max-w-6xl mx-auto space-y-8">
       <h1 class="text-3xl font-bold text-gray-900">Gestión de Torneos</h1>
       
       <div class="bg-white p-6 rounded-xl shadow-lg">
         <h2 id="form-title" class="text-xl font-semibold mb-4">Añadir Nuevo Torneo</h2>
         <form id="form-tournament" class="space-y-4">
           <input type="hidden" id="tournament-id">
-          <div>
-            <label for="tournament-name" class="block text-sm font-medium text-gray-700">Nombre del Torneo</label>
-            <input type="text" id="tournament-name" class="input-field mt-1 block w-full" required>
-          </div>
-          <div>
-            <label for="category-select" class="block text-sm font-medium text-gray-700">Categoría</label>
-            <select id="category-select" class="input-field mt-1 block w-full" required>
-              <option value="">Cargando categorías...</option>
-            </select>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label for="tournament-name" class="block text-sm font-medium text-gray-700">Nombre del Torneo</label>
+              <input type="text" id="tournament-name" class="input-field mt-1 block w-full" required>
+            </div>
+            <div>
+              <label for="category-select" class="block text-sm font-medium text-gray-700">Categoría</label>
+              <select id="category-select" class="input-field mt-1 block w-full" required></select>
+            </div>
+            <div>
+              <label for="start-date" class="block text-sm font-medium text-gray-700">Fecha de Inicio</label>
+              <input type="date" id="start-date" class="input-field mt-1 block w-full" required>
+            </div>
+            <div>
+              <label for="end-date" class="block text-sm font-medium text-gray-700">Fecha de Fin (Opcional)</label>
+              <input type="date" id="end-date" class="input-field mt-1 block w-full">
+            </div>
           </div>
           <div class="flex justify-end gap-4 pt-2">
             <button type="button" id="btn-cancel" class="btn btn-secondary hidden">Cancelar</button>
@@ -38,7 +46,17 @@
       </div>
 
       <div class="bg-white p-6 rounded-xl shadow-lg">
-        <h2 class="text-xl font-semibold mb-4">Torneos Existentes</h2>
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-xl font-semibold">Torneos Existentes</h2>
+            <div>
+                <label for="sort-tournaments" class="text-sm font-medium text-gray-700 mr-2">Ordenar por:</label>
+                <select id="sort-tournaments" class="input-field !w-auto">
+                    <option value="created_at_desc">Más Nuevos</option>
+                    <option value="created_at_asc">Más Antiguos</option>
+                    <option value="start_date_asc">Próximos a Iniciar</option>
+                </select>
+            </div>
+        </div>
         <div id="tournaments-list" class="space-y-2">
           </div>
       </div>
