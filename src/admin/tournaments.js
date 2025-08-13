@@ -1,11 +1,13 @@
 import { renderHeader } from '../common/header.js';
 import { requireRole } from '../common/router.js';
-import { supabase } from '../../supabase.js'; // <-- ¡RUTA CORREGIDA!
+import { supabase } from '../common/supabase.js';
 
 requireRole('admin');
 
 // --- Elementos del DOM ---
 const header = document.getElementById('header');
+const formContainer = document.getElementById('form-container');
+const btnShowForm = document.getElementById('btn-show-form');
 const form = document.getElementById('form-tournament');
 const formTitle = document.getElementById('form-title');
 const tournamentIdInput = document.getElementById('tournament-id');
@@ -21,9 +23,9 @@ const sortSelect = document.getElementById('sort-tournaments');
 let allPlayers = [];
 let allCategories = [];
 let allTournaments = [];
+let expandedTournaments = new Set(); // Para recordar qué torneos están expandidos
 
 // --- Carga de Datos ---
-
 async function loadInitialData() {
     const [ { data: categories }, { data: players } ] = await Promise.all([
         supabase.from('categories').select('*').order('name'),
@@ -36,18 +38,15 @@ async function loadInitialData() {
     allCategories.forEach(cat => {
         categorySelect.innerHTML += `<option value="${cat.id}">${cat.name}</option>`;
     });
-
     await fetchAndRenderTournaments();
 }
 
 async function fetchAndRenderTournaments() {
     tournamentsList.innerHTML = '<p>Cargando torneos...</p>';
-    
     const { data, error } = await supabase
         .from('tournaments')
         .select(`*, category:category_id(name), players:tournament_players(player:players(*, team:team_id(image_url)))`)
         .order('created_at', { ascending: false });
-
     if (error) {
         console.error("Error al cargar torneos:", error);
         tournamentsList.innerHTML = '<p class="text-red-500">No se pudieron cargar los torneos.</p>';
@@ -57,25 +56,69 @@ async function fetchAndRenderTournaments() {
     sortAndRenderTournaments();
 }
 
-// --- Renderizado Interactivo ---
-
+// --- Renderizado y Ordenamiento ---
 function sortAndRenderTournaments() {
     const sortBy = sortSelect.value;
     let sorted = [...allTournaments];
     
     switch(sortBy) {
-        case 'created_at_asc':
-            sorted.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
-            break;
-        case 'start_date_asc':
-            sorted.sort((a, b) => new Date(a.start_date) - new Date(b.start_date));
-            break;
-        case 'created_at_desc':
-        default:
-            sorted.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-            break;
+        case 'created_at_asc': sorted.sort((a, b) => new Date(a.created_at) - new Date(b.created_at)); break;
+        case 'start_date_asc': sorted.sort((a, b) => new Date(a.start_date) - new Date(b.start_date)); break;
+        case 'name_asc': sorted.sort((a, b) => a.name.localeCompare(b.name)); break;
+        case 'created_at_desc': default: sorted.sort((a, b) => new Date(b.created_at) - new Date(a.created_at)); break;
     }
     renderTournaments(sorted);
+}
+
+function tournamentCardTemplate(t) {
+    const startDate = t.start_date ? new Date(t.start_date + 'T00:00:00').toLocaleDateString('es-AR') : 'N/A';
+    const enrolledPlayers = t.players.map(p => p.player);
+    const isExpanded = expandedTournaments.has(t.id);
+    const playersOfCategory = allPlayers.filter(p => p.category_id === t.category_id && !enrolledPlayers.some(ep => ep && ep.id === p.id));
+
+    return `
+    <div class="border rounded-lg overflow-hidden bg-white shadow-sm" data-tournament-card-id="${t.id}">
+        <div class="flex justify-between items-center p-4">
+            <div>
+                <p class="font-bold text-lg text-gray-800">${t.name}</p>
+                <p class="text-sm text-gray-500">${t.category.name} | Inicia: ${startDate}</p>
+            </div>
+            <div class="flex items-center gap-2">
+                <a href="matches.html?tournamentId=${t.id}" class="btn btn-secondary !text-xs !py-1 !px-2"><span class="material-icons !text-sm">sports_tennis</span>Ver Partidos</a>
+                <a href="rankings.html?tournamentId=${t.id}" class="btn btn-secondary !text-xs !py-1 !px-2"><span class="material-icons !text-sm">leaderboard</span>Ver Ranking</a>
+                <div class="border-l h-6 mx-2"></div>
+                <button data-action="toggle" data-tournament-id="${t.id}" class="p-2 rounded-full hover:bg-gray-100">
+                    <span class="material-icons transition-transform ${isExpanded ? 'rotate-180' : ''}">expand_more</span>
+                </button>
+            </div>
+        </div>
+        <div id="details-${t.id}" class="${isExpanded ? '' : 'hidden'} p-4 bg-gray-50 border-t">
+            <div class="flex items-center gap-2 mb-4">
+                <button data-action="edit" data-tournament='${JSON.stringify(t)}' class="btn btn-secondary !text-xs !py-1 !px-2"><span class="material-icons !text-sm">edit</span>Editar Torneo</button>
+                <button data-action="delete" data-id="${t.id}" class="btn btn-secondary !text-xs !py-1 !px-2 !text-red-600"><span class="material-icons !text-sm">delete</span>Eliminar</button>
+            </div>
+            <h4 class="font-semibold text-sm mb-2">Jugadores Inscritos (${enrolledPlayers.length})</h4>
+            <div class="space-y-2 mb-3">
+                ${enrolledPlayers.length > 0 ? enrolledPlayers.map(p => p ? `
+                    <div class="flex justify-between items-center text-sm bg-white p-2 rounded shadow-sm">
+                        <div class="flex items-center gap-3">
+                            <img src="${p.team?.image_url || 'https://via.placeholder.com/40'}" alt="Logo" class="h-8 w-8 rounded-full object-cover">
+                            <span>${p.name}</span>
+                        </div>
+                        <button data-action="unenroll" data-player-id="${p.id}" data-tournament-id="${t.id}" class="text-gray-400 hover:text-red-600 p-1"><span class="material-icons text-sm">close</span></button>
+                    </div>
+                ` : '').join('') : '<p class="text-xs text-gray-400">Aún no hay jugadores inscritos.</p>'}
+            </div>
+            <form class="flex gap-2" data-action="enroll-player" data-tournament-id="${t.id}">
+                <select class="input-field !h-10 flex-grow">
+                    <option value="">Inscribir jugador de "${t.category.name}"...</option>
+                    ${playersOfCategory.map(p => `<option value="${p.id}">${p.name}</option>`).join('')}
+                </select>
+                <button type="submit" class="btn btn-primary !py-2 !px-4">Inscribir</button>
+            </form>
+        </div>
+    </div>
+    `;
 }
 
 function renderTournaments(tournamentsToRender) {
@@ -83,60 +126,16 @@ function renderTournaments(tournamentsToRender) {
         tournamentsList.innerHTML = '<p class="text-center text-gray-500 py-4">No hay torneos registrados.</p>';
         return;
     }
-
-    tournamentsList.innerHTML = tournamentsToRender.map(t => {
-        const startDate = t.start_date ? new Date(t.start_date + 'T00:00:00').toLocaleDateString('es-AR') : 'N/A';
-        const endDate = t.end_date ? new Date(t.end_date + 'T00:00:00').toLocaleDateString('es-AR') : 'Abierto';
-        const enrolledPlayers = t.players.map(p => p.player);
-        const playersOfCategory = allPlayers.filter(p => p.category_id === t.category_id && !enrolledPlayers.some(ep => ep.id === p.id));
-
-        return `
-        <div class="border rounded-lg overflow-hidden">
-            <div class="flex justify-between items-center p-4 cursor-pointer bg-white hover:bg-gray-50" data-action="toggle" data-tournament-id="${t.id}">
-                <div>
-                    <p class="font-bold text-lg text-gray-800">${t.name}</p>
-                    <p class="text-sm text-gray-500">${t.category.name} | Inicia: ${startDate}</p>
-                </div>
-                <div class="flex items-center gap-4">
-                    <span class="text-sm font-semibold">${enrolledPlayers.length} Inscritos</span>
-                    <span class="material-icons transition-transform">expand_more</span>
-                </div>
-            </div>
-            <div id="details-${t.id}" class="hidden p-4 bg-gray-50 border-t">
-                <h4 class="font-semibold text-sm mb-2">Jugadores Inscritos</h4>
-                <div class="space-y-2 mb-4">
-                    ${enrolledPlayers.length > 0 ? enrolledPlayers.map(p => `
-                        <div class="flex justify-between items-center text-sm bg-white p-2 rounded shadow-sm">
-                            <div class="flex items-center gap-3">
-                                <img src="${p.team?.image_url || 'https://via.placeholder.com/40'}" alt="Logo" class="h-8 w-8 rounded-full object-cover">
-                                <span>${p.name}</span>
-                            </div>
-                            <button data-action="unenroll" data-player-id="${p.id}" data-tournament-id="${t.id}" class="text-gray-400 hover:text-red-600 p-1"><span class="material-icons text-sm">close</span></button>
-                        </div>
-                    `).join('') : '<p class="text-xs text-gray-400">Aún no hay jugadores inscritos.</p>'}
-                </div>
-                <form class="flex gap-2" data-action="enroll-player" data-tournament-id="${t.id}">
-                    <select class="input-field !h-10 flex-grow">
-                        <option value="">Inscribir jugador de "${t.category.name}"...</option>
-                        ${playersOfCategory.map(p => `<option value="${p.id}">${p.name}</option>`).join('')}
-                    </select>
-                    <button type="submit" class="btn btn-primary !py-2 !px-4">Inscribir</button>
-                </form>
-            </div>
-        </div>
-        `;
-    }).join('');
+    tournamentsList.innerHTML = tournamentsToRender.map(t => tournamentCardTemplate(t)).join('');
 }
-
-
-// --- Lógica de Formulario y Acciones ---
 
 function resetForm() {
     form.reset();
     tournamentIdInput.value = '';
     formTitle.textContent = 'Añadir Nuevo Torneo';
     btnSave.textContent = 'Guardar Torneo';
-    btnCancel.classList.add('hidden');
+    formContainer.classList.add('hidden');
+    btnShowForm.innerHTML = '<span class="material-icons">add</span> Crear Nuevo Torneo';
 }
 
 async function handleFormSubmit(e) {
@@ -153,16 +152,10 @@ async function handleFormSubmit(e) {
     }
 
     const tournamentData = { name, category_id, start_date, end_date };
-
-    let error;
-    if (id) {
-        const { error: updateError } = await supabase.from('tournaments').update(tournamentData).eq('id', id);
-        error = updateError;
-    } else {
-        const { error: insertError } = await supabase.from('tournaments').insert([tournamentData]);
-        error = insertError;
-    }
-
+    const { error } = id 
+        ? await supabase.from('tournaments').update(tournamentData).eq('id', id)
+        : await supabase.from('tournaments').insert([tournamentData]);
+    
     if (error) {
         alert(`Error al guardar el torneo: ${error.message}`);
     } else {
@@ -171,54 +164,116 @@ async function handleFormSubmit(e) {
     }
 }
 
-// --- Event Listeners ---
+async function updateSingleTournament(tournamentId) {
+    const { data: tournament, error } = await supabase
+        .from('tournaments')
+        .select(`*, category:category_id(name), players:tournament_players(player:players(*, team:team_id(image_url)))`)
+        .eq('id', tournamentId)
+        .single();
+    
+    if (error) {
+        console.error("Error al recargar torneo:", error);
+        return;
+    }
 
+    const index = allTournaments.findIndex(t => t.id == tournamentId);
+    if (index !== -1) allTournaments[index] = tournament;
+    
+    const cardElement = document.querySelector(`[data-tournament-card-id="${tournamentId}"]`);
+    if (cardElement) {
+        cardElement.outerHTML = tournamentCardTemplate(tournament);
+    }
+}
+
+// --- Event Listeners ---
 document.addEventListener('DOMContentLoaded', async () => {
     header.innerHTML = renderHeader();
     await loadInitialData();
 });
 
 form.addEventListener('submit', handleFormSubmit);
-btnCancel.addEventListener('click', resetForm);
 sortSelect.addEventListener('change', sortAndRenderTournaments);
+
+btnShowForm.addEventListener('click', () => {
+    formContainer.classList.toggle('hidden');
+    if(formContainer.classList.contains('hidden')) {
+        btnShowForm.innerHTML = '<span class="material-icons">add</span> Crear Nuevo Torneo';
+        resetForm();
+    } else {
+        btnShowForm.innerHTML = '<span class="material-icons">close</span> Cancelar';
+        form.scrollIntoView({ behavior: 'smooth' });
+    }
+});
+
+btnCancel.addEventListener('click', () => {
+    resetForm();
+});
 
 tournamentsList.addEventListener('click', async (e) => {
     const target = e.target;
     const header = target.closest('[data-action="toggle"]');
     const button = target.closest('button[data-action]');
-    const form = target.closest('form[data-action]');
-
+    
     if (header) {
-        const tournamentId = header.dataset.tournamentId;
-        const details = document.getElementById(`details-${tournamentId}`);
-        const icon = header.querySelector('.material-icons');
-        details.classList.toggle('hidden');
-        icon.classList.toggle('rotate-180');
+        const tournamentId = Number(header.dataset.tournamentId);
+        if (expandedTournaments.has(tournamentId)) {
+            expandedTournaments.delete(tournamentId);
+        } else {
+            expandedTournaments.add(tournamentId);
+        }
+        sortAndRenderTournaments();
     }
 
     if (button) {
         const action = button.dataset.action;
-        if (action === 'edit' || action === 'delete' || action === 'unenroll') {
-             // (La lógica para estos botones se mantiene igual)
+        if (action === 'edit') {
+            const tournament = JSON.parse(button.dataset.tournament);
+            tournamentIdInput.value = tournament.id;
+            tournamentNameInput.value = tournament.name;
+            categorySelect.value = tournament.category_id;
+            startDateInput.value = tournament.start_date;
+            endDateInput.value = tournament.end_date;
+            formTitle.textContent = 'Editar Torneo';
+            btnSave.textContent = 'Actualizar Torneo';
+            formContainer.classList.remove('hidden');
+            btnShowForm.innerHTML = '<span class="material-icons">close</span> Cancelar';
+            form.scrollIntoView({ behavior: 'smooth' });
+        } else if (action === 'delete') {
+            const id = button.dataset.id;
+            if (confirm('¿Está seguro de que desea eliminar este torneo?')) {
+                await supabase.from('tournament_players').delete().eq('tournament_id', id);
+                await supabase.from('matches').delete().eq('tournament_id', id);
+                await supabase.from('tournaments').delete().eq('id', id);
+                await fetchAndRenderTournaments();
+            }
+        } else if (action === 'unenroll') {
+            const playerId = button.dataset.playerId;
+            const tournamentId = button.dataset.tournamentId;
+            if (confirm('¿Quitar a este jugador del torneo?')) {
+                await supabase.from('tournament_players').delete().match({ tournament_id: tournamentId, player_id: playerId });
+                await updateSingleTournament(tournamentId);
+            }
         }
     }
-    
-    if (form) {
-        e.preventDefault();
-        const tournamentId = form.dataset.tournamentId;
-        const select = form.querySelector('select');
-        const playerId = select.value;
+});
 
-        if (!playerId) {
-            alert('Por favor, seleccione un jugador para inscribir.');
-            return;
-        }
+tournamentsList.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const form = e.target;
+    if (form.dataset.action !== 'enroll-player') return;
 
-        const { error } = await supabase.from('tournament_players').insert([{ tournament_id: tournamentId, player_id: playerId }]);
-        if (error) {
-            alert('Error al inscribir al jugador: ' + error.message);
-        } else {
-            await fetchAndRenderTournaments();
-        }
+    const tournamentId = form.dataset.tournamentId;
+    const select = form.querySelector('select');
+    const playerId = select.value;
+
+    if (!playerId) {
+        return; 
+    }
+
+    const { error } = await supabase.from('tournament_players').insert([{ tournament_id: tournamentId, player_id: playerId }]);
+    if (error) {
+        alert('Error al inscribir al jugador: ' + error.message);
+    } else {
+        await updateSingleTournament(tournamentId);
     }
 });

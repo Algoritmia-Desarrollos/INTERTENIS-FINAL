@@ -9,6 +9,13 @@
   <link rel="stylesheet" href="src/common/styles.css" />
   <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
   <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"/>
+  <style>
+    :root {
+      --primary-color: #415c19; /* Verde Oscuro del Logo */
+      --primary-dark: #3a5015;  /* Verde más oscuro para hover */
+      --background-color: #f8fafc;
+    }
+  </style>
 </head>
 <body class="bg-gray-50 text-gray-800">
   
@@ -17,7 +24,7 @@
       <img src="/public/assets/img/logotipo.png" alt="Logo" class="h-10">
       <h1 class="text-lg font-bold text-gray-800 hidden sm:block">Torneos del Club</h1>
     </div>
-    <a href="/src/admin/login.html" class="text-sm font-medium text-gray-600 hover:text-teal-600 flex items-center gap-2">
+    <a href="/src/admin/login.html" class="text-sm font-medium text-gray-600 hover:text-green-800 flex items-center gap-2">
       <span class="hidden sm:inline">Admin Login</span>
       <span class="material-icons">login</span>
     </a>

@@ -8,13 +8,13 @@ export function renderHeader() {
   const getLinkClasses = (href) => {
     const base = "text-sm font-medium transition-colors px-3 py-2 rounded-md";
     const isActive = href.split('/').pop() === currentPage;
+    // Usamos el amarillo como color de acento para el enlace activo
     return isActive 
-      ? `${base} bg-teal-100 text-teal-700 font-semibold` 
+      ? `${base} bg-yellow-100 text-yellow-800 font-semibold` 
       : `${base} text-gray-500 hover:bg-gray-100 hover:text-gray-900`;
   };
   
   let navLinks = '';
-  // Definimos los enlaces según el rol del usuario
   if (user?.role === 'admin') {
     navLinks = `
         <a class="${getLinkClasses('dashboard.html')}" href="/src/admin/dashboard.html">Dashboard</a>
@@ -23,18 +23,9 @@ export function renderHeader() {
         <a class="${getLinkClasses('matches.html')}" href="/src/admin/matches.html">Partidos</a>
         <a class="${getLinkClasses('programs.html')}" href="/src/admin/programs.html">Programas</a>
         <a class="${getLinkClasses('teams.html')}" href="/src/admin/teams.html">Equipos</a>
-  <a class="${getLinkClasses('categories.html')}" href="/src/admin/categories.html">Categorías</a>
-  <a class="${getLinkClasses('ranking.html')}" href="/src/admin/ranking.html">Ranking</a>
-    `;
-  } else if (user?.role === 'profesor') {
-    navLinks = `
-        <a class="${getLinkClasses('dashboard.html')}" href="/src/profesor/dashboard.html">Dashboard</a>
-        // Aquí irían los enlaces para el rol 'profesor'
-    `;
-  } else if (user?.role === 'jugador') {
-    navLinks = `
-        <a class="${getLinkClasses('home.html')}" href="/src/jugador/home.html">Mis Partidos</a>
-        // Aquí irían los enlaces para el rol 'jugador'
+        <a class="${getLinkClasses('categories.html')}" href="/src/admin/categories.html">Categorías</a>
+        <a class="${getLinkClasses('rankings.html')}" href="/src/admin/rankings.html">Ranking</a>
+
     `;
   }
   
@@ -73,7 +64,6 @@ export function renderHeader() {
     </div>
   `;
 
-  // Añadimos los event listeners después de crear el HTML
   document.addEventListener('click', (e) => {
     if (e.target.closest('#btnLogout') || e.target.closest('#logoutMobile')) {
         logout();

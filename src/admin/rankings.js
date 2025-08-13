@@ -178,7 +178,17 @@ function generateRankingsHTML(stats) {
 document.addEventListener('DOMContentLoaded', async () => {
     header.innerHTML = renderHeader();
     await populateTournamentFilter();
-    rankingsContainer.innerHTML = '<p class="text-center text-gray-500 p-8">Seleccione un torneo para ver los rankings.</p>';
+    
+    // Leer el ID y seleccionar el torneo en el dropdown si viene en la URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const tournamentIdToSelect = urlParams.get('tournamentId');
+
+    if (tournamentIdToSelect) {
+        tournamentFilter.value = tournamentIdToSelect;
+        await renderRankings(); // Cargar el ranking para ese torneo
+    } else {
+        rankingsContainer.innerHTML = '<p class="text-center text-gray-500 p-8">Seleccione un torneo para ver los rankings.</p>';
+    }
 });
 
 tournamentFilter.addEventListener('change', () => renderRankings());

@@ -1,4 +1,4 @@
-import { supabase } from './supabase.js';
+import { supabase } from './src/common/supabase.js';
 const tournamentsList = document.getElementById('tournaments-list');
 
 async function renderPublicTournaments() {

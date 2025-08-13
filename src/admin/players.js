@@ -1,6 +1,6 @@
 import { renderHeader } from '../common/header.js';
 import { requireRole } from '../common/router.js';
-import { supabase } from '../../supabase.js'; // <-- ¡RUTA CORREGIDA!
+import { supabase } from '../common/supabase.js'; // <-- ¡RUTA CORREGIDA!
 
 // Proteger la página
 requireRole('admin');

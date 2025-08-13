@@ -14,9 +14,15 @@
   <header id="header"></header>
   <main class="flex-1 py-8">
     <div class="content-container max-w-6xl mx-auto space-y-8">
-      <h1 class="text-3xl font-bold text-gray-900">Gestión de Torneos</h1>
+      <div class="flex flex-wrap justify-between items-center gap-4">
+        <h1 class="text-3xl font-bold text-gray-900">Gestión de Torneos</h1>
+        <button id="btn-show-form" class="btn btn-primary">
+          <span class="material-icons">add</span>
+          Crear Nuevo Torneo
+        </button>
+      </div>
       
-      <div class="bg-white p-6 rounded-xl shadow-lg">
+      <div id="form-container" class="hidden bg-white p-6 rounded-xl shadow-lg transition-all">
         <h2 id="form-title" class="text-xl font-semibold mb-4">Añadir Nuevo Torneo</h2>
         <form id="form-tournament" class="space-y-4">
           <input type="hidden" id="tournament-id">
@@ -39,7 +45,7 @@
             </div>
           </div>
           <div class="flex justify-end gap-4 pt-2">
-            <button type="button" id="btn-cancel" class="btn btn-secondary hidden">Cancelar</button>
+            <button type="button" id="btn-cancel" class="btn btn-secondary">Cancelar</button>
             <button type="submit" id="btn-save" class="btn btn-primary">Guardar Torneo</button>
           </div>
         </form>
@@ -54,6 +60,7 @@
                     <option value="created_at_desc">Más Nuevos</option>
                     <option value="created_at_asc">Más Antiguos</option>
                     <option value="start_date_asc">Próximos a Iniciar</option>
+                    <option value="name_asc">Nombre (A-Z)</option>
                 </select>
             </div>
         </div>

@@ -1,11 +1,11 @@
 :root {
-  --primary-color: #2563eb; /* Azul Principal del Logo */
-  --primary-dark: #1d4ed8;  /* Azul Oscuro para hover */
-  --secondary-color: #dbeafe; /* Azul Claro para acentos */
+  --primary-color: #415c19; /* Verde Oscuro del Logo */
+  --primary-dark: #3a5015;  /* Verde más oscuro para hover */
+  --secondary-color: #fad735; /* Amarillo del Logo como acento */
   --text-primary: #1f2937;
   --text-secondary: #4b5563;
   --border-color: #e5e7eb;
-  --background-color: #f8fafc;
+  --background-color: #f9fafb;
 }
 body {
   font-family: 'Inter', sans-serif;
@@ -69,7 +69,7 @@ body {
 }
 .input-field:focus {
     border-color: var(--primary-color);
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2); /* Sombra de foco azul */
+    box-shadow: 0 0 0 3px rgba(65, 92, 25, 0.2); /* Sombra de foco verde */
 }
 
 /* Spinner para cargas */
