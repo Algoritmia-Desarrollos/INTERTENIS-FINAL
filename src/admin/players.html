@@ -13,10 +13,16 @@
 <body class="bg-gray-50 text-gray-800">
   <header id="header"></header>
   <main class="flex-1 py-8">
-    <div class="content-container max-w-4xl mx-auto space-y-8">
-      <h1 class="text-3xl font-bold text-gray-900">Gestión de Jugadores</h1>
+    <div class="content-container max-w-7xl mx-auto space-y-8">
+      <div class="flex flex-wrap justify-between items-center gap-4">
+        <h1 class="text-3xl font-bold text-gray-900">Gestión de Jugadores</h1>
+        <button id="btn-show-form" class="btn btn-primary">
+          <span class="material-icons">add</span>
+          Crear Nuevo Jugador
+        </button>
+      </div>
       
-      <div class="bg-white p-6 rounded-xl shadow-lg">
+      <div id="form-container" class="hidden bg-white p-6 rounded-xl shadow-lg transition-all">
         <h2 id="form-title" class="text-xl font-semibold mb-4">Añadir Nuevo Jugador</h2>
         <form id="form-player" class="space-y-4">
           <input type="hidden" id="player-id">
@@ -27,26 +33,41 @@
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label for="category-select" class="block text-sm font-medium text-gray-700">Categoría</label>
-              <select id="category-select" class="input-field mt-1 block w-full">
-                <option value="">Cargando categorías...</option>
-              </select>
+              <select id="category-select" class="input-field mt-1 block w-full"></select>
             </div>
             <div>
               <label for="team-select" class="block text-sm font-medium text-gray-700">Equipo</label>
-              <select id="team-select" class="input-field mt-1 block w-full">
-                <option value="">Cargando equipos...</option>
-              </select>
+              <select id="team-select" class="input-field mt-1 block w-full"></select>
             </div>
           </div>
           <div class="flex justify-end gap-4 pt-2">
-            <button type="button" id="btn-cancel" class="btn btn-secondary hidden">Cancelar</button>
+            <button type="button" id="btn-cancel" class="btn btn-secondary">Cancelar</button>
             <button type="submit" id="btn-save" class="btn btn-primary">Guardar Jugador</button>
           </div>
         </form>
       </div>
 
       <div class="bg-white p-6 rounded-xl shadow-lg">
-        <h2 class="text-xl font-semibold mb-4">Jugadores Registrados</h2>
+        <div class="flex flex-wrap gap-4 items-center justify-between mb-4 pb-4 border-b">
+            <div class="flex flex-wrap gap-4 items-center">
+                <h2 class="text-xl font-semibold flex-shrink-0">Jugadores Registrados</h2>
+                <select id="sort-players" class="input-field !w-auto">
+                    <option value="name_asc">Nombre (A-Z)</option>
+                    <option value="created_at_desc">Más Nuevos</option>
+                    <option value="created_at_asc">Más Antiguos</option>
+                </select>
+                <select id="filter-team" class="input-field !w-auto">
+                    <option value="">Todos los Equipos</option>
+                </select>
+                <select id="filter-category" class="input-field !w-auto">
+                    <option value="">Todas las Categorías</option>
+                </select>
+            </div>
+            <div class="relative">
+                <span class="material-icons absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">search</span>
+                <input type="text" id="search-player" class="input-field !pl-10" placeholder="Buscar por nombre...">
+            </div>
+        </div>
         <div id="players-list" class="space-y-2">
           </div>
       </div>

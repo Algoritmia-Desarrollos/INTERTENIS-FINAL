@@ -1,5 +1,6 @@
 import { getUser, goTo } from './router.js';
 import { logout } from './auth.js';
+import { supabase } from './supabase.js';
 
 export function renderHeader() {
   const user = getUser();
@@ -8,7 +9,6 @@ export function renderHeader() {
   const getLinkClasses = (href) => {
     const base = "text-sm font-medium transition-colors px-3 py-2 rounded-md";
     const isActive = href.split('/').pop() === currentPage;
-    // Usamos el amarillo como color de acento para el enlace activo
     return isActive 
       ? `${base} bg-yellow-100 text-yellow-800 font-semibold` 
       : `${base} text-gray-500 hover:bg-gray-100 hover:text-gray-900`;
@@ -24,7 +24,7 @@ export function renderHeader() {
         <a class="${getLinkClasses('programs.html')}" href="/src/admin/programs.html">Programas</a>
         <a class="${getLinkClasses('teams.html')}" href="/src/admin/teams.html">Equipos</a>
         <a class="${getLinkClasses('categories.html')}" href="/src/admin/categories.html">Categorías</a>
-        <a class="${getLinkClasses('rankings.html')}" href="/src/admin/rankings.html">Ranking</a>
+                <a class="${getLinkClasses('rankings.html')}" href="/src/admin/rankings.html">Ranking</a>
 
     `;
   }
@@ -33,17 +33,24 @@ export function renderHeader() {
     <header class="flex items-center justify-between border-b bg-white px-4 sm:px-6 py-3 shadow-sm sticky top-0 z-50">
       <div class="flex items-center gap-4">
         <a href="/index.html">
-            <img src="/logo_2021_02.png" alt="Logo" class="h-10">
+            <img src="/public/assets/img/logotipo.png" alt="Logo" class="h-10">
         </a>
-        <h1 class="text-lg font-bold text-gray-800 hidden sm:block">InterTenis</h1>
       </div>
-      <nav class="hidden md:flex items-center gap-2">${navLinks}</nav>
+      
+      <nav class="hidden lg:flex items-center gap-2">${navLinks}</nav>
+      
       <div class="flex items-center gap-4">
+        <div class="relative hidden md:block">
+            <span class="material-icons absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">search</span>
+            <input type="text" id="global-player-search" class="input-field !pl-10 !w-64" placeholder="Buscar jugador..." autocomplete="off">
+            <div id="global-search-results" class="absolute top-full mt-2 w-full bg-white border rounded-lg shadow-xl z-50 hidden"></div>
+        </div>
+        
         <button id="btnLogout" class="text-sm font-medium text-gray-600 hover:text-red-600 flex items-center gap-2">
           <span class="hidden sm:inline">Cerrar Sesión</span>
           <span class="material-icons">logout</span>
         </button>
-        <button id="hamburgerBtn" class="md:hidden"><span class="material-icons">menu</span></button>
+        <button id="hamburgerBtn" class="lg:hidden"><span class="material-icons">menu</span></button>
       </div>
     </header>
     <div id="mobileMenu" class="hidden fixed inset-0 z-50">
@@ -64,20 +71,56 @@ export function renderHeader() {
     </div>
   `;
 
-  document.addEventListener('click', (e) => {
-    if (e.target.closest('#btnLogout') || e.target.closest('#logoutMobile')) {
-        logout();
-    }
-  
-    const hamburgerBtn = document.getElementById('hamburgerBtn');
-    const mobileMenu = document.getElementById('mobileMenu');
-    const closeMobileMenu = document.getElementById('closeMobileMenu');
-    const mobileMenuOverlay = document.getElementById('mobileMenuOverlay');
-  
-    if (hamburgerBtn?.contains(e.target)) mobileMenu?.classList.remove('hidden');
-    if (closeMobileMenu?.contains(e.target)) mobileMenu?.classList.add('hidden');
-    if (mobileMenuOverlay?.contains(e.target)) mobileMenu?.classList.add('hidden');
-  });
+  setTimeout(() => {
+      document.addEventListener('click', (e) => {
+        if (e.target.closest('#btnLogout') || e.target.closest('#logoutMobile')) {
+            logout();
+        }
+      });
+      
+      const hamburgerBtn = document.getElementById('hamburgerBtn');
+      const mobileMenu = document.getElementById('mobileMenu');
+      const closeMobileMenu = document.getElementById('closeMobileMenu');
+      const mobileMenuOverlay = document.getElementById('mobileMenuOverlay');
+    
+      if (hamburgerBtn) hamburgerBtn.addEventListener('click', () => mobileMenu?.classList.remove('hidden'));
+      if (closeMobileMenu) closeMobileMenu.addEventListener('click', () => mobileMenu?.classList.add('hidden'));
+      if (mobileMenuOverlay) mobileMenuOverlay.addEventListener('click', () => mobileMenu?.classList.add('hidden'));
+
+      // Lógica para el nuevo buscador
+      const searchInput = document.getElementById('global-player-search');
+      const searchResults = document.getElementById('global-search-results');
+      if (searchInput) {
+        searchInput.addEventListener('input', async (e) => {
+            const searchTerm = e.target.value;
+            if (searchTerm.length < 2) {
+                searchResults.classList.add('hidden');
+                return;
+            }
+            
+            // Usamos la nueva función de búsqueda inteligente
+            const { data, error } = await supabase.rpc('search_players_unaccent', { search_term: searchTerm });
+
+            if (error || !data || data.length === 0) {
+                searchResults.classList.add('hidden');
+                return;
+            }
+
+            searchResults.innerHTML = data.map(player => `
+                <a href="/src/admin/player-dashboard.html?id=${player.id}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                    ${player.name}
+                </a>
+            `).join('');
+            searchResults.classList.remove('hidden');
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('#global-player-search')) {
+                searchResults.classList.add('hidden');
+            }
+        });
+      }
+  }, 0);
 
   return headerHTML;
 }
