@@ -11,13 +11,14 @@ export function goTo(url) {
 /**
  * Protege una página para que solo sea accesible por un rol específico.
  * Si el usuario no tiene el rol correcto, lo redirige a la página de inicio de sesión.
- * @param {string} requiredRole - El rol requerido para acceder a la página (ej: 'admin', 'profesor', 'jugador').
+ * @param {string} requiredRole - El rol requerido para acceder a la página (ej: 'admin').
  */
 export function requireRole(requiredRole) {
   const user = getCurrentUser();
   
-  // Si solo se necesita saber si hay un usuario logueado
-  if (!user) {
+  // Si no hay un usuario logueado o su rol no es el requerido,
+  // se le redirige a la página de inicio.
+  if (!user || user.role !== requiredRole) {
     goTo('/index.html');
   }
 }

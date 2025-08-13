@@ -41,9 +41,9 @@ export function renderHeader() {
     <header class="flex items-center justify-between border-b bg-white px-4 sm:px-6 py-3 shadow-sm sticky top-0 z-50">
       <div class="flex items-center gap-4">
         <a href="/index.html">
-            <img src="/public/assets/img/logotipo.png" alt="Logo" class="h-10">
+            <img src="/logo_2021_02.png" alt="Logo" class="h-10">
         </a>
-        <h1 class="text-lg font-bold text-gray-800 hidden sm:block">Gestión de Tenis</h1>
+        <h1 class="text-lg font-bold text-gray-800 hidden sm:block">InterTenis</h1>
       </div>
       <nav class="hidden md:flex items-center gap-2">${navLinks}</nav>
       <div class="flex items-center gap-4">
