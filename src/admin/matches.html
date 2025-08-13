@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Club de Tenis - Gestión de Partidos</title>
+  <link rel="icon" href="/public/assets/img/logohead.webp" type="image/png">
+
+  <link rel="stylesheet" href="../common/styles.css" />
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"/>
+</head>
+<body class="bg-gray-50 text-gray-800">
+  <header id="header"></header>
+  <main class="flex-1 py-8">
+    <div class="content-container max-w-5xl mx-auto space-y-8">
+      <h1 class="text-3xl font-bold text-gray-900">Gestión de Partidos</h1>
+      
+      <div class="bg-white p-6 rounded-xl shadow-lg">
+        <h2 id="form-title" class="text-xl font-semibold mb-4">Añadir Nuevo Partido</h2>
+        <form id="form-match" class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+          <input type="hidden" id="match-id">
+          
+          <div>
+            <label for="tournament-select" class="block text-sm font-medium text-gray-700">Torneo</label>
+            <select id="tournament-select" class="input-field mt-1 block w-full" required></select>
+          </div>
+          <div>
+            <label for="category-select" class="block text-sm font-medium text-gray-700">Categoría</label>
+            <select id="category-select" class="input-field mt-1 block w-full" required></select>
+          </div>
+          <div>
+            <label for="player1-select" class="block text-sm font-medium text-gray-700">Jugador 1</label>
+            <select id="player1-select" class="input-field mt-1 block w-full" required></select>
+          </div>
+          <div>
+            <label for="player2-select" class="block text-sm font-medium text-gray-700">Jugador 2</label>
+            <select id="player2-select" class="input-field mt-1 block w-full" required></select>
+          </div>
+          <div>
+            <label for="match-date" class="block text-sm font-medium text-gray-700">Fecha del Partido</label>
+            <input type="date" id="match-date" class="input-field mt-1 block w-full" required>
+          </div>
+          <div>
+            <label for="winner-select" class="block text-sm font-medium text-gray-700">Ganador (Opcional)</label>
+            <select id="winner-select" class="input-field mt-1 block w-full"></select>
+          </div>
+
+          <div class="md:col-span-2 flex justify-end gap-4 pt-2">
+            <button type="button" id="btn-cancel" class="btn btn-secondary hidden">Cancelar</button>
+            <button type="submit" id="btn-save" class="btn btn-primary">Guardar Partido</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="bg-white p-6 rounded-xl shadow-lg">
+        <h2 class="text-xl font-semibold mb-4">Partidos Programados</h2>
+        <div id="matches-list" class="space-y-2">
+          </div>
+      </div>
+
+    </div>
+  </main>
+  <script type="module" src="matches.js"></script>
+</body>
+</html>
