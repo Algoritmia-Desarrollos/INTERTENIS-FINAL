@@ -1,4 +1,4 @@
-import { login } from './src/common/auth.js';
+import { login } from '../common/auth.js';
 
 // --- Selectores de elementos del DOM ---
 const form = document.getElementById('loginForm');
@@ -15,7 +15,6 @@ localStorage.removeItem('user');
 form.addEventListener('submit', async (e) => {
     e.preventDefault();
 
-    // Ocultar errores previos y mostrar el spinner de carga
     errorMsgDiv.classList.add('hidden');
     loginBtn.disabled = true;
     loginText.style.display = 'none';
@@ -27,23 +26,16 @@ form.addEventListener('submit', async (e) => {
     try {
         const user = await login(email, password);
         
-        // Redirección según el rol del usuario
-        if (user.role === 'admin') {
-            window.location.href = '/src/admin/dashboard.html';
-        } else if (user.role === 'profesor') {
-            window.location.href = '/src/profesor/dashboard.html';
-        } else if (user.role === 'jugador') {
-            window.location.href = '/src/jugador/home.html';
-        } else {
-            // Si el rol no es reconocido, se lanza un error
-            throw new Error("Rol de usuario no reconocido.");
-        }
+        // La función login ya verifica que el rol sea 'admin'.
+        // Si tiene éxito, redirigimos al dashboard del administrador.
+        window.location.href = '/src/admin/dashboard.html';
+
     } catch (err) {
         // Mostrar mensaje de error
         errorTextSpan.textContent = err.message || 'Credenciales incorrectas.';
         errorMsgDiv.classList.remove('hidden');
         
-        // Reactivar el botón para que el usuario pueda intentarlo de nuevo
+        // Reactivar el botón
         loginBtn.disabled = false;
         loginText.style.display = 'block';
         loadingSpinner.style.display = 'none';

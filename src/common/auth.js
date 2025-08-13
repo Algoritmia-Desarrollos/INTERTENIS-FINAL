@@ -1,7 +1,7 @@
-import { supabase } from './supabase.js';
+import { supabase } from './supabase.js'; // <-- RUTA CORREGIDA Y SIMPLIFICADA
 
 /**
- * Obtiene el administrador actual desde el almacenamiento local del navegador.
+ * Obtiene el administrador actual desde el almacenamiento local.
  * @returns {object|null} El objeto del administrador si existe, o null.
  */
 export function getCurrentUser() {
@@ -44,7 +44,6 @@ export async function login(email, password) {
     throw new Error('El perfil del usuario no fue encontrado.');
   }
 
-  // Verificación clave: solo los administradores pueden pasar.
   if (profile.role !== 'admin') {
     await supabase.auth.signOut();
     throw new Error('Acceso denegado. Esta sección es solo para administradores.');
