@@ -1,25 +1,6 @@
-import { supabase } from './supabase.js'; // <-- RUTA CORREGIDA Y SIMPLIFICADA
+import { supabase } from '../supabase.js'; // Esta ruta es la correcta
 
-/**
- * Obtiene el administrador actual desde el almacenamiento local.
- * @returns {object|null} El objeto del administrador si existe, o null.
- */
-export function getCurrentUser() {
-  try {
-    const user = localStorage.getItem('user');
-    return user ? JSON.parse(user) : null;
-  } catch (e) {
-    console.error("Error al obtener el usuario de localStorage:", e);
-    return null;
-  }
-}
 
-/**
- * Inicia sesión de un usuario y verifica si tiene el rol de 'admin'.
- * @param {string} email - El correo electrónico del usuario.
- * @param {string} password - La contraseña del usuario.
- * @returns {Promise<object>} El objeto del usuario si es admin.
- */
 export async function login(email, password) {
   const { data: loginData, error: loginError } = await supabase.auth.signInWithPassword({
     email,
@@ -57,13 +38,4 @@ export async function login(email, password) {
   localStorage.setItem('user', JSON.stringify(userToStore));
   
   return userToStore;
-}
-
-/**
- * Cierra la sesión del administrador y lo redirige a la página de inicio.
- */
-export async function logout() {
-  await supabase.auth.signOut();
-  localStorage.removeItem('user');
-  window.location.href = '/index.html';
 }

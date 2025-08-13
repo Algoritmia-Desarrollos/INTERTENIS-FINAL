@@ -1,4 +1,4 @@
-import { login } from '../common/auth.js';
+import { login } from '../common/auth.js'; // Esta ruta es correcta
 
 // --- Selectores de elementos del DOM ---
 const form = document.getElementById('loginForm');

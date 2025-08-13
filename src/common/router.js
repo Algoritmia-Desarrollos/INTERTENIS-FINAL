@@ -16,9 +16,8 @@ export function goTo(url) {
 export function requireRole(requiredRole) {
   const user = getCurrentUser();
   
-  // Si no hay un usuario logueado o su rol no es el requerido,
-  // se le redirige a la página de inicio.
-  if (!user || user.role !== requiredRole) {
+  // Si solo se necesita saber si hay un usuario logueado
+  if (!user) {
     goTo('/index.html');
   }
 }
