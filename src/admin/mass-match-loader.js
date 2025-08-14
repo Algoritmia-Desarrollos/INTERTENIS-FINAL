@@ -435,21 +435,20 @@ export function setupMassMatchLoader({
         setTimeout(() => inputElement.showPicker(), 0);
     }
     
-    // Guardar y cerrar al seleccionar una opción en el select
-    if (inputElement.tagName === 'SELECT') {
-      inputElement.addEventListener('change', () => {
-        saveChange();
-      });
-    }
     inputElement.addEventListener('blur', saveChange);
     inputElement.addEventListener('keydown', e => {
         if (e.key === 'Enter' || e.key === 'Tab') { e.preventDefault(); inputElement.blur(); } 
         else if (e.key === 'Escape') { cell.innerHTML = originalContent; cell.classList.remove('is-editing'); }
     });
-      // Comportamiento clásico: el select permanece abierto hasta blur o Enter/Tab/Escape
+      // Restaurar comportamiento estándar del select, pero forzar apertura hacia abajo solo con CSS moderno
       if (inputElement.tagName === 'SELECT') {
         inputElement.style.color = 'black';
         inputElement.style.background = 'white';
+        inputElement.style.direction = 'ltr';
+        // CSS para forzar apertura hacia abajo en navegadores modernos
+        inputElement.style.position = '';
+        inputElement.style.zIndex = '';
+        inputElement.style.boxShadow = '';
         setTimeout(() => inputElement.focus(), 0);
       }
   }
