@@ -600,30 +600,32 @@ function handleBulkReport() {
         alert("No hay partidos seleccionados para el reporte.");
         return;
     }
-    // Obtener los datos de los partidos seleccionados
+    // Obtener los datos de los partidos seleccionados en el formato esperado por reportes.js
     const reportMatches = Array.from(selectedMatches).map(id => {
         const match = allMatches.find(m => m.id === id);
         if (!match) return null;
-        // Calcular puntos (usa helper existente)
         const { p1_points, p2_points } = calculatePoints(match);
-        // Estructura para el reporte (incluye imagen del equipo)
         return {
-            id: match.id,
-            fechaHora: match.match_date ? new Date(match.match_date).toLocaleString('es-AR') : '',
-            cancha: match.location || '',
-            jugadorA: match.player1?.name || '',
-            jugadorA_img: match.player1?.team?.image_url || '',
-            puntosA: p1_points ?? '',
-            resultado: match.result_string || '',
-            puntosB: p2_points ?? '',
-            jugadorB: match.player2?.name || '',
-            jugadorB_img: match.player2?.team?.image_url || '',
-            categoria: match.category?.name || ''
+            date: match.match_date ? match.match_date.split('T')[0] : '',
+            time: match.match_time || '',
+            location: match.location || '',
+            category: match.category?.name || '',
+            player1: {
+                name: match.player1?.name || '',
+                points: p1_points ?? '',
+                isWinner: match.winner_id === match.player1_id,
+                image: match.player1?.team?.image_url || ''
+            },
+            player2: {
+                name: match.player2?.name || '',
+                points: p2_points ?? '',
+                isWinner: match.winner_id === match.player2_id,
+                image: match.player2?.team?.image_url || ''
+            },
+            sets: (match.sets && match.sets.length > 0) ? match.sets.map(s => `${s.p1}-${s.p2}`).join(', ') : ''
         };
     }).filter(Boolean);
-    // Guardar en localStorage
     localStorage.setItem('reportMatches', JSON.stringify(reportMatches));
-    // Redirigir a la página de reportes
     window.location.href = 'reportes.html';
 }
 

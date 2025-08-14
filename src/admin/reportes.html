@@ -19,13 +19,63 @@
         .page-break {
             page-break-after: always;
         }
+        /* Forzar ancho fijo en todas las columnas de las tablas de reporte */
+        #report-container table.table-fixed th,
+        #report-container table.table-fixed td {
+            width: 70px;
+            min-width: 70px;
+            max-width: 70px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            padding-left: 2px;
+            padding-right: 2px;
+            padding-top: 2px;
+            padding-bottom: 2px;
+            font-size: 13px;
+        }
+        /* Cancha (primera columna) más angosta */
+        #report-container table.table-fixed th:nth-child(1),
+        #report-container table.table-fixed td:nth-child(1) {
+            width: 35px;
+            min-width: 35px;
+            max-width: 35px;
+        }
+        /* Hora (segunda columna) más angosta */
+        #report-container table.table-fixed th:nth-child(2),
+        #report-container table.table-fixed td:nth-child(2) {
+            width: 35px;
+            min-width: 35px;
+            max-width: 35px;
+        }
+        #report-container table.table-fixed th:nth-child(3),
+        #report-container table.table-fixed td:nth-child(3),
+        #report-container table.table-fixed th:nth-child(7),
+        #report-container table.table-fixed td:nth-child(7) {
+            width: 120px;
+            min-width: 120px;
+            max-width: 120px;
+        }
+        #report-container table.table-fixed th:nth-child(5),
+        #report-container table.table-fixed td:nth-child(5) {
+            width: 160px;
+            min-width: 160px;
+            max-width: 160px;
+        }
+        #report-container {
+            border-radius: 16px;
+            box-shadow: 0 2px 8px 0 rgba(0,0,0,0.04);
+            padding: 0 !important;
+            max-width: 1200px !important;
+            width: 100%;
+        }
     </style>
 </head>
 <body class="bg-gray-50 text-gray-800">
     <header id="header" class="no-print"></header>
 
     <main class="flex-1 py-8">
-        <div class="content-container max-w-5xl mx-auto space-y-6">
+        <div class="content-container max-w-[1200px] mx-auto space-y-6">
             <div class="flex flex-wrap justify-between items-center gap-4 no-print">
                 <h1 class="text-3xl font-bold text-gray-900">Reporte de Partidos</h1>
                 <button id="btn-save-pdf" class="btn btn-primary">
@@ -43,5 +93,25 @@
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script type="module" src="reportes.js"></script>
+    <script>
+    // Ajustar el tamaño del PDF generado
+    window.addEventListener('DOMContentLoaded', () => {
+        const btn = document.getElementById('btn-save-pdf');
+        if (btn) {
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                const element = document.getElementById('report-container');
+                const opt = {
+                    margin: 0.5,
+                    filename: `reporte_partidos_${new Date().toLocaleDateString('es-AR').replace(/\//g, '-')}.pdf`,
+                    image: { type: 'jpeg', quality: 0.98 },
+                    html2canvas: { scale: 2, useCORS: true },
+                    jsPDF: { unit: 'pt', format: [1200, 842], orientation: 'landscape' }
+                };
+                html2pdf().set(opt).from(element).save();
+            });
+        }
+    });
+    </script>
 </body>
 </html>
