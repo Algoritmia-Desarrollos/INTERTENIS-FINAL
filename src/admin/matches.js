@@ -596,7 +596,35 @@ async function handleBulkProgram() {
 }
 
 function handleBulkReport() {
-    alert("Función para generar reporte de partidos seleccionados en desarrollo.");
+    if (selectedMatches.size === 0) {
+        alert("No hay partidos seleccionados para el reporte.");
+        return;
+    }
+    // Obtener los datos de los partidos seleccionados
+    const reportMatches = Array.from(selectedMatches).map(id => {
+        const match = allMatches.find(m => m.id === id);
+        if (!match) return null;
+        // Calcular puntos (usa helper existente)
+        const { p1_points, p2_points } = calculatePoints(match);
+        // Estructura para el reporte (incluye imagen del equipo)
+        return {
+            id: match.id,
+            fechaHora: match.match_date ? new Date(match.match_date).toLocaleString('es-AR') : '',
+            cancha: match.location || '',
+            jugadorA: match.player1?.name || '',
+            jugadorA_img: match.player1?.team?.image_url || '',
+            puntosA: p1_points ?? '',
+            resultado: match.result_string || '',
+            puntosB: p2_points ?? '',
+            jugadorB: match.player2?.name || '',
+            jugadorB_img: match.player2?.team?.image_url || '',
+            categoria: match.category?.name || ''
+        };
+    }).filter(Boolean);
+    // Guardar en localStorage
+    localStorage.setItem('reportMatches', JSON.stringify(reportMatches));
+    // Redirigir a la página de reportes
+    window.location.href = 'reportes.html';
 }
 
 function handleImportExcel() {
