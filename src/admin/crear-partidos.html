@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Club de Tenis - Gestión de Partidos</title>
+  <link rel="icon" href="/public/assets/img/logohead.webp" type="image/png">
+
+  <link rel="stylesheet" href="../common/styles.css" />
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"/>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css" />
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+</head>
+<body class="bg-gray-50 text-gray-800">
+  <header id="header"></header>
+  <main class="flex-1 py-8">
+    <div class="content-container max-w-7xl mx-auto space-y-8">
+      <div class="flex flex-wrap justify-between items-center gap-4">
+        <h1 class="text-3xl font-bold text-gray-900">Gestión de Partidos</h1>
+        <div class="flex items-center gap-2">
+            <button id="btn-import-excel" class="btn btn-secondary">
+                <span class="material-icons">upload_file</span>
+                Importar desde Excel
+            </button>
+            <button id="btn-show-mass-loader" class="btn btn-primary">
+                <span class="material-icons">add</span>
+                Crear Partidos
+            </button>
+        </div>
+      </div>
+      
+      <div id="mass-loader-section" class="hidden bg-white p-6 rounded-xl shadow-lg transition-all">
+          <div id="mass-loader-container" class="bg-[#f8f9fa] border border-[#e3e6ec] rounded-xl shadow p-4 flex flex-col gap-4">
+              <div class="flex justify-between items-center">
+                <h2 class="text-xl font-bold">Carga Rápida de Partidos</h2>
+                <div class="flex gap-2">
+                  <button id="btn-add-row" class="bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded px-4 py-2 flex items-center gap-2">
+                    <span class="material-icons">add</span> Añadir Fila
+                  </button>
+                  <button id="btn-save-all" class="bg-[#556b1e] hover:bg-[#405312] text-white font-semibold rounded px-6 py-2 flex items-center gap-2" disabled>
+                    💾 Guardar 0 Partidos
+                  </button>
+                </div>
+              </div>
+              <div id="table-wrapper">
+                </div>
+            </div>
+      </div>
+
+      <div class="bg-white p-6 rounded-xl shadow-lg">
+        <div class="flex flex-wrap gap-4 items-center justify-between mb-4 pb-4 border-b">
+            <div class="flex flex-wrap gap-4 items-center">
+                <select id="filter-tournament" class="input-field !w-auto">
+                    <option value="">Todos los Torneos</option>
+                </select>
+                <select id="filter-status" class="input-field !w-auto">
+                    <option value="">Todos los Estados</option>
+                    <option value="pendiente">Pendientes</option>
+                    <option value="completado">Completados</option>
+                    <option value="suspendido">Suspendidos</option>
+                </select>
+            </div>
+            <div class="relative">
+                <span class="material-icons absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">search</span>
+                <input type="text" id="search-player" class="input-field !pl-10" placeholder="Buscar por jugador...">
+            </div>
+        </div>
+        <div id="matches-container" class="overflow-x-auto">
+          </div>
+      </div>
+
+    </div>
+  </main>
+
+  <div id="score-modal-container"></div>
+  
+  <div id="bulk-action-bar" class="fixed bottom-0 left-1/2 -translate-x-1/2 mb-4 bg-gray-800 text-white p-3 rounded-lg shadow-2xl flex items-center gap-6 transition-transform transform translate-y-24 opacity-0">
+    <p class="text-sm font-semibold"><span id="selected-count">0</span> seleccionados</p>
+    <button id="bulk-deselect" class="flex items-center gap-2 text-sm hover:text-gray-400 ml-2"><span class="material-icons">close</span>Deseleccionar</button>
+    <div class="border-l border-gray-600 h-6"></div>
+    <button id="bulk-delete" class="flex items-center gap-2 text-sm hover:text-red-400"><span class="material-icons">delete</span>Eliminar</button>
+  </div>
+
+  <script type="module" src="matches.js"></script>
+</body>
+</html>

@@ -157,7 +157,9 @@ function renderMatches(matchesToRender) {
                     <th class="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Fecha y Hora</th>
                     <th class="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Cancha</th>
                     <th class="px-4 py-2 text-right text-xs font-semibold text-gray-500 uppercase">Jugador A</th>
+                    <th class="px-2 py-2 text-center text-xs font-semibold text-gray-500 uppercase">PTS</th>
                     <th class="px-4 py-2 text-center text-xs font-semibold text-gray-500 uppercase">Resultado</th>
+                    <th class="px-2 py-2 text-center text-xs font-semibold text-gray-500 uppercase">PTS</th>
                     <th class="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Jugador B</th>
                     <th class="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Categoría</th>
                     <th class="px-4 py-2 text-center text-xs font-semibold text-gray-500 uppercase">Acciones</th>
@@ -173,7 +175,14 @@ function renderMatches(matchesToRender) {
                     const sets = match.sets || [];
                     const result_string = match.status === 'suspendido' ? 'SUSPENDIDO' : (sets.length > 0 ? sets.map(s => `${s.p1}-${s.p2}`).join(', ') : '-');
                     const time_string = match.match_time ? match.match_time.substring(0, 5) : 'HH:MM';
-                    
+                    // Calcular puntos (games ganados) para cada jugador
+                    let p1_pts = 0, p2_pts = 0;
+                    sets.forEach(s => {
+                        if (typeof s.p1 === 'number' && typeof s.p2 === 'number') {
+                            p1_pts += s.p1;
+                            p2_pts += s.p2;
+                        }
+                    });
                     return `
                     <tr class="clickable-row ${selectedMatches.has(match.id) ? 'bg-yellow-50' : 'bg-white'} hover:bg-gray-100 ${match.status === 'suspendido' ? '!bg-red-50' : ''}" data-match-id="${match.id}">
                         <td class="p-4"><input type="checkbox" class="match-checkbox" data-id="${match.id}" ${selectedMatches.has(match.id) ? 'checked' : ''}></td>
@@ -188,7 +197,9 @@ function renderMatches(matchesToRender) {
                                 <img src="${match.player1.team?.image_url || 'https://via.placeholder.com/24'}" class="h-6 w-6 rounded-full object-cover">
                             </div>
                         </td>
+                        <td class="px-2 py-3 whitespace-nowrap text-center text-base font-bold">${p1_pts}</td>
                         <td class="px-4 py-3 whitespace-nowrap text-sm text-center font-mono font-semibold">${result_string}</td>
+                        <td class="px-2 py-3 whitespace-nowrap text-center text-base font-bold">${p2_pts}</td>
                         <td class="px-4 py-3 whitespace-nowrap text-sm ${p2_class}">
                             <div class="flex items-center gap-2">
                                 <img src="${match.player2.team?.image_url || 'https://via.placeholder.com/24'}" class="h-6 w-6 rounded-full object-cover">
@@ -196,11 +207,11 @@ function renderMatches(matchesToRender) {
                             </div>
                         </td>
                         <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">${match.category.name}</td>
-                                                <td class="px-4 py-3 text-center">
-                                                                                                                                                                    <button class="text-white bg-blue-600 hover:bg-blue-700 border border-blue-700 rounded-full px-2 py-1 transition-colors duration-150 shadow-md focus:outline-none focus:ring-2 focus:ring-blue-400 flex items-center justify-center" data-action="edit" style="min-width: 32px; min-height: 32px; width: 32px; height: 32px;">
-                                                                                                                                                                        <span class="material-icons" style="font-size: 18px;">edit</span>
-                                                                                                                                                                    </button>
-                                                </td>
+                        <td class="px-4 py-3 text-center">
+                            <button class="text-white bg-blue-600 hover:bg-blue-700 border border-blue-700 rounded-full px-2 py-1 transition-colors duration-150 shadow-md focus:outline-none focus:ring-2 focus:ring-blue-400 flex items-center justify-center" data-action="edit" style="min-width: 32px; min-height: 32px; width: 32px; height: 32px;">
+                                <span class="material-icons" style="font-size: 18px;">edit</span>
+                            </button>
+                        </td>
                     </tr>
                     `
                 }).join('')}
@@ -501,7 +512,11 @@ function handleImportExcel() {
 document.addEventListener('DOMContentLoaded', async () => {
     header.innerHTML = renderHeader();
     await loadInitialData();
-    renderExcelLikeMatchForm();
+    // Oculta el formulario Excel-like al cargar
+    if (formContainer) formContainer.classList.add('hidden');
+    // Oculta el loader masivo al cargar (si existe)
+    const massLoaderContainer = document.getElementById('mass-match-loader-container');
+    if (massLoaderContainer) massLoaderContainer.classList.add('hidden');
 });
 
 
@@ -767,19 +782,17 @@ function addExcelMatchRow() {
     tbody.appendChild(tr);
 }
 
-import { setupMassMatchLoader } from './setupMassMatchLoader.js';
+import { setupMassMatchLoader } from './mass-match-loader.js';
 
 btnShowForm.addEventListener('click', () => {
-    formContainer.classList.toggle('hidden');
-    btnShowForm.innerHTML = formContainer.classList.contains('hidden') 
-        ? '<span class="material-icons">add</span> Crear Partido' 
-        : '<span class="material-icons">close</span> Cancelar';
-
-    // Llama a setupMassMatchLoader cada vez que se toca "Agregar Partido"
+    // Oculta el formulario Excel-like
+    if (formContainer) formContainer.classList.add('hidden');
+    // Muestra el loader masivo
     const massLoaderContainer = document.getElementById('mass-match-loader-container');
     const btnAddRow = document.getElementById('btn-add-mass-row');
     const btnSave = document.getElementById('btn-save-mass-matches');
     if (massLoaderContainer && btnAddRow && btnSave) {
+        massLoaderContainer.classList.remove('hidden');
         setupMassMatchLoader({
             container: massLoaderContainer,
             btnAddRow,

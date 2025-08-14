@@ -81,6 +81,16 @@
         </form>
       </div>
 
+      <!-- Contenedor para el loader masivo -->
+      <div id="mass-match-loader-container" class="hidden bg-white p-6 rounded-xl shadow-lg transition-all">
+        <h2 class="text-xl font-semibold mb-4">Carga Masiva de Partidos</h2>
+        <div class="flex gap-4 mb-4">
+          <button id="btn-add-mass-row" class="btn btn-secondary">Agregar Fila</button>
+          <button id="btn-save-mass-matches" class="btn btn-primary">Guardar Partidos</button>
+        </div>
+        <!-- La tabla se renderiza dinámicamente aquí -->
+      </div>
+
       <div class="bg-white p-6 rounded-xl shadow-lg">
         <div class="flex flex-wrap gap-4 items-center justify-between mb-4 pb-4 border-b">
             <div class="flex flex-wrap gap-4 items-center">
