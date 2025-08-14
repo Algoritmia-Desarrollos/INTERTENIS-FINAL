@@ -1,4 +1,5 @@
 import { handleExcelMatchFormSubmit } from './create-match.js';
+import { calculatePoints } from './calculatePoints.js';
 
 import { renderHeader } from '../common/header.js';
 import { requireRole } from '../common/router.js';
@@ -65,10 +66,110 @@ async function loadInitialData() {
         });
     }
 
-    // populateFormSelects(); // Eliminado: ya no se usa formulario antiguo
+    updateSummaryCards();
     populateFilterSelects();
     applyFiltersAndSort();
 }
+
+// Actualiza los contadores de las tarjetas resumen
+function updateSummaryCards() {
+    const pendientes = allMatches.filter(m => !m.winner_id && m.status !== 'suspendido').length;
+    // Últimos 7 días
+    const now = new Date();
+    const sieteDiasAtras = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7);
+    // Solo partidos jugados (completados) en los últimos 7 días
+    const recientes = allMatches.filter(m => {
+        if (!m.winner_id) return false;
+        const matchDate = new Date(m.match_date);
+        return matchDate >= sieteDiasAtras && matchDate <= now;
+    }).length;
+    const pendientesEl = document.getElementById('count-pendientes');
+    const recientesEl = document.getElementById('count-recientes');
+    if (pendientesEl) pendientesEl.textContent = pendientes;
+    if (recientesEl) recientesEl.textContent = recientes;
+}
+
+// Listeners para las tarjetas resumen
+document.addEventListener('DOMContentLoaded', () => {
+    const cardPendientes = document.getElementById('card-pendientes');
+    const cardRecientes = document.getElementById('card-recientes');
+    if (cardPendientes) {
+        cardPendientes.addEventListener('click', () => {
+            filterStatusSelect.value = 'pendiente';
+            applyFiltersAndSort();
+            cardPendientes.classList.add('ring-2', 'ring-yellow-400');
+            cardRecientes.classList.remove('ring-2', 'ring-green-400');
+        });
+    }
+    if (cardRecientes) {
+        cardRecientes.addEventListener('click', () => {
+            filterStatusSelect.value = 'completado';
+            // Filtro adicional: solo últimos 7 días
+            const now = new Date();
+            const sieteDiasAtras = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7);
+            // Guardar referencia original
+            const originalApplyFiltersAndSort = applyFiltersAndSort;
+            // Parche temporal para filtrar solo últimos 7 días
+            window.applyFiltersAndSort = function() {
+                let processedMatches = [...allMatches];
+                const tournamentFilter = filterTournamentSelect.value;
+                const statusFilter = filterStatusSelect.value;
+                const sedeFilter = filterSedeSelect.value;
+                const canchaFilter = filterCanchaSelect.value;
+                const searchTerm = normalizeText(searchInput.value.toLowerCase());
+                if (searchTerm) {
+                    processedMatches = processedMatches.filter(m => 
+                        (m.player1 && normalizeText(m.player1.name.toLowerCase()).includes(searchTerm)) || 
+                        (m.player2 && normalizeText(m.player2.name.toLowerCase()).includes(searchTerm))
+                    );
+                }
+                if (tournamentFilter) {
+                    processedMatches = processedMatches.filter(m => m.tournament_id == tournamentFilter);
+                }
+                if (sedeFilter) {
+                    processedMatches = processedMatches.filter(m => m.location && m.location.startsWith(sedeFilter));
+                }
+                if (canchaFilter) {
+                    processedMatches = processedMatches.filter(m => m.location && m.location.endsWith(canchaFilter));
+                }
+                if (statusFilter === 'completado') {
+                    processedMatches = processedMatches.filter(m => !!m.winner_id && new Date(m.match_date) >= sieteDiasAtras && new Date(m.match_date) <= now);
+                } else if (statusFilter === 'pendiente') {
+                    processedMatches = processedMatches.filter(m => !m.winner_id && m.status !== 'suspendido');
+                } else if (statusFilter === 'suspendido') {
+                    processedMatches = processedMatches.filter(m => m.status === 'suspendido');
+                }
+                renderMatches(processedMatches);
+                updateBulkActionBar();
+            };
+            applyFiltersAndSort();
+            cardRecientes.classList.add('ring-2', 'ring-green-400');
+            cardPendientes.classList.remove('ring-2', 'ring-yellow-400');
+        });
+    }
+
+    // Selección instantánea en selects del formulario de partido
+});
+
+// Selección instantánea en selects del formulario de partido (fuera del if principal)
+document.addEventListener('DOMContentLoaded', () => {
+    const player1SelectForm = document.getElementById('player1-select-form');
+    const player2SelectForm = document.getElementById('player2-select-form');
+    if (player1SelectForm) {
+        player1SelectForm.addEventListener('mousedown', (e) => {
+            setTimeout(() => {
+                player1SelectForm.dispatchEvent(new Event('change', { bubbles: true }));
+            }, 0);
+        });
+    }
+    if (player2SelectForm) {
+        player2SelectForm.addEventListener('mousedown', (e) => {
+            setTimeout(() => {
+                player2SelectForm.dispatchEvent(new Event('change', { bubbles: true }));
+            }, 0);
+        });
+    }
+});
 
 // Función populateFormSelects eliminada: ya no se usa formulario antiguo
 
@@ -175,14 +276,8 @@ function renderMatches(matchesToRender) {
                     const sets = match.sets || [];
                     const result_string = match.status === 'suspendido' ? 'SUSPENDIDO' : (sets.length > 0 ? sets.map(s => `${s.p1}-${s.p2}`).join(', ') : '-');
                     const time_string = match.match_time ? match.match_time.substring(0, 5) : 'HH:MM';
-                    // Calcular puntos (games ganados) para cada jugador
-                    let p1_pts = 0, p2_pts = 0;
-                    sets.forEach(s => {
-                        if (typeof s.p1 === 'number' && typeof s.p2 === 'number') {
-                            p1_pts += s.p1;
-                            p2_pts += s.p2;
-                        }
-                    });
+                    // Calcular puntos usando la misma lógica que dashboard.js
+                    const { p1_points, p2_points } = calculatePoints(match);
                     return `
                     <tr class="clickable-row ${selectedMatches.has(match.id) ? 'bg-yellow-50' : 'bg-white'} hover:bg-gray-100 ${match.status === 'suspendido' ? '!bg-red-50' : ''}" data-match-id="${match.id}">
                         <td class="p-4"><input type="checkbox" class="match-checkbox" data-id="${match.id}" ${selectedMatches.has(match.id) ? 'checked' : ''}></td>
@@ -197,9 +292,9 @@ function renderMatches(matchesToRender) {
                                 <img src="${match.player1.team?.image_url || 'https://via.placeholder.com/24'}" class="h-6 w-6 rounded-full object-cover">
                             </div>
                         </td>
-                        <td class="px-2 py-3 whitespace-nowrap text-center text-base font-bold">${p1_pts}</td>
+                        <td class="px-2 py-3 whitespace-nowrap text-center text-base font-bold">${p1_points}</td>
                         <td class="px-4 py-3 whitespace-nowrap text-sm text-center font-mono font-semibold">${result_string}</td>
-                        <td class="px-2 py-3 whitespace-nowrap text-center text-base font-bold">${p2_pts}</td>
+                        <td class="px-2 py-3 whitespace-nowrap text-center text-base font-bold">${p2_points}</td>
                         <td class="px-4 py-3 whitespace-nowrap text-sm ${p2_class}">
                             <div class="flex items-center gap-2">
                                 <img src="${match.player2.team?.image_url || 'https://via.placeholder.com/24'}" class="h-6 w-6 rounded-full object-cover">

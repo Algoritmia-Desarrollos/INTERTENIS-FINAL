@@ -17,17 +17,36 @@
     <div class="content-container max-w-7xl mx-auto space-y-8">
       <div class="flex flex-wrap justify-between items-center gap-4">
         <h1 class="text-3xl font-bold text-gray-900">Gestión de Partidos</h1>
-        <div class="flex items-center gap-2">
-            <button id="btn-import-excel" class="btn btn-secondary">
-                <span class="material-icons">upload_file</span>
-                Importar desde Excel
-            </button>
-            <button id="btn-show-form" class="btn btn-primary">
-                <span class="material-icons">add</span>
-                Crear Partido
-            </button>
+      </div>
+      <!-- Tarjetas resumen -->
+      <div id="match-summary-cards" class="flex flex-wrap gap-6 my-4">
+        <div id="card-pendientes" class="flex-1 min-w-[220px] cursor-pointer bg-white border border-yellow-200 rounded-xl shadow-sm p-5 flex items-center gap-4 hover:shadow-md hover:border-yellow-400 transition">
+          <span class="material-icons text-yellow-500 text-3xl">schedule</span>
+          <div>
+            <div class="text-xs text-gray-500 font-semibold">Partidos por Jugar</div>
+            <div id="count-pendientes" class="text-2xl font-bold text-gray-900">0</div>
+          </div>
+        </div>
+        <div id="card-recientes" class="flex-1 min-w-[220px] cursor-pointer bg-white border border-green-200 rounded-xl shadow-sm p-5 flex items-center gap-4 hover:shadow-md hover:border-green-400 transition">
+          <span class="material-icons text-green-600 text-3xl">check_circle</span>
+          <div>
+            <div class="text-xs text-gray-500 font-semibold">Partidos Recientemente Jugados</div>
+            <div id="count-recientes" class="text-2xl font-bold text-gray-900">0</div>
+          </div>
         </div>
       </div>
+      <!-- Botones de acción principales -->
+      <div class="flex items-center gap-2 mb-6">
+        <button id="btn-import-excel" class="btn btn-secondary">
+            <span class="material-icons">upload_file</span>
+            Importar desde Excel
+        </button>
+        <button id="btn-show-form" class="btn btn-primary">
+            <span class="material-icons">add</span>
+            Crear Partido
+        </button>
+      </div>
+  
       
       <div id="form-container" class="hidden bg-white p-6 rounded-xl shadow-lg transition-all">
         <h2 class="text-xl font-semibold mb-4">Añadir Nuevo Partido</h2>
