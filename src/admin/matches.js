@@ -1,4 +1,4 @@
-import { handleExcelMatchFormSubmit } from './excel-match-save.js';
+import { handleExcelMatchFormSubmit } from './create-match.js';
 
 import { renderHeader } from '../common/header.js';
 import { requireRole } from '../common/router.js';
@@ -504,41 +504,92 @@ document.addEventListener('DOMContentLoaded', async () => {
     renderExcelLikeMatchForm();
 });
 
+
+
 function renderExcelLikeMatchForm() {
     if (!formContainer) return;
+    // Opciones
+    const torneoOptions = `<option value="">Seleccionar torneo</option>` + allTournaments.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+    // Helper para opciones de jugador según torneo
+    function getJugadoresOptions(torneoId) {
+        let options = '<option value="">Seleccionar jugador</option>';
+        if (!torneoId) return options;
+        const playerIds = tournamentPlayersMap.get(Number(torneoId)) || new Set();
+        const jugadores = allPlayers.filter(p => playerIds.has(p.id));
+        jugadores.forEach(p => {
+            options += `<option value="${p.id}">${p.name}</option>`;
+        });
+        return options;
+    }
+    const jugadoresOptions = '<option value="">Seleccionar jugador</option>';
+    const sedeOptions = ['Funes', 'Centro'].map(s => `<option value="${s}">${s}</option>`).join('');
+    const canchaOptions = [1,2,3,4,5,6].map(n => `<option value="Cancha ${n}">Cancha ${n}</option>`).join('');
     formContainer.innerHTML = `
-        <form id="excel-match-form" class="bg-white rounded-xl shadow-lg mb-2" style="padding:0;">
-            <h2 class="text-lg font-bold mb-2 px-4 pt-4">Añadir Partidos (tipo Excel)</h2>
-            <div class="w-full overflow-x-auto px-2">
-                <table id="excel-match-table" class="w-full border text-xs excel-table-like">
-                    <thead>
-                        <tr class="bg-gray-100 text-gray-700">
-                            <th class="px-1 py-1">Torneo</th>
-                            <th class="px-1 py-1">Sede</th>
-                            <th class="px-1 py-1">Cancha</th>
-                            <th class="px-1 py-1">Día <span title='Elegí la fecha en el calendario o escribí en formato dd/mm/aaaa' class='material-icons align-middle text-gray-400 cursor-pointer help-dia' style="font-size:16px;">help</span></th>
-                            <th class="px-1 py-1">Hora</th>
-                            <th class="px-1 py-1">Jugador 1</th>
-                            <th class="px-1 py-1">Jugador 2</th>
-                            <th class="px-1 py-1">Acciones</th>
-                        </tr>
-                    </thead>
-                    <tbody id="excel-match-tbody">
-                    </tbody>
-                </table>
+        <form id="excel-match-form" class="bg-[#f8f9fa] border border-[#e3e6ec] rounded-xl shadow p-4 flex flex-col gap-4 max-w-full">
+            <h2 class="text-xl font-bold mb-2">Revisa los Partidos Encontrados</h2>
+            <div class="flex flex-row items-center gap-4 w-full border rounded bg-white p-4">
+                <div class="flex flex-col w-1/6 min-w-[150px]">
+                    <span class="text-xs font-semibold mb-1">TORNEO</span>
+                    <select id="torneo-select" class="input-field w-full">${torneoOptions}</select>
+                </div>
+                <div class="flex flex-col w-1/6 min-w-[150px]">
+                    <span class="text-xs font-semibold mb-1">JUGADOR 1</span>
+                    <select id="jugador1-select" class="input-field w-full">${jugadoresOptions}</select>
+                </div>
+                <div class="flex flex-col w-1/6 min-w-[150px]">
+                    <span class="text-xs font-semibold mb-1">JUGADOR 2</span>
+                    <select id="jugador2-select" class="input-field w-full">${jugadoresOptions}</select>
+                </div>
+                <div class="flex flex-col w-1/7 min-w-[120px]">
+                    <span class="text-xs font-semibold mb-1">FECHA</span>
+                    <div class="relative flex items-center">
+                        <input id="fecha-input" type="text" class="input-field w-full pr-8" autocomplete="off" />
+                        <span class="material-icons absolute right-2 text-gray-400 cursor-pointer" id="fecha-calendar-icon" style="font-size:20px;">calendar_today</span>
+                    </div>
+                </div>
+                <div class="flex flex-col w-1/8 min-w-[100px]">
+                    <span class="text-xs font-semibold mb-1">HORA</span>
+                    <input id="hora-input" type="time" class="input-field w-full" />
+                </div>
+                <div class="flex flex-col w-1/8 min-w-[100px]">
+                    <span class="text-xs font-semibold mb-1">SEDE</span>
+                    <select id="sede-select" class="input-field w-full">${sedeOptions}</select>
+                </div>
+                <div class="flex flex-col w-1/8 min-w-[100px]">
+                    <span class="text-xs font-semibold mb-1">CANCHA</span>
+                    <select id="cancha-select" class="input-field w-full">${canchaOptions}</select>
+                </div>
             </div>
-            <div class="flex gap-4 mt-2 px-4 pb-2 text-gray-500 text-xs">
-                <span><span class="material-icons align-middle text-gray-400" style="font-size:16px;">help</span> Elegí la fecha en el calendario o escribí en formato <b>dd/mm/aaaa</b></span>
-            </div>
-            <div class="flex gap-4 mt-2 px-4 pb-4">
-                <button type="button" id="btn-add-row" class="btn btn-secondary text-xs px-2 py-1">Agregar fila</button>
-                <button type="submit" class="btn btn-primary text-xs px-2 py-1">Guardar partidos</button>
-                <button type="button" id="btn-cancel-form" class="btn btn-secondary text-xs px-2 py-1">Cancelar</button>
+            <div class="flex flex-row gap-4 justify-end mt-2">
+                <button type="button" id="btn-cancel-form" class="bg-[#e3e6ec] text-[#4e5d6c] font-semibold rounded px-6 py-2">Cancelar</button>
+                <button type="submit" class="bg-[#556b1e] hover:bg-[#405312] text-white font-semibold rounded px-6 py-2 flex items-center gap-2">
+                    <span class="material-icons">save</span> Importar 1 Partidos
+                </button>
             </div>
         </form>
     `;
-    renderExcelMatchRows(1);
-    document.getElementById('btn-add-row').onclick = () => addExcelMatchRow();
+    // Flatpickr para fecha y click en icono
+    let fechaFlatpickr = null;
+    if (window.flatpickr) {
+        fechaFlatpickr = flatpickr('#fecha-input', {dateFormat: 'd/m/Y', allowInput: true});
+    }
+    const calendarIcon = document.getElementById('fecha-calendar-icon');
+    const fechaInput = document.getElementById('fecha-input');
+    if (calendarIcon && fechaInput && fechaFlatpickr) {
+        calendarIcon.addEventListener('click', () => fechaFlatpickr.open());
+    }
+    // Filtrar jugadores por torneo
+    const torneoSelect = document.getElementById('torneo-select');
+    const jugador1Select = document.getElementById('jugador1-select');
+    const jugador2Select = document.getElementById('jugador2-select');
+    function updateJugadores() {
+        const torneoId = torneoSelect.value;
+        jugador1Select.innerHTML = getJugadoresOptions(torneoId);
+        jugador2Select.innerHTML = getJugadoresOptions(torneoId);
+    }
+    torneoSelect.addEventListener('change', updateJugadores);
+    // Inicializar selects de jugadores
+    updateJugadores();
     document.getElementById('btn-cancel-form').onclick = () => formContainer.classList.add('hidden');
     document.getElementById('excel-match-form').onsubmit = handleExcelMatchFormSubmit;
 }
@@ -716,11 +767,29 @@ function addExcelMatchRow() {
     tbody.appendChild(tr);
 }
 
+import { setupMassMatchLoader } from './setupMassMatchLoader.js';
+
 btnShowForm.addEventListener('click', () => {
     formContainer.classList.toggle('hidden');
     btnShowForm.innerHTML = formContainer.classList.contains('hidden') 
         ? '<span class="material-icons">add</span> Crear Partido' 
         : '<span class="material-icons">close</span> Cancelar';
+
+    // Llama a setupMassMatchLoader cada vez que se toca "Agregar Partido"
+    const massLoaderContainer = document.getElementById('mass-match-loader-container');
+    const btnAddRow = document.getElementById('btn-add-mass-row');
+    const btnSave = document.getElementById('btn-save-mass-matches');
+    if (massLoaderContainer && btnAddRow && btnSave) {
+        setupMassMatchLoader({
+            container: massLoaderContainer,
+            btnAddRow,
+            btnSave,
+            allTournaments,
+            allPlayers,
+            tournamentPlayersMap,
+            loadInitialData
+        });
+    }
 });
 // Listeners del formulario antiguo eliminados
 
