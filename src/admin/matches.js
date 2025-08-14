@@ -85,7 +85,7 @@ function applyFiltersAndSort() {
         processedMatches = processedMatches.filter(m => m.category_id == categoryFilter);
     }
     if (teamFilter) {
-        processedMatches = processedMatches.filter(m => m.player1.team_id == teamFilter || m.player2.team_id == teamFilter);
+        processedMatches = processedMatches.filter(m => (m.player1 && m.player1.team_id == teamFilter) || (m.player2 && m.player2.team_id == teamFilter));
     }
     
     renderMatches(processedMatches);
@@ -205,13 +205,13 @@ function openModal(match = null) {
                 </form>
                 <div class="p-4 bg-gray-50 flex justify-end gap-4 rounded-b-xl">
                     <button id="btn-cancel-modal" class="btn btn-secondary">Cancelar</button>
-                    <button id="btn-save-score" class="btn btn-primary">Guardar</button>
+                    <button id="btn-save-match" class="btn btn-primary">Guardar</button>
                 </div>
             </div>
         </div>
     `;
 
-    document.getElementById('btn-save-score').onclick = () => saveMatch(match ? match.id : null);
+    document.getElementById('btn-save-match').onclick = () => saveMatch(match ? match.id : null);
     document.getElementById('btn-cancel-modal').onclick = closeModal;
     document.getElementById('modal-overlay').onclick = (e) => {
         if (e.target.id === 'modal-overlay') closeModal();
@@ -292,16 +292,25 @@ function updateBulkActionBar() {
 }
 
 async function handleBulkDelete() {
-    // ... (sin cambios)
+    if (selectedMatches.size === 0) return;
+    if (confirm(`¿Está seguro de que desea eliminar ${selectedMatches.size} partidos seleccionados?`)) {
+        const { error } = await supabase.from('matches').delete().in('id', Array.from(selectedMatches));
+        if (error) {
+            alert("Error al eliminar los partidos: " + error.message);
+        } else {
+            selectedMatches.clear();
+            await loadInitialData();
+        }
+    }
 }
 
 async function handleBulkProgram() {
     if (selectedMatches.size === 0) return;
 
     const programName = prompt("Ingrese un nombre para el nuevo programa:", "Programa de Partidos");
-    if (!programName) return; // El usuario canceló
+    if (!programName || programName.trim() === '') return;
 
-    const slug = programName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+    const slug = programName.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
     const match_ids = Array.from(selectedMatches);
 
     const { data, error } = await supabase
@@ -318,37 +327,70 @@ async function handleBulkProgram() {
     }
 }
 
+function handleBulkReport() {
+    alert("Función para generar reporte de partidos seleccionados en desarrollo.");
+}
+
+function handleImportExcel() {
+    alert("Función para importar partidos desde Excel en desarrollo.");
+}
+
 // --- Event Listeners ---
 document.addEventListener('DOMContentLoaded', async () => {
     header.innerHTML = renderHeader();
     await loadInitialData();
 });
 
-// Botón para mostrar el modal de creación
 btnShowForm.addEventListener('click', () => {
-    openModal(null); // Llamar al modal sin datos para crear
+    openModal(null);
 });
 
-// ... (El resto de listeners se mantienen igual, pero el de la tabla cambia)
+[filterCategorySelect, filterTeamSelect, searchInput].forEach(el => {
+    el.addEventListener('input', applyFiltersAndSort);
+});
 
 matchesContainer.addEventListener('click', (e) => {
     const row = e.target.closest('tr[data-match-id]');
     const checkbox = e.target.closest('.match-checkbox');
     const selectAllCheckbox = e.target.closest('#select-all-matches');
-
+    
     if (selectAllCheckbox) {
-        // ... (lógica de seleccionar todo sin cambios)
+        const isChecked = selectAllCheckbox.checked;
+        const visibleRows = Array.from(matchesContainer.querySelectorAll('tr[data-match-id]'));
+        const visibleIds = visibleRows.map(r => Number(r.dataset.matchId));
+
+        visibleRows.forEach(r => {
+            r.querySelector('.match-checkbox').checked = isChecked;
+        });
+
+        if (isChecked) {
+            visibleIds.forEach(id => selectedMatches.add(id));
+        } else {
+            visibleIds.forEach(id => selectedMatches.delete(id));
+        }
+        updateBulkActionBar();
         return;
     }
+
     if (checkbox) {
-        // ... (lógica de selección individual sin cambios)
+        e.stopPropagation(); // Evitar que el clic en el checkbox propague al 'row'
+        const id = Number(checkbox.dataset.id);
+        checkbox.checked ? selectedMatches.add(id) : selectedMatches.delete(id);
+        updateBulkActionBar();
         return;
     }
+    
     if (row) {
         const matchId = Number(row.dataset.matchId);
         const matchData = allMatches.find(m => m.id === matchId);
         if (matchData) {
-            openModal(matchData); // Abre el modal para editar
+            openModal(matchData);
         }
     }
 });
+
+// Listeners para la barra de acciones
+document.getElementById('bulk-delete').addEventListener('click', handleBulkDelete);
+document.getElementById('bulk-program').addEventListener('click', handleBulkProgram);
+document.getElementById('bulk-report').addEventListener('click', handleBulkReport);
+document.getElementById('btn-import-excel').addEventListener('click', handleImportExcel);
