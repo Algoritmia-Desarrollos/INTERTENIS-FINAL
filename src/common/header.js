@@ -33,7 +33,7 @@ export function renderHeader() {
     <header class="flex items-center justify-between border-b bg-white px-4 sm:px-6 py-3 shadow-sm sticky top-0 z-50">
       <div class="flex items-center gap-4">
         <a href="/index.html">
-            <img src="/public/assets/img/logotipo.png" alt="Logo" class="h-10">
+            <img src="/logo_2021_02.png" alt="Logo" class="h-10">
         </a>
       </div>
       

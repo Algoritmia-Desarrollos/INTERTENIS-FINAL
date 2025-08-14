@@ -5,7 +5,7 @@
   --text-primary: #1f2937;
   --text-secondary: #4b5563;
   --border-color: #e5e7eb;
-  --background-color: #f8fafc;
+  --background-color: #f9fafb;
 }
 body {
   font-family: 'Inter', sans-serif;
@@ -72,7 +72,6 @@ body {
     box-shadow: 0 0 0 3px rgba(65, 92, 25, 0.2); /* Sombra de foco verde */
 }
 
-/* --- CORRECCIÓN PARA SELECTS --- */
 select.input-field {
     -webkit-appearance: none;
     -moz-appearance: none;
@@ -84,6 +83,10 @@ select.input-field {
     background-size: 1.5em 1.5em;
 }
 
+/* --- ESTILO PARA FILA CLICKEABLE --- */
+.clickable-row {
+    cursor: pointer;
+}
 
 /* Spinner para cargas */
 @keyframes spin {
