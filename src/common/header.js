@@ -24,9 +24,8 @@ export function renderHeader() {
         <a class="${getLinkClasses('programs.html')}" href="/src/admin/programs.html">Programas</a>
         <a class="${getLinkClasses('teams.html')}" href="/src/admin/teams.html">Equipos</a>
         <a class="${getLinkClasses('categories.html')}" href="/src/admin/categories.html">Categorías</a>
-                <a class="${getLinkClasses('rankings.html')}" href="/src/admin/rankings.html">Ranking</a>
-
-
+        <a class="${getLinkClasses('rankings.html')}" href="/src/admin/rankings.html">Ranking</a>
+        <a class="${getLinkClasses('reportes-historicos.html')}" href="/src/admin/reportes-historicos.html">Reportes</a>
     `;
   }
   

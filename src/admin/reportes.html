@@ -34,6 +34,13 @@
             padding-bottom: 2px;
             font-size: 13px;
         }
+        /* Columna RESULTADO (4ta columna) más angosta */
+        #report-container table.table-fixed th:nth-child(4),
+        #report-container table.table-fixed td:nth-child(4) {
+            width: 35px;
+            min-width: 35px;
+            max-width: 35px;
+        }
         /* Cancha (primera columna) más angosta */
         #report-container table.table-fixed th:nth-child(1),
         #report-container table.table-fixed td:nth-child(1) {
@@ -72,16 +79,27 @@
     </style>
 </head>
 <body class="bg-gray-50 text-gray-800">
-    <header id="header" class="no-print"></header>
+    <header id="header" class="no-print">
+        <nav class="bg-white shadow p-4 flex items-center gap-6">
+            <a href="../dashboard.html" class="font-bold text-lg text-gray-700">Inicio</a>
+            <a href="reportes-historicos.html" class="font-semibold text-blue-600">Reportes</a>
+        </nav>
+    </header>
 
     <main class="flex-1 py-8">
         <div class="content-container max-w-[1200px] mx-auto space-y-6">
             <div class="flex flex-wrap justify-between items-center gap-4 no-print">
-                <h1 class="text-3xl font-bold text-gray-900">Reporte de Partidos</h1>
-                <button id="btn-save-pdf" class="btn btn-primary">
-                    <span class="material-icons">download</span>
-                    Descargar PDF
-                </button>
+                <h1 class="text-3xl font-bold text-gray-900">Reportes</h1>
+                                <div class="flex gap-2">
+                                    <button id="btn-save-pdf" class="btn btn-primary">
+                                            <span class="material-icons">download</span>
+                                            Descargar PDF
+                                    </button>
+                                    <button id="btn-save-report" class="btn btn-secondary">
+                                            <span class="material-icons">save</span>
+                                            Guardar Reporte
+                                    </button>
+                                </div>
             </div>
             
             <div id="report-container" class="bg-white rounded-xl shadow-lg">
@@ -92,7 +110,34 @@
     </main>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-    <script type="module" src="reportes.js"></script>
+        <script type="module" src="reportes.js"></script>
+        <script type="module">
+        import { supabase } from '../common/supabase.js';
+        window.addEventListener('DOMContentLoaded', () => {
+            const btnSave = document.getElementById('btn-save-report');
+            if (btnSave) {
+                btnSave.addEventListener('click', async () => {
+                    // Obtener datos del reporte (ajusta esto según cómo generes el JSON)
+                    const reportData = window.currentReportData || null;
+                    if (!reportData) {
+                        alert('No hay datos de reporte para guardar.');
+                        return;
+                    }
+                    const title = prompt('Título para el reporte:', 'Reporte de partidos');
+                    if (!title) return;
+                    const { error } = await supabase.from('reports').insert({
+                        title,
+                        report_data: reportData
+                    });
+                    if (error) {
+                        alert('Error al guardar el reporte');
+                    } else {
+                        window.location.href = 'reportes-historicos.html';
+                    }
+                });
+            }
+        });
+        </script>
     <script>
     // Ajustar el tamaño del PDF generado
     window.addEventListener('DOMContentLoaded', () => {
