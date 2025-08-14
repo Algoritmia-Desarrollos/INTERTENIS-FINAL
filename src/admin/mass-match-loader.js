@@ -196,7 +196,93 @@ export function setupMassMatchLoader({
         </tbody>
       </table>
     `;
+    // Drag and drop de celdas individuales
+    const table = tableContainer.querySelector('table');
+    if (table) {
+      const tds = table.querySelectorAll('td[data-field]');
+      tds.forEach(cell => {
+        cell.setAttribute('draggable', 'true');
+        cell.addEventListener('dragstart', handleCellDragStart);
+        cell.addEventListener('dragover', handleCellDragOver);
+        cell.addEventListener('drop', handleCellDrop);
+        cell.addEventListener('dragend', handleCellDragEnd);
+      });
+    }
     updateSaveButton();
+  }
+
+  // --- DRAG AND DROP DE CELDAS (COPIAR/PEGAR, SIEMPRE ACTIVO) ---
+  let dragCellInfo = null;
+  function handleCellDragStart(e) {
+    const field = this.dataset.field;
+    const rowId = this.parentElement.dataset.rowId;
+    let value = '';
+    // Si está en modo edición, tomar el valor del input/select
+    const editingInput = this.querySelector('.editing-input');
+    if (editingInput) {
+      value = editingInput.value;
+    } else {
+      value = this.textContent;
+    }
+    dragCellInfo = { rowId, field, value };
+    this.style.opacity = '0.5';
+  }
+  function handleCellDragOver(e) {
+    e.preventDefault();
+    if (dragCellInfo && this.dataset.field === dragCellInfo.field) {
+      this.style.border = '2px dashed #0d6efd';
+    }
+  }
+  function handleCellDrop(e) {
+    e.preventDefault();
+    this.style.border = '';
+    if (!dragCellInfo) return;
+    if (this.dataset.field === dragCellInfo.field && this.parentElement.dataset.rowId !== dragCellInfo.rowId) {
+      const rowIdTarget = this.parentElement.dataset.rowId;
+      const matchIdxTo = matchesData.findIndex(m => m.clientId == rowIdTarget);
+      if (matchIdxTo > -1) {
+        const field = this.dataset.field;
+        matchesData[matchIdxTo][field] = dragCellInfo.value;
+        renderTable();
+      }
+    }
+    dragCellInfo = null;
+  }
+  function handleCellDragEnd(e) {
+    this.style.opacity = '';
+    this.style.border = '';
+    dragCellInfo = null;
+  }
+
+  // --- DRAG AND DROP LOGIC ---
+  let dragSrcRowId = null;
+  function handleDragStart(e) {
+    dragSrcRowId = this.dataset.rowId;
+    this.style.opacity = '0.5';
+  }
+  function handleDragOver(e) {
+    e.preventDefault();
+    this.style.borderTop = '2px solid #0d6efd';
+  }
+  function handleDrop(e) {
+    e.preventDefault();
+    this.style.borderTop = '';
+    const targetRowId = this.dataset.rowId;
+    if (dragSrcRowId && dragSrcRowId !== targetRowId) {
+      const fromIdx = matchesData.findIndex(m => m.clientId == dragSrcRowId);
+      const toIdx = matchesData.findIndex(m => m.clientId == targetRowId);
+      if (fromIdx > -1 && toIdx > -1) {
+        const [moved] = matchesData.splice(fromIdx, 1);
+        matchesData.splice(toIdx, 0, moved);
+        renderTable();
+      }
+    }
+    dragSrcRowId = null;
+  }
+  function handleDragEnd(e) {
+    this.style.opacity = '';
+    this.style.borderTop = '';
+    dragSrcRowId = null;
   }
 
   function renderRow(match) {
@@ -278,11 +364,24 @@ export function setupMassMatchLoader({
             }
             break;
         
-        case 'match_time':
-            inputElement = document.createElement('input');
-            inputElement.type = 'time';
-            inputElement.value = match.match_time || '';
-            break;
+    case 'match_time':
+      inputElement = document.createElement('select');
+      inputElement.className = 'editing-input';
+      inputElement.style.color = 'black';
+      inputElement.style.background = 'white';
+      // Generar opciones de 08:00 a 22:45 cada 15 minutos
+      let options = '<option value="">Seleccionar</option>';
+      for (let h = 8; h <= 22; h++) {
+        for (let m = 0; m < 60; m += 15) {
+          let hour = h.toString().padStart(2, '0');
+          let min = m.toString().padStart(2, '0');
+          let value = `${hour}:${min}`;
+          options += `<option value="${value}">${value}</option>`;
+        }
+      }
+      inputElement.innerHTML = options;
+      inputElement.value = match.match_time || '';
+      break;
 
         case 'match_date':
             inputElement = document.createElement('input');
@@ -336,11 +435,23 @@ export function setupMassMatchLoader({
         setTimeout(() => inputElement.showPicker(), 0);
     }
     
+    // Guardar y cerrar al seleccionar una opción en el select
+    if (inputElement.tagName === 'SELECT') {
+      inputElement.addEventListener('change', () => {
+        saveChange();
+      });
+    }
     inputElement.addEventListener('blur', saveChange);
     inputElement.addEventListener('keydown', e => {
         if (e.key === 'Enter' || e.key === 'Tab') { e.preventDefault(); inputElement.blur(); } 
         else if (e.key === 'Escape') { cell.innerHTML = originalContent; cell.classList.remove('is-editing'); }
     });
+      // Comportamiento clásico: el select permanece abierto hasta blur o Enter/Tab/Escape
+      if (inputElement.tagName === 'SELECT') {
+        inputElement.style.color = 'black';
+        inputElement.style.background = 'white';
+        setTimeout(() => inputElement.focus(), 0);
+      }
   }
 
   // --- OPERACIONES DE FILA ---
