@@ -29,36 +29,53 @@
       </div>
       
       <div id="form-container" class="hidden bg-white p-6 rounded-xl shadow-lg transition-all">
-        <h2 id="form-title" class="text-xl font-semibold mb-4">Añadir Nuevo Partido</h2>
-        <form id="form-match" class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
-          <input type="hidden" id="match-id">
+        <h2 class="text-xl font-semibold mb-4">Añadir Nuevo Partido</h2>
+        <form id="form-match" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-4">
           <div>
-            <label for="tournament-select" class="block text-sm font-medium text-gray-700">Torneo</label>
-            <select id="tournament-select" class="input-field mt-1 block w-full" required></select>
+            <label for="tournament-select-form" class="block text-sm font-medium text-gray-700">1. Seleccionar Torneo</label>
+            <select id="tournament-select-form" class="input-field mt-1 block w-full" required></select>
           </div>
           <div>
-            <label for="category-select" class="block text-sm font-medium text-gray-700">Categoría</label>
-            <select id="category-select" class="input-field mt-1 block w-full" required></select>
-          </div>
-          <div>
-            <label for="player1-select" class="block text-sm font-medium text-gray-700">Jugador 1</label>
-            <select id="player1-select" class="input-field mt-1 block w-full" required></select>
-          </div>
-          <div>
-            <label for="player2-select" class="block text-sm font-medium text-gray-700">Jugador 2</label>
-            <select id="player2-select" class="input-field mt-1 block w-full" required></select>
-          </div>
-          <div>
-            <label for="match-date" class="block text-sm font-medium text-gray-700">Fecha del Partido</label>
-            <input type="date" id="match-date" class="input-field mt-1 block w-full" required>
+              <label class="block text-sm font-medium text-gray-700">Categoría</label>
+              <div id="category-display" class="input-field mt-1 bg-gray-100 flex items-center text-gray-500">Seleccione un torneo...</div>
           </div>
            <div>
-            <label for="match-location" class="block text-sm font-medium text-gray-700">Cancha</label>
-            <input type="text" id="match-location" class="input-field mt-1 block w-full" placeholder="Ej: Cancha 3">
+            <label for="match-date-form" class="block text-sm font-medium text-gray-700">Fecha del Partido</label>
+            <input type="date" id="match-date-form" class="input-field mt-1 block w-full" required>
           </div>
-          <div class="md:col-span-2 flex justify-end gap-4 pt-2">
-            <button type="button" id="btn-cancel" class="btn btn-secondary">Cancelar</button>
-            <button type="submit" id="btn-save" class="btn btn-primary">Guardar Partido</button>
+           <div>
+            <label for="player1-select-form" class="block text-sm font-medium text-gray-700">2. Seleccionar Jugador 1</label>
+            <select id="player1-select-form" class="input-field mt-1 block w-full" required></select>
+          </div>
+          <div>
+            <label for="player2-select-form" class="block text-sm font-medium text-gray-700">3. Seleccionar Jugador 2</label>
+            <select id="player2-select-form" class="input-field mt-1 block w-full" required></select>
+          </div>
+          <div>
+            <label for="match-time-form" class="block text-sm font-medium text-gray-700">Hora del Partido</label>
+            <input type="time" id="match-time-form" class="input-field mt-1 block w-full">
+          </div>
+           <div>
+            <label for="sede-select-form" class="block text-sm font-medium text-gray-700">Sede</label>
+            <select id="sede-select-form" class="input-field mt-1 block w-full">
+                <option value="Funes">Funes</option>
+                <option value="Centro">Centro</option>
+            </select>
+          </div>
+           <div>
+            <label for="cancha-select-form" class="block text-sm font-medium text-gray-700">Cancha</label>
+            <select id="cancha-select-form" class="input-field mt-1 block w-full">
+                <option value="Cancha 1">Cancha 1</option>
+                <option value="Cancha 2">Cancha 2</option>
+                <option value="Cancha 3">Cancha 3</option>
+                <option value="Cancha 4">Cancha 4</option>
+                <option value="Cancha 5">Cancha 5</option>
+                <option value="Cancha 6">Cancha 6</option>
+            </select>
+          </div>
+          <div class="lg:col-span-3 flex justify-end gap-4 pt-2">
+            <button type="button" id="btn-cancel-form" class="btn btn-secondary">Ocultar</button>
+            <button type="submit" id="btn-save-form" class="btn btn-primary">Guardar Partido</button>
           </div>
         </form>
       </div>
@@ -66,11 +83,28 @@
       <div class="bg-white p-6 rounded-xl shadow-lg">
         <div class="flex flex-wrap gap-4 items-center justify-between mb-4 pb-4 border-b">
             <div class="flex flex-wrap gap-4 items-center">
-                <select id="filter-category" class="input-field !w-auto">
-                    <option value="">Todas las Categorías</option>
+                <select id="filter-tournament" class="input-field !w-auto">
+                    <option value="">Todos los Torneos</option>
                 </select>
-                <select id="filter-team" class="input-field !w-auto">
-                    <option value="">Todos los Equipos</option>
+                <select id="filter-status" class="input-field !w-auto">
+                    <option value="">Todos los Estados</option>
+                    <option value="pendiente">Pendientes</option>
+                    <option value="completado">Completados</option>
+                    <option value="suspendido">Suspendidos</option>
+                </select>
+                <select id="filter-sede" class="input-field !w-auto">
+                    <option value="">Todas las Sedes</option>
+                    <option value="Funes">Funes</option>
+                    <option value="Centro">Centro</option>
+                </select>
+                <select id="filter-cancha" class="input-field !w-auto">
+                    <option value="">Todas las Canchas</option>
+                    <option value="Cancha 1">Cancha 1</option>
+                    <option value="Cancha 2">Cancha 2</option>
+                    <option value="Cancha 3">Cancha 3</option>
+                    <option value="Cancha 4">Cancha 4</option>
+                    <option value="Cancha 5">Cancha 5</option>
+                    <option value="Cancha 6">Cancha 6</option>
                 </select>
             </div>
             <div class="relative">
@@ -88,11 +122,12 @@
   <div id="score-modal-container"></div>
   
   <div id="bulk-action-bar" class="fixed bottom-0 left-1/2 -translate-x-1/2 mb-4 bg-gray-800 text-white p-3 rounded-lg shadow-2xl flex items-center gap-6 transition-transform transform translate-y-24 opacity-0">
-    <p class="text-sm font-semibold"><span id="selected-count">0</span> seleccionados</p>
-    <div class="border-l border-gray-600 h-6"></div>
-    <button id="bulk-delete" class="flex items-center gap-2 text-sm hover:text-red-400"><span class="material-icons">delete</span>Eliminar</button>
-    <button id="bulk-program" class="flex items-center gap-2 text-sm hover:text-yellow-400"><span class="material-icons">event</span>Crear Programa</button>
-    <button id="bulk-report" class="flex items-center gap-2 text-sm hover:text-blue-400"><span class="material-icons">assessment</span>Generar Reporte</button>
+  <p class="text-sm font-semibold"><span id="selected-count">0</span> seleccionados</p>
+  <button id="bulk-deselect" class="flex items-center gap-2 text-sm hover:text-gray-400 ml-2"><span class="material-icons">close</span>Deseleccionar</button>
+  <div class="border-l border-gray-600 h-6"></div>
+  <button id="bulk-delete" class="flex items-center gap-2 text-sm hover:text-red-400"><span class="material-icons">delete</span>Eliminar</button>
+  <button id="bulk-program" class="flex items-center gap-2 text-sm hover:text-yellow-400"><span class="material-icons">event</span>Crear Programa</button>
+  <button id="bulk-report" class="flex items-center gap-2 text-sm hover:text-blue-400"><span class="material-icons">assessment</span>Generar Reporte</button>
   </div>
 
   <script type="module" src="matches.js"></script>

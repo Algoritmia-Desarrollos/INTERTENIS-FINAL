@@ -79,7 +79,7 @@ async function loadDashboardData() {
             <table class="min-w-full">
                 <thead class="bg-gray-50">
                     <tr>
-                        <th class="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Fecha</th>
+                        <th class="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Fecha y Hora</th>
                         <th class="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Cancha</th>
                         <th class="px-4 py-2 text-right text-xs font-semibold text-gray-500 uppercase">Jugador A</th>
                         <th class="px-4 py-2 text-center text-xs font-semibold text-gray-500 uppercase">Pts</th>
@@ -101,10 +101,14 @@ async function loadDashboardData() {
                         
                         const sets = match.sets || [];
                         const result_string = sets.length > 0 ? sets.map(s => `${s.p1}-${s.p2}`).join(', ') : '-';
+                        const time_string = match.match_time ? match.match_time.substring(0, 5) : 'HH:MM';
 
                         return `
                         <tr class="hover:bg-gray-100 cursor-pointer" data-match-id="${match.id}">
-                            <td class="px-4 py-3 whitespace-nowrap text-sm">${new Date(match.match_date).toLocaleDateString('es-AR')}</td>
+                            <td class="px-4 py-3 whitespace-nowrap text-sm">
+                                ${new Date(match.match_date).toLocaleDateString('es-AR')}
+                                <span class="block text-xs text-gray-400">${time_string} hs</span>
+                            </td>
                             <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">${match.location || 'A definir'}</td>
                             <td class="px-4 py-3 whitespace-nowrap text-sm text-right ${p1_class}">
                                 <div class="flex items-center justify-end gap-2">
@@ -221,11 +225,6 @@ async function saveScores(matchId) {
         }
     }
     
-    if (sets.length > 0 && (sets.length < 2 || (p1SetsWon < 2 && p2SetsWon < 2))) {
-        alert("El resultado no es válido. Un jugador debe ganar al menos 2 sets para definir un ganador.");
-        return;
-    }
-    
     const p1_id = document.getElementById('player1-select-modal').value;
     const p2_id = document.getElementById('player2-select-modal').value;
 
@@ -234,11 +233,24 @@ async function saveScores(matchId) {
         return;
     }
 
-    const winner_id = sets.length > 0 ? (p1SetsWon > p2SetsWon ? p1_id : p2_id) : null;
+    let winner_id = null;
+    if (sets.length > 0) {
+        if (sets.length < 2 || (p1SetsWon < 2 && p2SetsWon < 2)) {
+            alert("El resultado no es válido. Un jugador debe ganar al menos 2 sets para definir un ganador.");
+            return;
+        }
+        winner_id = p1SetsWon > p2SetsWon ? p1_id : p2_id;
+    }
     
     const { error } = await supabase
         .from('matches')
-        .update({ sets, winner_id, player1_id: p1_id, player2_id: p2_id })
+        .update({ 
+            sets: sets.length > 0 ? sets : null, 
+            winner_id: winner_id, 
+            player1_id: p1_id,
+            player2_id: p2_id,
+            bonus_loser: (p1SetsWon === 1 && winner_id == p2_id) || (p2SetsWon === 1 && winner_id == p1_id)
+        })
         .eq('id', matchId);
     
     if (error) {

@@ -6,10 +6,23 @@ requireRole('admin');
 
 // --- Elementos del DOM ---
 const header = document.getElementById('header');
+const formContainer = document.getElementById('form-container');
 const btnShowForm = document.getElementById('btn-show-form');
+const form = document.getElementById('form-match');
+const tournamentSelectForm = document.getElementById('tournament-select-form');
+const categoryDisplay = document.getElementById('category-display');
+const player1SelectForm = document.getElementById('player1-select-form');
+const player2SelectForm = document.getElementById('player2-select-form');
+const matchDateForm = document.getElementById('match-date-form');
+const matchTimeForm = document.getElementById('match-time-form');
+const sedeSelectForm = document.getElementById('sede-select-form');
+const canchaSelectForm = document.getElementById('cancha-select-form');
+const btnCancelForm = document.getElementById('btn-cancel-form');
 const matchesContainer = document.getElementById('matches-container');
-const filterCategorySelect = document.getElementById('filter-category');
-const filterTeamSelect = document.getElementById('filter-team');
+const filterTournamentSelect = document.getElementById('filter-tournament');
+const filterStatusSelect = document.getElementById('filter-status');
+const filterSedeSelect = document.getElementById('filter-sede');
+const filterCanchaSelect = document.getElementById('filter-cancha');
 const searchInput = document.getElementById('search-player');
 const bulkActionBar = document.getElementById('bulk-action-bar');
 const selectedCountSpan = document.getElementById('selected-count');
@@ -18,10 +31,10 @@ const modalContainer = document.getElementById('score-modal-container');
 // --- Estado Global ---
 let allMatches = [];
 let allPlayers = [];
-let allCategories = [];
 let allTournaments = [];
-let allTeams = [];
+let tournamentPlayersMap = new Map();
 let selectedMatches = new Set();
+let clickTimer = null;
 
 // --- Función Auxiliar ---
 function normalizeText(text) {
@@ -33,46 +46,87 @@ function normalizeText(text) {
 async function loadInitialData() {
     matchesContainer.innerHTML = '<p class="text-center p-8">Cargando datos...</p>';
     const [
-        { data: categoriesData },
-        { data: teamsData },
         { data: playersData },
         { data: tournamentsData },
-        { data: matchesData }
+        { data: matchesData },
+        { data: tournamentPlayersData }
     ] = await Promise.all([
-        supabase.from('categories').select('*').order('name'),
-        supabase.from('teams').select('*').order('name'),
         supabase.from('players').select('*').order('name'),
-        supabase.from('tournaments').select('*').order('name'),
-        supabase.from('matches').select(`*, 
-            category:category_id(id, name), 
-            player1:player1_id(*, team:team_id(image_url)), 
-            player2:player2_id(*, team:team_id(image_url)), 
-            winner:winner_id(name)`)
-        .order('match_date', { ascending: false })
+        supabase.from('tournaments').select('*, category:category_id(id, name)').order('name'),
+        supabase.from('matches').select(`*, category:category_id(id, name), player1:player1_id(*, team:team_id(image_url)), player2:player2_id(*, team:team_id(image_url)), winner:winner_id(name)`).order('match_date', { ascending: false }),
+        supabase.from('tournament_players').select('tournament_id, player_id')
     ]);
 
-    allCategories = categoriesData || [];
-    allTeams = teamsData || [];
     allPlayers = playersData || [];
     allTournaments = tournamentsData || [];
     allMatches = matchesData || [];
+    
+    tournamentPlayersMap.clear();
+    if (tournamentPlayersData) {
+        tournamentPlayersData.forEach(link => {
+            if (!tournamentPlayersMap.has(link.tournament_id)) {
+                tournamentPlayersMap.set(link.tournament_id, new Set());
+            }
+            tournamentPlayersMap.get(link.tournament_id).add(link.player_id);
+        });
+    }
 
+    populateFormSelects();
     populateFilterSelects();
     applyFiltersAndSort();
 }
 
+function populateFormSelects() {
+    tournamentSelectForm.innerHTML = '<option value="">Seleccione Torneo</option>';
+    allTournaments.forEach(t => tournamentSelectForm.innerHTML += `<option value="${t.id}">${t.name}</option>`);
+    player1SelectForm.innerHTML = '<option value="">Seleccione un torneo primero</option>';
+    player2SelectForm.innerHTML = '<option value="">Seleccione un torneo primero</option>';
+}
+
 function populateFilterSelects() {
-    filterCategorySelect.innerHTML = '<option value="">Todas las Categorías</option>';
-    allCategories.forEach(c => filterCategorySelect.innerHTML += `<option value="${c.id}">${c.name}</option>`);
-    filterTeamSelect.innerHTML = '<option value="">Todos los Equipos</option>';
-    allTeams.forEach(t => filterTeamSelect.innerHTML += `<option value="${t.id}">${t.name}</option>`);
+    filterTournamentSelect.innerHTML = '<option value="">Todos los Torneos</option>';
+    allTournaments.forEach(t => filterTournamentSelect.innerHTML += `<option value="${t.id}">${t.name}</option>`);
+}
+
+function updatePlayerSelectsInForm() {
+    const tournamentId = tournamentSelectForm.value;
+    const selectedPlayer1Id = player1SelectForm.value;
+    const tournament = allTournaments.find(t => t.id == tournamentId);
+
+    if (tournament) {
+        categoryDisplay.textContent = tournament.category.name;
+        const playerIds = tournamentPlayersMap.get(Number(tournamentId)) || new Set();
+        const playersInTournament = allPlayers.filter(p => playerIds.has(p.id));
+
+        // Guardar selección previa
+        const prevPlayer1 = player1SelectForm.value;
+        const prevPlayer2 = player2SelectForm.value;
+
+        player1SelectForm.innerHTML = '<option value="">Seleccione Jugador 1</option>';
+        playersInTournament.forEach(p => {
+            player1SelectForm.innerHTML += `<option value="${p.id}">${p.name}</option>`;
+        });
+        player1SelectForm.value = prevPlayer1;
+
+        player2SelectForm.innerHTML = '<option value="">Seleccione Jugador 2</option>';
+        playersInTournament.filter(p => p.id != player1SelectForm.value).forEach(p => {
+            player2SelectForm.innerHTML += `<option value="${p.id}">${p.name}</option>`;
+        });
+        player2SelectForm.value = prevPlayer2;
+    } else {
+        categoryDisplay.textContent = 'Seleccione un torneo...';
+        player1SelectForm.innerHTML = '<option value="">Seleccione un torneo primero</option>';
+        player2SelectForm.innerHTML = '<option value="">Seleccione un torneo primero</option>';
+    }
 }
 
 // --- Renderizado, Filtros y Ordenamiento ---
 function applyFiltersAndSort() {
     let processedMatches = [...allMatches];
-    const categoryFilter = filterCategorySelect.value;
-    const teamFilter = filterTeamSelect.value;
+    const tournamentFilter = filterTournamentSelect.value;
+    const statusFilter = filterStatusSelect.value;
+    const sedeFilter = filterSedeSelect.value;
+    const canchaFilter = filterCanchaSelect.value;
     const searchTerm = normalizeText(searchInput.value.toLowerCase());
 
     if (searchTerm) {
@@ -81,11 +135,19 @@ function applyFiltersAndSort() {
             (m.player2 && normalizeText(m.player2.name.toLowerCase()).includes(searchTerm))
         );
     }
-    if (categoryFilter) {
-        processedMatches = processedMatches.filter(m => m.category_id == categoryFilter);
+    if (tournamentFilter) {
+        processedMatches = processedMatches.filter(m => m.tournament_id == tournamentFilter);
     }
-    if (teamFilter) {
-        processedMatches = processedMatches.filter(m => (m.player1 && m.player1.team_id == teamFilter) || (m.player2 && m.player2.team_id == teamFilter));
+    if (sedeFilter) {
+        processedMatches = processedMatches.filter(m => m.location && m.location.startsWith(sedeFilter));
+    }
+    if (canchaFilter) {
+        processedMatches = processedMatches.filter(m => m.location && m.location.endsWith(canchaFilter));
+    }
+    if (statusFilter) {
+        if (statusFilter === 'pendiente') processedMatches = processedMatches.filter(m => !m.winner_id && m.status !== 'suspendido');
+        else if (statusFilter === 'completado') processedMatches = processedMatches.filter(m => !!m.winner_id);
+        else if (statusFilter === 'suspendido') processedMatches = processedMatches.filter(m => m.status === 'suspendido');
     }
     
     renderMatches(processedMatches);
@@ -103,12 +165,13 @@ function renderMatches(matchesToRender) {
             <thead class="bg-gray-50">
                 <tr>
                     <th class="p-4 text-left"><input type="checkbox" id="select-all-matches"></th>
-                    <th class="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Fecha</th>
+                    <th class="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Fecha y Hora</th>
                     <th class="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Cancha</th>
                     <th class="px-4 py-2 text-right text-xs font-semibold text-gray-500 uppercase">Jugador A</th>
                     <th class="px-4 py-2 text-center text-xs font-semibold text-gray-500 uppercase">Resultado</th>
                     <th class="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Jugador B</th>
                     <th class="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Categoría</th>
+                    <th class="px-4 py-2 text-center text-xs font-semibold text-gray-500 uppercase">Acciones</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-gray-200">
@@ -119,12 +182,16 @@ function renderMatches(matchesToRender) {
                     const p1_class = no_winner ? 'text-gray-800' : p1_winner ? 'text-yellow-600 font-bold' : 'text-gray-500';
                     const p2_class = no_winner ? 'text-gray-800' : p2_winner ? 'text-yellow-600 font-bold' : 'text-gray-500';
                     const sets = match.sets || [];
-                    const result_string = sets.length > 0 ? sets.map(s => `${s.p1}-${s.p2}`).join(', ') : '-';
+                    const result_string = match.status === 'suspendido' ? 'SUSPENDIDO' : (sets.length > 0 ? sets.map(s => `${s.p1}-${s.p2}`).join(', ') : '-');
+                    const time_string = match.match_time ? match.match_time.substring(0, 5) : 'HH:MM';
                     
                     return `
-                    <tr class="clickable-row hover:bg-gray-100" data-match-id="${match.id}">
+                    <tr class="clickable-row ${selectedMatches.has(match.id) ? 'bg-yellow-50' : 'bg-white'} hover:bg-gray-100 ${match.status === 'suspendido' ? '!bg-red-50' : ''}" data-match-id="${match.id}">
                         <td class="p-4"><input type="checkbox" class="match-checkbox" data-id="${match.id}" ${selectedMatches.has(match.id) ? 'checked' : ''}></td>
-                        <td class="px-4 py-3 whitespace-nowrap text-sm">${new Date(match.match_date).toLocaleDateString('es-AR')}</td>
+                        <td class="px-4 py-3 whitespace-nowrap text-sm">
+                            ${new Date(match.match_date).toLocaleDateString('es-AR')}
+                            <span class="block text-xs text-gray-400">${time_string} hs</span>
+                        </td>
                         <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">${match.location || 'A definir'}</td>
                         <td class="px-4 py-3 whitespace-nowrap text-sm text-right ${p1_class}">
                             <div class="flex items-center justify-end gap-2">
@@ -140,6 +207,11 @@ function renderMatches(matchesToRender) {
                             </div>
                         </td>
                         <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">${match.category.name}</td>
+                                                <td class="px-4 py-3 text-center">
+                                                                                                                                                                    <button class="text-white bg-blue-600 hover:bg-blue-700 border border-blue-700 rounded-full px-2 py-1 transition-colors duration-150 shadow-md focus:outline-none focus:ring-2 focus:ring-blue-400 flex items-center justify-center" data-action="edit" style="min-width: 32px; min-height: 32px; width: 32px; height: 32px;">
+                                                                                                                                                                        <span class="material-icons" style="font-size: 18px;">edit</span>
+                                                                                                                                                                    </button>
+                                                </td>
                     </tr>
                     `
                 }).join('')}
@@ -149,70 +221,67 @@ function renderMatches(matchesToRender) {
 }
 
 // --- Lógica de Modales ---
-function openModal(match = null) {
-    const isEditing = !!match;
-    const sets = match?.sets || [];
-    const isPlayed = !!match?.winner_id;
+function openScoreModal(match) {
+    const sets = match.sets || [];
+    const isPlayed = !!match.winner_id;
+    const playersInCategory = allPlayers.filter(p => p.category_id === match.category_id);
 
     modalContainer.innerHTML = `
         <div id="modal-overlay" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
             <div id="modal-content" class="bg-white rounded-xl shadow-lg w-full max-w-lg">
                 <div class="p-6 border-b">
-                    <h3 class="text-xl font-bold">${isEditing ? 'Editar Partido / Resultado' : 'Crear Nuevo Partido'}</h3>
+                    <h3 class="text-xl font-bold">Editar Partido / Resultado</h3>
                 </div>
                 <form id="modal-form" class="p-6 space-y-4">
                     <div class="grid grid-cols-2 gap-4">
                         <div>
                             <label class="block text-sm font-medium text-gray-700">Jugador A</label>
                             <select id="player1-select-modal" class="input-field mt-1" ${isPlayed ? 'disabled' : ''}>
-                                ${allPlayers.map(p => `<option value="${p.id}" ${isEditing && p.id === match.player1_id ? 'selected' : ''}>${p.name}</option>`).join('')}
+                                ${playersInCategory.map(p => `<option value="${p.id}" ${p.id === match.player1_id ? 'selected' : ''}>${p.name}</option>`).join('')}
                             </select>
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700">Jugador B</label>
                             <select id="player2-select-modal" class="input-field mt-1" ${isPlayed ? 'disabled' : ''}>
-                                ${allPlayers.map(p => `<option value="${p.id}" ${isEditing && p.id === match.player2_id ? 'selected' : ''}>${p.name}</option>`).join('')}
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700">Torneo</label>
-                            <select id="tournament-select-modal" class="input-field mt-1" ${isEditing ? 'disabled' : ''}>
-                                ${allTournaments.map(t => `<option value="${t.id}" ${isEditing && t.id === match.tournament_id ? 'selected' : ''}>${t.name}</option>`).join('')}
-                            </select>
-                        </div>
-                         <div>
-                            <label class="block text-sm font-medium text-gray-700">Categoría</label>
-                            <select id="category-select-modal" class="input-field mt-1" ${isEditing ? 'disabled' : ''}>
-                                ${allCategories.map(c => `<option value="${c.id}" ${isEditing && c.id === match.category_id ? 'selected' : ''}>${c.name}</option>`).join('')}
+                                ${playersInCategory.map(p => `<option value="${p.id}" ${p.id === match.player2_id ? 'selected' : ''}>${p.name}</option>`).join('')}
                             </select>
                         </div>
                     </div>
-                    <div class="border-t pt-4">
-                        <h4 class="text-lg font-semibold mb-2">Resultado (Games)</h4>
-                        <div class="grid grid-cols-3 gap-4 items-center">
-                            <span class="font-semibold">SET</span>
-                            <span class="font-semibold text-center">${isEditing ? match.player1.name : 'Jugador A'}</span>
-                            <span class="font-semibold text-center">${isEditing ? match.player2.name : 'Jugador B'}</span>
-                        </div>
-                        ${[1, 2, 3].map(i => `
-                        <div class="grid grid-cols-3 gap-4 items-center">
-                            <span class="text-gray-500">Set ${i}</span>
-                            <input type="number" id="p1_set${i}" class="input-field text-center" value="${sets[i-1]?.p1 ?? ''}" min="0" max="9">
-                            <input type="number" id="p2_set${i}" class="input-field text-center" value="${sets[i-1]?.p2 ?? ''}" min="0" max="9">
-                        </div>
-                        `).join('')}
+                    <div class="grid grid-cols-3 gap-4 items-center pt-4">
+                        <span class="font-semibold">SET</span>
+                        <span class="font-semibold text-center">${match.player1.name}</span>
+                        <span class="font-semibold text-center">${match.player2.name}</span>
                     </div>
+                    ${[1, 2, 3].map(i => `
+                    <div class="grid grid-cols-3 gap-4 items-center">
+                        <span class="text-gray-500">Set ${i}</span>
+                        <input type="number" id="p1_set${i}" class="input-field text-center" value="${sets[i-1]?.p1 ?? ''}" min="0" max="9">
+                        <input type="number" id="p2_set${i}" class="input-field text-center" value="${sets[i-1]?.p2 ?? ''}" min="0" max="9">
+                    </div>
+                    `).join('')}
                 </form>
-                <div class="p-4 bg-gray-50 flex justify-end gap-4 rounded-b-xl">
-                    <button id="btn-cancel-modal" class="btn btn-secondary">Cancelar</button>
-                    <button id="btn-save-match" class="btn btn-primary">Guardar</button>
+                <div class="p-4 bg-gray-50 flex justify-between gap-4 rounded-b-xl">
+                    <div class="flex items-center gap-2">
+                        <button id="btn-delete-match" class="btn btn-secondary !p-2" title="Eliminar Partido"><span class="material-icons !text-red-600">delete_forever</span></button>
+                        ${isPlayed ? `<button id="btn-clear-score" class="btn btn-secondary !p-2" title="Limpiar Resultado"><span class="material-icons !text-yellow-600">cleaning_services</span></button>` : ''}
+                        <button id="btn-suspend-match" class="btn btn-secondary !p-2" title="Marcar como Suspendido"><span class="material-icons !text-red-500">cancel</span></button>
+                    </div>
+                    <div class="flex gap-4">
+                        <button id="btn-cancel-modal" class="btn btn-secondary">Cancelar</button>
+                        <button id="btn-save-score" class="btn btn-primary">Guardar</button>
+                    </div>
                 </div>
             </div>
         </div>
     `;
 
-    document.getElementById('btn-save-match').onclick = () => saveMatch(match ? match.id : null);
+    document.getElementById('btn-save-score').onclick = () => saveMatch(match.id);
     document.getElementById('btn-cancel-modal').onclick = closeModal;
+    document.getElementById('btn-delete-match').onclick = () => deleteMatch(match.id);
+    document.getElementById('btn-suspend-match').onclick = () => suspendMatch(match.id);
+    if (isPlayed) {
+        document.getElementById('btn-clear-score').onclick = () => clearScore(match.id);
+    }
     document.getElementById('modal-overlay').onclick = (e) => {
         if (e.target.id === 'modal-overlay') closeModal();
     };
@@ -223,14 +292,13 @@ function closeModal() {
 }
 
 async function saveMatch(matchId) {
-    const isEditing = !!matchId;
     const sets = [];
     let p1SetsWon = 0, p2SetsWon = 0;
     
     for (let i = 1; i <= 3; i++) {
-        const p1Score = document.getElementById(`p1_set${i}`).value;
-        const p2Score = document.getElementById(`p2_set${i}`).value;
-        if (p1Score !== '' && p2Score !== '') {
+        const p1Score = document.getElementById(`p1_set${i}`)?.value;
+        const p2Score = document.getElementById(`p2_set${i}`)?.value;
+        if (p1Score && p2Score && p1Score !== '' && p2Score !== '') {
             const p1 = parseInt(p1Score, 10);
             const p2 = parseInt(p2Score, 10);
             sets.push({ p1, p2 });
@@ -260,24 +328,79 @@ async function saveMatch(matchId) {
         player1_id: p1_id,
         player2_id: p2_id,
         sets: sets.length > 0 ? sets : null,
-        winner_id: winner_id
+        winner_id: winner_id,
+        status: 'programado'
     };
 
-    if (!isEditing) {
-        matchData.tournament_id = document.getElementById('tournament-select-modal').value;
-        matchData.category_id = document.getElementById('category-select-modal').value;
-        matchData.match_date = new Date().toISOString().split('T')[0]; // O un campo de fecha en el modal
-    }
-
-    const { error } = isEditing
-        ? await supabase.from('matches').update(matchData).eq('id', matchId)
-        : await supabase.from('matches').insert([matchData]);
+    const { error } = await supabase.from('matches').update(matchData).eq('id', matchId);
 
     if (error) {
         alert("Error al guardar el partido: " + error.message);
     } else {
         closeModal();
         await loadInitialData();
+    }
+}
+
+async function handleCreateMatchSubmit(e) {
+    e.preventDefault();
+    const tournamentId = tournamentSelectForm.value;
+    const tournament = allTournaments.find(t => t.id == tournamentId);
+    if (!tournament) {
+        alert("Por favor, seleccione un torneo válido.");
+        return;
+    }
+
+    const matchData = {
+        tournament_id: tournamentId,
+        category_id: tournament.category.id,
+        player1_id: player1SelectForm.value,
+        player2_id: player2SelectForm.value,
+        match_date: matchDateForm.value,
+        match_time: matchTimeForm.value || null,
+        location: `${sedeSelectForm.value} - ${canchaSelectForm.value}`
+    };
+
+    if (!matchData.player1_id || !matchData.player2_id || !matchData.match_date || !matchData.tournament_id) {
+        alert("Por favor, complete todos los campos obligatorios.");
+        return;
+    }
+
+    if (matchData.player1_id === matchData.player2_id) {
+        alert("Un jugador no puede enfrentarse a sí mismo.");
+        return;
+    }
+    const { error } = await supabase.from('matches').insert([matchData]);
+    if (error) {
+        alert(`Error al crear el partido: ${error.message}`);
+    } else {
+        player1SelectForm.value = "";
+        player2SelectForm.value = "";
+        await loadInitialData();
+    }
+}
+
+async function clearScore(matchId) {
+    if (confirm("¿Está seguro de que desea limpiar el resultado de este partido?")) {
+        const { error } = await supabase.from('matches').update({ sets: null, winner_id: null, bonus_loser: false, status: 'programado' }).eq('id', matchId);
+        if (error) { alert("Error: " + error.message); } 
+        else { closeModal(); await loadInitialData(); }
+    }
+}
+
+async function deleteMatch(matchId) {
+    if (confirm("¿Está seguro de que desea ELIMINAR este partido permanentemente?")) {
+        const { error } = await supabase.from('matches').delete().eq('id', matchId);
+        if (error) { alert("Error: " + error.message); } 
+        else { closeModal(); await loadInitialData(); }
+    }
+}
+
+async function suspendMatch(matchId) {
+    if (confirm("¿Marcar este partido como suspendido?")) {
+        const { error } = await supabase.from('matches').update({ status: 'suspendido', sets: null, winner_id: null }).eq('id', matchId);
+        if (error) { alert("Error: " + error.message); } 
+        else { closeModal(); await loadInitialData(); }
     }
 }
 
@@ -306,19 +429,11 @@ async function handleBulkDelete() {
 
 async function handleBulkProgram() {
     if (selectedMatches.size === 0) return;
-
     const programName = prompt("Ingrese un nombre para el nuevo programa:", "Programa de Partidos");
     if (!programName || programName.trim() === '') return;
-
     const slug = programName.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
     const match_ids = Array.from(selectedMatches);
-
-    const { data, error } = await supabase
-        .from('programs')
-        .insert([{ title: programName, slug: slug, match_ids: match_ids }])
-        .select()
-        .single();
-    
+    const { error } = await supabase.from('programs').insert([{ title: programName, slug: slug, match_ids: match_ids }]);
     if (error) {
         alert("Error al crear el programa: " + error.message);
     } else {
@@ -342,50 +457,82 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 btnShowForm.addEventListener('click', () => {
-    openModal(null);
+    formContainer.classList.toggle('hidden');
+    btnShowForm.innerHTML = formContainer.classList.contains('hidden') 
+        ? '<span class="material-icons">add</span> Crear Partido' 
+        : '<span class="material-icons">close</span> Cancelar';
 });
 
-[filterCategorySelect, filterTeamSelect, searchInput].forEach(el => {
-    el.addEventListener('input', applyFiltersAndSort);
+btnCancelForm.addEventListener('click', () => {
+    formContainer.classList.add('hidden');
+    btnShowForm.innerHTML = '<span class="material-icons">add</span> Crear Partido';
+});
+
+form.addEventListener('submit', handleCreateMatchSubmit);
+
+tournamentSelectForm.addEventListener('change', () => {
+    updatePlayerSelectsInForm();
+});
+player1SelectForm.addEventListener('change', () => {
+    updatePlayerSelectsInForm();
+});
+
+[filterTournamentSelect, filterStatusSelect, filterSedeSelect, filterCanchaSelect, searchInput].forEach(el => {
+    if(el) el.addEventListener('input', applyFiltersAndSort);
 });
 
 matchesContainer.addEventListener('click', (e) => {
     const row = e.target.closest('tr[data-match-id]');
-    const checkbox = e.target.closest('.match-checkbox');
-    const selectAllCheckbox = e.target.closest('#select-all-matches');
+    if (!row) return;
+
+    const matchId = Number(row.dataset.matchId);
     
-    if (selectAllCheckbox) {
-        const isChecked = selectAllCheckbox.checked;
-        const visibleRows = Array.from(matchesContainer.querySelectorAll('tr[data-match-id]'));
-        const visibleIds = visibleRows.map(r => Number(r.dataset.matchId));
-
-        visibleRows.forEach(r => {
-            r.querySelector('.match-checkbox').checked = isChecked;
-        });
-
-        if (isChecked) {
-            visibleIds.forEach(id => selectedMatches.add(id));
-        } else {
-            visibleIds.forEach(id => selectedMatches.delete(id));
-        }
-        updateBulkActionBar();
-        return;
-    }
-
-    if (checkbox) {
-        e.stopPropagation(); // Evitar que el clic en el checkbox propague al 'row'
-        const id = Number(checkbox.dataset.id);
-        checkbox.checked ? selectedMatches.add(id) : selectedMatches.delete(id);
-        updateBulkActionBar();
-        return;
-    }
-    
-    if (row) {
-        const matchId = Number(row.dataset.matchId);
+    // Si se hizo clic en el botón de editar
+    if (e.target.closest('button[data-action="edit"]')) {
         const matchData = allMatches.find(m => m.id === matchId);
-        if (matchData) {
-            openModal(matchData);
-        }
+        if (matchData) openScoreModal(matchData);
+        return;
+    }
+    
+    // Si se hizo clic en un checkbox
+    const checkbox = e.target.closest('.match-checkbox');
+    if (checkbox) {
+        e.stopPropagation();
+        checkbox.checked ? selectedMatches.add(matchId) : selectedMatches.delete(matchId);
+        row.classList.toggle('bg-yellow-50', checkbox.checked);
+        updateBulkActionBar();
+        return;
+    }
+    
+    // Click en la fila: selección instantánea
+    if (!e.target.closest('button[data-action="edit"]') && !e.target.closest('.match-checkbox')) {
+        const checkboxInRow = row.querySelector('.match-checkbox');
+        checkboxInRow.checked = !checkboxInRow.checked;
+        checkboxInRow.checked ? selectedMatches.add(matchId) : selectedMatches.delete(matchId);
+        row.classList.toggle('bg-yellow-50', checkboxInRow.checked);
+        updateBulkActionBar();
+    }
+
+    // Doble click en la fila: abrir modal (restaurar funcionalidad)
+    row.addEventListener('dblclick', (ev) => {
+        if (ev.target.closest('button[data-action="edit"]') || ev.target.closest('.match-checkbox')) return;
+        const matchData = allMatches.find(m => m.id === matchId);
+        if (matchData) openScoreModal(matchData);
+    });
+});
+
+matchesContainer.addEventListener('change', (e) => {
+    if (e.target.id === 'select-all-matches') {
+        const isChecked = e.target.checked;
+        const visibleRows = Array.from(matchesContainer.querySelectorAll('tr[data-match-id]'));
+        visibleRows.forEach(r => {
+            const cb = r.querySelector('.match-checkbox');
+            cb.checked = isChecked;
+            const id = Number(cb.dataset.id);
+            isChecked ? selectedMatches.add(id) : selectedMatches.delete(id);
+            r.classList.toggle('bg-yellow-50', isChecked);
+        });
+        updateBulkActionBar();
     }
 });
 
@@ -394,3 +541,13 @@ document.getElementById('bulk-delete').addEventListener('click', handleBulkDelet
 document.getElementById('bulk-program').addEventListener('click', handleBulkProgram);
 document.getElementById('bulk-report').addEventListener('click', handleBulkReport);
 document.getElementById('btn-import-excel').addEventListener('click', handleImportExcel);
+document.getElementById('bulk-deselect').addEventListener('click', () => {
+    selectedMatches.clear();
+    // Desmarcar todos los checkboxes visibles
+    document.querySelectorAll('.match-checkbox').forEach(cb => {
+        cb.checked = false;
+        const row = cb.closest('tr[data-match-id]');
+        if (row) row.classList.remove('bg-yellow-50');
+    });
+    updateBulkActionBar();
+});
