@@ -10,12 +10,23 @@
     <link rel="stylesheet" href="../common/styles.css">
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"/>
+    <style>
+        /* Estilos para asegurar que el contenido del PDF se vea bien */
+        @media print {
+            body { -webkit-print-color-adjust: exact; }
+            .no-print { display: none !important; }
+        }
+        .page-break {
+            page-break-after: always;
+        }
+    </style>
 </head>
 <body class="bg-gray-50 text-gray-800">
-    <header id="header"></header>
+    <header id="header" class="no-print"></header>
+
     <main class="flex-1 py-8">
-        <div class="content-container max-w-4xl mx-auto space-y-6">
-            <div class="flex flex-wrap justify-between items-center gap-4">
+        <div class="content-container max-w-5xl mx-auto space-y-6">
+            <div class="flex flex-wrap justify-between items-center gap-4 no-print">
                 <h1 class="text-3xl font-bold text-gray-900">Reporte de Partidos</h1>
                 <button id="btn-save-pdf" class="btn btn-primary">
                     <span class="material-icons">download</span>
@@ -23,16 +34,14 @@
                 </button>
             </div>
             
-            <div id="report-container">
-                <div id="report-content" class="space-y-5 bg-white p-8 md:p-12 rounded-xl shadow-lg">
+            <div id="report-container" class="bg-white rounded-xl shadow-lg">
+                <div id="report-content" class="p-8 md:p-12">
                     </div>
             </div>
-
         </div>
     </main>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-    
     <script type="module" src="reportes.js"></script>
 </body>
 </html>

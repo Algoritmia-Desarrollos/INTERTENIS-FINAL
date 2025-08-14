@@ -1,6 +1,9 @@
+
 import { renderHeader } from '../common/header.js';
 import { requireRole } from '../common/router.js';
 import { login } from '../common/auth.js'; // <-- RUTA CORREGIDA
+import { supabase } from '../common/supabase.js';
+import { uploadTeamLogo } from './upload-team-logo.js';
 
 requireRole('admin');
 
@@ -70,24 +73,29 @@ async function handleFormSubmit(e) {
     e.preventDefault();
     const id = teamIdInput.value;
     const name = teamNameInput.value.trim();
-    const image_url = teamImageInput.value.trim() || null;
-
+    const file = teamImageInput.files[0];
+    let image_url = null;
     if (!name) {
         alert("El nombre del equipo es obligatorio.");
         return;
     }
-
+    if (file) {
+        try {
+            image_url = await uploadTeamLogo(file);
+        } catch (err) {
+            alert("Error al subir la imagen: " + err);
+            return;
+        }
+    }
     const teamData = { name, image_url };
-
     let error;
-    if (id) { // Modo Edición
+    if (id) {
         const { error: updateError } = await supabase.from('teams').update(teamData).eq('id', id);
         error = updateError;
-    } else { // Modo Creación
+    } else {
         const { error: insertError } = await supabase.from('teams').insert([teamData]);
         error = insertError;
     }
-
     if (error) {
         alert(`Error al guardar el equipo: ${error.message}`);
     } else {
