@@ -1,6 +1,8 @@
+
 import { renderHeader } from '../common/header.js';
 import { requireRole } from '../common/router.js';
 import { supabase } from '../common/supabase.js';
+import { importMatchesFromFile } from '../common/excel-importer.js';
 
 requireRole('admin');
 
@@ -8,16 +10,7 @@ requireRole('admin');
 const header = document.getElementById('header');
 const formContainer = document.getElementById('form-container');
 const btnShowForm = document.getElementById('btn-show-form');
-const form = document.getElementById('form-match');
-const tournamentSelectForm = document.getElementById('tournament-select-form');
-const categoryDisplay = document.getElementById('category-display');
-const player1SelectForm = document.getElementById('player1-select-form');
-const player2SelectForm = document.getElementById('player2-select-form');
-const matchDateForm = document.getElementById('match-date-form');
-const matchTimeForm = document.getElementById('match-time-form');
-const sedeSelectForm = document.getElementById('sede-select-form');
-const canchaSelectForm = document.getElementById('cancha-select-form');
-const btnCancelForm = document.getElementById('btn-cancel-form');
+// const btnCancelForm = document.getElementById('btn-cancel-form'); // Ya no se usa
 const matchesContainer = document.getElementById('matches-container');
 const filterTournamentSelect = document.getElementById('filter-tournament');
 const filterStatusSelect = document.getElementById('filter-status');
@@ -71,17 +64,12 @@ async function loadInitialData() {
         });
     }
 
-    populateFormSelects();
+    // populateFormSelects(); // Eliminado: ya no se usa formulario antiguo
     populateFilterSelects();
     applyFiltersAndSort();
 }
 
-function populateFormSelects() {
-    tournamentSelectForm.innerHTML = '<option value="">Seleccione Torneo</option>';
-    allTournaments.forEach(t => tournamentSelectForm.innerHTML += `<option value="${t.id}">${t.name}</option>`);
-    player1SelectForm.innerHTML = '<option value="">Seleccione un torneo primero</option>';
-    player2SelectForm.innerHTML = '<option value="">Seleccione un torneo primero</option>';
-}
+// Función populateFormSelects eliminada: ya no se usa formulario antiguo
 
 function populateFilterSelects() {
     filterTournamentSelect.innerHTML = '<option value="">Todos los Torneos</option>';
@@ -247,6 +235,35 @@ function openScoreModal(match) {
                             </select>
                         </div>
                     </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Fecha</label>
+                            <input type="text" id="match-date-modal" class="input-field mt-1" value="${match.match_date || ''}" autocomplete="off">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Hora</label>
+                            <input type="time" id="match-time-modal" class="input-field mt-1" value="${match.match_time || ''}">
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Sede</label>
+                            <select id="match-sede-modal" class="input-field mt-1">
+                                <option value="Funes" ${(match.location && match.location.split(' - ')[0] === 'Funes') ? 'selected' : ''}>Funes</option>
+                                <option value="Centro" ${(match.location && match.location.split(' - ')[0] === 'Centro') ? 'selected' : ''}>Centro</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Cancha</label>
+                            <select id="match-cancha-modal" class="input-field mt-1">
+                                ${[1,2,3,4,5,6].map(n => {
+                                    const cancha = `Cancha ${n}`;
+                                    const selected = (match.location && match.location.split(' - ')[1] === cancha) ? 'selected' : '';
+                                    return `<option value="${cancha}" ${selected}>${cancha}</option>`;
+                                }).join('')}
+                            </select>
+                        </div>
+                    </div>
                     <div class="grid grid-cols-3 gap-4 items-center pt-4">
                         <span class="font-semibold">SET</span>
                         <span class="font-semibold text-center">${match.player1.name}</span>
@@ -274,6 +291,22 @@ function openScoreModal(match) {
             </div>
         </div>
     `;
+
+    // Cargar flatpickr dinámicamente si no está presente
+    if (!window.flatpickr) {
+        const link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = 'https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css';
+        document.head.appendChild(link);
+        const script = document.createElement('script');
+        script.src = 'https://cdn.jsdelivr.net/npm/flatpickr';
+        script.onload = () => {
+            flatpickr('#match-date-modal', {dateFormat: 'Y-m-d', allowInput: true});
+        };
+        document.body.appendChild(script);
+    } else {
+        flatpickr('#match-date-modal', {dateFormat: 'Y-m-d', allowInput: true});
+    }
 
     document.getElementById('btn-save-score').onclick = () => saveMatch(match.id);
     document.getElementById('btn-cancel-modal').onclick = closeModal;
@@ -324,12 +357,25 @@ async function saveMatch(matchId) {
         winner_id = p1SetsWon > p2SetsWon ? p1_id : p2_id;
     }
     
+    // Obtener los valores de los campos nuevos
+    const match_date = document.getElementById('match-date-modal').value;
+    const match_time = document.getElementById('match-time-modal').value;
+    const sede = document.getElementById('match-sede-modal').value;
+    const cancha = document.getElementById('match-cancha-modal').value;
+    let location = '';
+    if (sede && cancha) location = `${sede} - ${cancha}`;
+    else if (sede) location = sede;
+    else if (cancha) location = cancha;
+
     let matchData = {
         player1_id: p1_id,
         player2_id: p2_id,
         sets: sets.length > 0 ? sets : null,
         winner_id: winner_id,
-        status: 'programado'
+        status: 'programado',
+        match_date,
+        match_time,
+        location
     };
 
     const { error } = await supabase.from('matches').update(matchData).eq('id', matchId);
@@ -454,7 +500,197 @@ function handleImportExcel() {
 document.addEventListener('DOMContentLoaded', async () => {
     header.innerHTML = renderHeader();
     await loadInitialData();
+    renderExcelLikeMatchForm();
 });
+
+function renderExcelLikeMatchForm() {
+    if (!formContainer) return;
+    formContainer.innerHTML = `
+        <form id="excel-match-form" class="bg-white rounded-xl shadow-lg mb-2" style="padding:0;">
+            <h2 class="text-2xl font-bold mb-4 px-8 pt-8">Añadir Partidos (tipo Excel)</h2>
+            <div class="w-full overflow-x-auto px-4">
+                <table id="excel-match-table" class="w-full border text-base">
+                    <thead>
+                        <tr class="bg-gray-100 text-gray-700">
+                            <th class="px-2 py-2">Torneo</th>
+                            <th class="px-2 py-2">Sede</th>
+                            <th class="px-2 py-2">Cancha</th>
+                            <th class="px-2 py-2">Día <span title='Elegí la fecha en el calendario o escribí en formato dd/mm/aaaa' class='material-icons align-middle text-gray-400 cursor-pointer help-dia'>help</span></th>
+                            <th class="px-2 py-2">Hora</th>
+                            <th class="px-2 py-2">Jugador 1</th>
+                            <th class="px-2 py-2">Jugador 2</th>
+                            <th class="px-2 py-2">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="excel-match-tbody">
+                    </tbody>
+                </table>
+            </div>
+            <div class="flex gap-4 mt-2 px-8 pb-2 text-gray-500 text-sm">
+                <span><span class="material-icons align-middle text-gray-400">help</span> Elegí la fecha en el calendario o escribí en formato <b>dd/mm/aaaa</b></span>
+            </div>
+            <div class="flex gap-4 mt-4 px-8 pb-8">
+                <button type="button" id="btn-add-row" class="btn btn-secondary">Agregar fila</button>
+                <button type="submit" class="btn btn-primary">Guardar partidos</button>
+                <button type="button" id="btn-cancel-form" class="btn btn-secondary">Cancelar</button>
+            </div>
+        </form>
+    `;
+    renderExcelMatchRows(1);
+    document.getElementById('btn-add-row').onclick = () => addExcelMatchRow();
+    document.getElementById('btn-cancel-form').onclick = () => formContainer.classList.add('hidden');
+    document.getElementById('excel-match-form').onsubmit = handleExcelMatchFormSubmit;
+}
+
+
+function renderExcelMatchRows(count) {
+    const tbody = document.getElementById('excel-match-tbody');
+    if (!tbody) return;
+    for (let i = 0; i < count; i++) {
+        addExcelMatchRow();
+    }
+}
+
+function addExcelMatchRow() {
+    const tbody = document.getElementById('excel-match-tbody');
+    if (!tbody) return;
+    const torneoOptions = `<option value="">Seleccionar torneo</option>` + allTournaments.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+    const sedeOptions = ['Funes', 'Centro'].map(s => `<option value="${s}">${s}</option>`).join('');
+    const canchaOptions = [1,2,3,4,5,6].map(n => `<option value="Cancha ${n}">Cancha ${n}</option>`).join('');
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+        <td><select class="input-field w-40 torneo-select">${torneoOptions}</select></td>
+        <td><select class="input-field w-28 sede-select">${sedeOptions}</select></td>
+        <td><select class="input-field w-28 cancha-select">${canchaOptions}</select></td>
+        <td class="relative">
+            <input type="text" class="input-field w-32 excel-date" placeholder="dd/mm/aaaa" />
+            <span class="material-icons absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 cursor-pointer calendar-ico" title="Abrir calendario">calendar_month</span>
+        </td>
+        <td><input type="text" class="input-field w-24 excel-time" placeholder="hh:mm" /></td>
+        <td><select class="input-field w-48 jugador1-select"><option value="">Seleccione torneo</option></select></td>
+        <td><select class="input-field w-48 jugador2-select"><option value="">Seleccione torneo</option></select></td>
+        <td class="flex gap-2 justify-center">
+            <button type="button" class="btn btn-secondary btn-duplicate-row" title="Duplicar fila">⧉</button>
+            <button type="button" class="btn btn-secondary btn-remove-row" title="Eliminar fila">✕</button>
+        </td>
+    `;
+    tbody.appendChild(tr);
+
+    // Flatpickr para fecha y hora, abre modal al enfocar o al hacer click en el ícono
+    if (window.flatpickr) {
+        const dateInput = tr.querySelector('.excel-date');
+        const timeInput = tr.querySelector('.excel-time');
+        const calendarIco = tr.querySelector('.calendar-ico');
+        const fpDate = flatpickr(dateInput, {dateFormat: 'd/m/Y', allowInput: true});
+        const fpTime = flatpickr(timeInput, {enableTime: true, noCalendar: true, dateFormat: 'H:i', time_24hr: true, allowInput: true});
+        dateInput.addEventListener('focus', () => fpDate.open());
+        if (calendarIco) calendarIco.addEventListener('click', () => fpDate.open());
+        timeInput.addEventListener('focus', () => fpTime.open());
+    }
+
+    // Eliminar fila
+    tr.querySelector('.btn-remove-row').onclick = (e) => {
+        e.target.closest('tr').remove();
+    };
+    // Duplicar fila
+    tr.querySelector('.btn-duplicate-row').onclick = (e) => {
+        const clone = tr.cloneNode(true);
+        tbody.insertBefore(clone, tr.nextSibling);
+        // Reaplicar flatpickr y listeners a la nueva fila
+        setTimeout(() => {
+            if (window.flatpickr) {
+                flatpickr(clone.querySelector('.excel-date'), {dateFormat: 'd/m/Y', allowInput: true});
+                flatpickr(clone.querySelector('.excel-time'), {enableTime: true, noCalendar: true, dateFormat: 'H:i', time_24hr: true, allowInput: true});
+            }
+            clone.querySelector('.btn-remove-row').onclick = (e) => {
+                e.target.closest('tr').remove();
+            };
+            clone.querySelector('.btn-duplicate-row').onclick = tr.querySelector('.btn-duplicate-row').onclick;
+            // Listeners de selects
+            setRowSelectListeners(clone);
+        }, 0);
+    };
+    setRowSelectListeners(tr);
+}
+
+function setRowSelectListeners(tr) {
+    // Filtrar jugadores por torneo seleccionado
+    const torneoSel = tr.querySelector('.torneo-select');
+    const jugador1Sel = tr.querySelector('.jugador1-select');
+    const jugador2Sel = tr.querySelector('.jugador2-select');
+    torneoSel.onchange = function() {
+        const torneoId = Number(this.value);
+        jugador1Sel.innerHTML = '<option value="">Seleccione jugador</option>';
+        jugador2Sel.innerHTML = '<option value="">Seleccione jugador</option>';
+        if (!torneoId) return;
+        const playerIds = tournamentPlayersMap.get(torneoId) || new Set();
+        const jugadores = allPlayers.filter(p => playerIds.has(p.id));
+        jugadores.forEach(j => {
+            jugador1Sel.innerHTML += `<option value="${j.id}">${j.name}</option>`;
+            jugador2Sel.innerHTML += `<option value="${j.id}">${j.name}</option>`;
+        });
+    };
+    // Evitar que jugador1 y jugador2 sean el mismo
+    jugador1Sel.onchange = function() {
+        const val = this.value;
+        Array.from(jugador2Sel.options).forEach(opt => {
+            opt.disabled = opt.value && opt.value === val;
+        });
+    };
+    jugador2Sel.onchange = function() {
+        const val = this.value;
+        Array.from(jugador1Sel.options).forEach(opt => {
+            opt.disabled = opt.value && opt.value === val;
+        });
+    };
+}
+
+async function handleExcelMatchFormSubmit(e) {
+    e.preventDefault();
+    const rows = Array.from(document.querySelectorAll('#excel-match-tbody tr'));
+    const partidos = [];
+    for (const row of rows) {
+        const torneoId = row.querySelector('.torneo-select').value;
+        const sede = row.querySelector('.sede-select').value;
+        const cancha = row.querySelector('.cancha-select').value;
+        const dia = row.querySelector('.excel-date').value;
+        const hora = row.querySelector('.excel-time').value;
+        const jugador1Id = row.querySelector('.jugador1-select').value;
+        const jugador2Id = row.querySelector('.jugador2-select').value;
+        if (!torneoId || !jugador1Id || !jugador2Id) continue;
+        const torneoObj = allTournaments.find(t => t.id == torneoId);
+        const jugador1Obj = allPlayers.find(j => j.id == jugador1Id);
+        const jugador2Obj = allPlayers.find(j => j.id == jugador2Id);
+        if (!torneoObj || !jugador1Obj || !jugador2Obj) continue;
+        // Convertir fecha a formato yyyy-mm-dd
+        let match_date = '';
+        if (dia) {
+            const parts = dia.split('/');
+            if (parts.length === 3) match_date = `${parts[2]}-${parts[1].padStart(2,'0')}-${parts[0].padStart(2,'0')}`;
+        }
+        partidos.push({
+            tournament_id: torneoObj.id,
+            category_id: torneoObj.category.id,
+            player1_id: jugador1Obj.id,
+            player2_id: jugador2Obj.id,
+            match_date: match_date || '2099-12-31',
+            match_time: hora || 'A definir',
+            location: `${sede} - ${cancha}`
+        });
+    }
+    if (partidos.length === 0) {
+        alert('No hay partidos válidos para guardar.');
+        return;
+    }
+    const { error } = await supabase.from('matches').insert(partidos);
+    if (error) {
+        alert('Error al guardar partidos: ' + error.message);
+    } else {
+        alert('Partidos guardados con éxito.');
+        formContainer.classList.add('hidden');
+        await loadInitialData();
+    }
+}
 
 btnShowForm.addEventListener('click', () => {
     formContainer.classList.toggle('hidden');
@@ -462,20 +698,7 @@ btnShowForm.addEventListener('click', () => {
         ? '<span class="material-icons">add</span> Crear Partido' 
         : '<span class="material-icons">close</span> Cancelar';
 });
-
-btnCancelForm.addEventListener('click', () => {
-    formContainer.classList.add('hidden');
-    btnShowForm.innerHTML = '<span class="material-icons">add</span> Crear Partido';
-});
-
-form.addEventListener('submit', handleCreateMatchSubmit);
-
-tournamentSelectForm.addEventListener('change', () => {
-    updatePlayerSelectsInForm();
-});
-player1SelectForm.addEventListener('change', () => {
-    updatePlayerSelectsInForm();
-});
+// Listeners del formulario antiguo eliminados
 
 [filterTournamentSelect, filterStatusSelect, filterSedeSelect, filterCanchaSelect, searchInput].forEach(el => {
     if(el) el.addEventListener('input', applyFiltersAndSort);
@@ -540,7 +763,16 @@ matchesContainer.addEventListener('change', (e) => {
 document.getElementById('bulk-delete').addEventListener('click', handleBulkDelete);
 document.getElementById('bulk-program').addEventListener('click', handleBulkProgram);
 document.getElementById('bulk-report').addEventListener('click', handleBulkReport);
-document.getElementById('btn-import-excel').addEventListener('click', handleImportExcel);
+document.getElementById('btn-import-excel').addEventListener('click', () => {
+    // Obtener todas las categorías únicas de los torneos
+    const allCategories = Array.from(new Set(allTournaments.map(t => t.category?.name))).map(name => {
+        const t = allTournaments.find(tt => tt.category?.name === name);
+        return t ? t.category : null;
+    }).filter(Boolean);
+    importMatchesFromFile(allPlayers, allTournaments, allCategories).then(success => {
+        if (success) loadInitialData();
+    });
+});
 document.getElementById('bulk-deselect').addEventListener('click', () => {
     selectedMatches.clear();
     // Desmarcar todos los checkboxes visibles
