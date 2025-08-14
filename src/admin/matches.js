@@ -1,3 +1,4 @@
+import { handleExcelMatchFormSubmit } from './excel-match-save.js';
 
 import { renderHeader } from '../common/header.js';
 import { requireRole } from '../common/router.js';
@@ -507,32 +508,32 @@ function renderExcelLikeMatchForm() {
     if (!formContainer) return;
     formContainer.innerHTML = `
         <form id="excel-match-form" class="bg-white rounded-xl shadow-lg mb-2" style="padding:0;">
-            <h2 class="text-2xl font-bold mb-4 px-8 pt-8">Añadir Partidos (tipo Excel)</h2>
-            <div class="w-full overflow-x-auto px-4">
-                <table id="excel-match-table" class="w-full border text-base">
+            <h2 class="text-lg font-bold mb-2 px-4 pt-4">Añadir Partidos (tipo Excel)</h2>
+            <div class="w-full overflow-x-auto px-2">
+                <table id="excel-match-table" class="w-full border text-xs excel-table-like">
                     <thead>
                         <tr class="bg-gray-100 text-gray-700">
-                            <th class="px-2 py-2">Torneo</th>
-                            <th class="px-2 py-2">Sede</th>
-                            <th class="px-2 py-2">Cancha</th>
-                            <th class="px-2 py-2">Día <span title='Elegí la fecha en el calendario o escribí en formato dd/mm/aaaa' class='material-icons align-middle text-gray-400 cursor-pointer help-dia'>help</span></th>
-                            <th class="px-2 py-2">Hora</th>
-                            <th class="px-2 py-2">Jugador 1</th>
-                            <th class="px-2 py-2">Jugador 2</th>
-                            <th class="px-2 py-2">Acciones</th>
+                            <th class="px-1 py-1">Torneo</th>
+                            <th class="px-1 py-1">Sede</th>
+                            <th class="px-1 py-1">Cancha</th>
+                            <th class="px-1 py-1">Día <span title='Elegí la fecha en el calendario o escribí en formato dd/mm/aaaa' class='material-icons align-middle text-gray-400 cursor-pointer help-dia' style="font-size:16px;">help</span></th>
+                            <th class="px-1 py-1">Hora</th>
+                            <th class="px-1 py-1">Jugador 1</th>
+                            <th class="px-1 py-1">Jugador 2</th>
+                            <th class="px-1 py-1">Acciones</th>
                         </tr>
                     </thead>
                     <tbody id="excel-match-tbody">
                     </tbody>
                 </table>
             </div>
-            <div class="flex gap-4 mt-2 px-8 pb-2 text-gray-500 text-sm">
-                <span><span class="material-icons align-middle text-gray-400">help</span> Elegí la fecha en el calendario o escribí en formato <b>dd/mm/aaaa</b></span>
+            <div class="flex gap-4 mt-2 px-4 pb-2 text-gray-500 text-xs">
+                <span><span class="material-icons align-middle text-gray-400" style="font-size:16px;">help</span> Elegí la fecha en el calendario o escribí en formato <b>dd/mm/aaaa</b></span>
             </div>
-            <div class="flex gap-4 mt-4 px-8 pb-8">
-                <button type="button" id="btn-add-row" class="btn btn-secondary">Agregar fila</button>
-                <button type="submit" class="btn btn-primary">Guardar partidos</button>
-                <button type="button" id="btn-cancel-form" class="btn btn-secondary">Cancelar</button>
+            <div class="flex gap-4 mt-2 px-4 pb-4">
+                <button type="button" id="btn-add-row" class="btn btn-secondary text-xs px-2 py-1">Agregar fila</button>
+                <button type="submit" class="btn btn-primary text-xs px-2 py-1">Guardar partidos</button>
+                <button type="button" id="btn-cancel-form" class="btn btn-secondary text-xs px-2 py-1">Cancelar</button>
             </div>
         </form>
     `;
@@ -551,6 +552,7 @@ function renderExcelMatchRows(count) {
     }
 }
 
+
 function addExcelMatchRow() {
     const tbody = document.getElementById('excel-match-tbody');
     if (!tbody) return;
@@ -558,138 +560,160 @@ function addExcelMatchRow() {
     const sedeOptions = ['Funes', 'Centro'].map(s => `<option value="${s}">${s}</option>`).join('');
     const canchaOptions = [1,2,3,4,5,6].map(n => `<option value="Cancha ${n}">Cancha ${n}</option>`).join('');
     const tr = document.createElement('tr');
-    tr.innerHTML = `
-        <td><select class="input-field w-40 torneo-select">${torneoOptions}</select></td>
-        <td><select class="input-field w-28 sede-select">${sedeOptions}</select></td>
-        <td><select class="input-field w-28 cancha-select">${canchaOptions}</select></td>
-        <td class="relative">
-            <input type="text" class="input-field w-32 excel-date" placeholder="dd/mm/aaaa" />
-            <span class="material-icons absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 cursor-pointer calendar-ico" title="Abrir calendario">calendar_month</span>
-        </td>
-        <td><input type="text" class="input-field w-24 excel-time" placeholder="hh:mm" /></td>
-        <td><select class="input-field w-48 jugador1-select"><option value="">Seleccione torneo</option></select></td>
-        <td><select class="input-field w-48 jugador2-select"><option value="">Seleccione torneo</option></select></td>
-        <td class="flex gap-2 justify-center">
-            <button type="button" class="btn btn-secondary btn-duplicate-row" title="Duplicar fila">⧉</button>
-            <button type="button" class="btn btn-secondary btn-remove-row" title="Eliminar fila">✕</button>
-        </td>
-    `;
-    tbody.appendChild(tr);
-
-    // Flatpickr para fecha y hora, abre modal al enfocar o al hacer click en el ícono
-    if (window.flatpickr) {
-        const dateInput = tr.querySelector('.excel-date');
-        const timeInput = tr.querySelector('.excel-time');
-        const calendarIco = tr.querySelector('.calendar-ico');
-        const fpDate = flatpickr(dateInput, {dateFormat: 'd/m/Y', allowInput: true});
-        const fpTime = flatpickr(timeInput, {enableTime: true, noCalendar: true, dateFormat: 'H:i', time_24hr: true, allowInput: true});
-        dateInput.addEventListener('focus', () => fpDate.open());
-        if (calendarIco) calendarIco.addEventListener('click', () => fpDate.open());
-        timeInput.addEventListener('focus', () => fpTime.open());
-    }
-
-    // Eliminar fila
-    tr.querySelector('.btn-remove-row').onclick = (e) => {
-        e.target.closest('tr').remove();
+    // Estado de la fila
+    const state = {
+        torneo: '', sede: 'Funes', cancha: 'Cancha 1', dia: '', hora: '', jugador1: '', jugador2: ''
     };
-    // Duplicar fila
-    tr.querySelector('.btn-duplicate-row').onclick = (e) => {
-        const clone = tr.cloneNode(true);
-        tbody.insertBefore(clone, tr.nextSibling);
-        // Reaplicar flatpickr y listeners a la nueva fila
-        setTimeout(() => {
-            if (window.flatpickr) {
-                flatpickr(clone.querySelector('.excel-date'), {dateFormat: 'd/m/Y', allowInput: true});
-                flatpickr(clone.querySelector('.excel-time'), {enableTime: true, noCalendar: true, dateFormat: 'H:i', time_24hr: true, allowInput: true});
+    // Helpers para mostrar nombres
+    function getTorneoName(id) {
+        if (!id) return '';
+        const t = allTournaments.find(t => t.id == id);
+        return t ? t.name : '';
+    }
+    function getJugadorName(id) {
+        if (!id) return '';
+        const j = allPlayers.find(j => j.id == id);
+        return j ? j.name : '';
+    }
+    // Renderiza la fila en modo texto plano tipo Excel
+    function renderRow() {
+        tr.innerHTML = '';
+        // Torneo
+        let tdTorneo = document.createElement('td');
+        tdTorneo.className = 'excel-cell';
+        tdTorneo.dataset.col = 'torneo';
+        tdTorneo.textContent = getTorneoName(state.torneo);
+        tdTorneo.ondblclick = function() { editCell(tdTorneo); };
+        tr.appendChild(tdTorneo);
+        // Sede
+        let tdSede = document.createElement('td');
+        tdSede.className = 'excel-cell';
+        tdSede.dataset.col = 'sede';
+        tdSede.textContent = state.sede;
+        tdSede.ondblclick = function() { editCell(tdSede); };
+        tr.appendChild(tdSede);
+        // Cancha
+        let tdCancha = document.createElement('td');
+        tdCancha.className = 'excel-cell';
+        tdCancha.dataset.col = 'cancha';
+        tdCancha.textContent = state.cancha;
+        tdCancha.ondblclick = function() { editCell(tdCancha); };
+        tr.appendChild(tdCancha);
+        // Día
+        let tdDia = document.createElement('td');
+        tdDia.className = 'excel-cell';
+        tdDia.dataset.col = 'dia';
+        tdDia.textContent = state.dia;
+        tdDia.ondblclick = function() { editCell(tdDia); };
+        tr.appendChild(tdDia);
+        // Hora
+        let tdHora = document.createElement('td');
+        tdHora.className = 'excel-cell';
+        tdHora.dataset.col = 'hora';
+        tdHora.textContent = state.hora;
+        tdHora.ondblclick = function() { editCell(tdHora); };
+        tr.appendChild(tdHora);
+        // Jugador 1
+        let tdJ1 = document.createElement('td');
+        tdJ1.className = 'excel-cell';
+        tdJ1.dataset.col = 'jugador1';
+        tdJ1.textContent = getJugadorName(state.jugador1);
+        tdJ1.ondblclick = function() { editCell(tdJ1); };
+        tr.appendChild(tdJ1);
+        // Jugador 2
+        let tdJ2 = document.createElement('td');
+        tdJ2.className = 'excel-cell';
+        tdJ2.dataset.col = 'jugador2';
+        tdJ2.textContent = getJugadorName(state.jugador2);
+        tdJ2.ondblclick = function() { editCell(tdJ2); };
+        tr.appendChild(tdJ2);
+        // Acciones
+        let tdAcc = document.createElement('td');
+        tdAcc.className = 'flex gap-1 justify-center';
+        let btnDup = document.createElement('button');
+        btnDup.type = 'button';
+        btnDup.className = 'btn btn-secondary btn-duplicate-row text-xs px-1 py-1';
+        btnDup.title = 'Duplicar fila';
+        btnDup.textContent = '⧉';
+        btnDup.onclick = function(e) {
+            const clone = tr.cloneNode(true);
+            tbody.insertBefore(clone, tr.nextSibling);
+            setTimeout(function() {
+                // Reasignar listeners a la nueva fila
+                Array.from(clone.querySelectorAll('.excel-cell')).forEach(function(cell) {
+                    cell.ondblclick = function() { editCell(cell); };
+                });
+                clone.querySelector('.btn-remove-row').onclick = function(e) { e.target.closest('tr').remove(); };
+                clone.querySelector('.btn-duplicate-row').onclick = btnDup.onclick;
+            }, 0);
+        };
+        let btnDel = document.createElement('button');
+        btnDel.type = 'button';
+        btnDel.className = 'btn btn-secondary btn-remove-row text-xs px-1 py-1';
+        btnDel.title = 'Eliminar fila';
+        btnDel.textContent = '✕';
+        btnDel.onclick = function(e) { e.target.closest('tr').remove(); };
+        tdAcc.appendChild(btnDup);
+        tdAcc.appendChild(btnDel);
+        tr.appendChild(tdAcc);
+    }
+    // Editar celda
+    function editCell(cell) {
+        const col = cell.dataset.col;
+        let input;
+        if (col === 'torneo') {
+            input = document.createElement('select');
+            input.innerHTML = torneoOptions;
+            input.value = state.torneo;
+        } else if (col === 'sede') {
+            input = document.createElement('select');
+            input.innerHTML = sedeOptions;
+            input.value = state.sede;
+        } else if (col === 'cancha') {
+            input = document.createElement('select');
+            input.innerHTML = canchaOptions;
+            input.value = state.cancha;
+        } else if (col === 'dia') {
+            input = document.createElement('input');
+            input.type = 'text';
+            input.value = state.dia;
+            input.placeholder = 'dd/mm/aaaa';
+            if (window.flatpickr) flatpickr(input, {dateFormat: 'd/m/Y', allowInput: true});
+        } else if (col === 'hora') {
+            input = document.createElement('input');
+            input.type = 'text';
+            input.value = state.hora;
+            input.placeholder = 'hh:mm';
+            if (window.flatpickr) flatpickr(input, {enableTime: true, noCalendar: true, dateFormat: 'H:i', time_24hr: true, allowInput: true});
+        } else if (col === 'jugador1' || col === 'jugador2') {
+            input = document.createElement('select');
+            input.innerHTML = '<option value="">Seleccione jugador</option>';
+            if (state.torneo) {
+                const playerIds = tournamentPlayersMap.get(Number(state.torneo)) || new Set();
+                const jugadores = allPlayers.filter(function(p) { return playerIds.has(p.id); });
+                jugadores.forEach(function(j) {
+                    input.innerHTML += `<option value="${j.id}">${j.name}</option>`;
+                });
             }
-            clone.querySelector('.btn-remove-row').onclick = (e) => {
-                e.target.closest('tr').remove();
-            };
-            clone.querySelector('.btn-duplicate-row').onclick = tr.querySelector('.btn-duplicate-row').onclick;
-            // Listeners de selects
-            setRowSelectListeners(clone);
-        }, 0);
-    };
-    setRowSelectListeners(tr);
-}
-
-function setRowSelectListeners(tr) {
-    // Filtrar jugadores por torneo seleccionado
-    const torneoSel = tr.querySelector('.torneo-select');
-    const jugador1Sel = tr.querySelector('.jugador1-select');
-    const jugador2Sel = tr.querySelector('.jugador2-select');
-    torneoSel.onchange = function() {
-        const torneoId = Number(this.value);
-        jugador1Sel.innerHTML = '<option value="">Seleccione jugador</option>';
-        jugador2Sel.innerHTML = '<option value="">Seleccione jugador</option>';
-        if (!torneoId) return;
-        const playerIds = tournamentPlayersMap.get(torneoId) || new Set();
-        const jugadores = allPlayers.filter(p => playerIds.has(p.id));
-        jugadores.forEach(j => {
-            jugador1Sel.innerHTML += `<option value="${j.id}">${j.name}</option>`;
-            jugador2Sel.innerHTML += `<option value="${j.id}">${j.name}</option>`;
-        });
-    };
-    // Evitar que jugador1 y jugador2 sean el mismo
-    jugador1Sel.onchange = function() {
-        const val = this.value;
-        Array.from(jugador2Sel.options).forEach(opt => {
-            opt.disabled = opt.value && opt.value === val;
-        });
-    };
-    jugador2Sel.onchange = function() {
-        const val = this.value;
-        Array.from(jugador1Sel.options).forEach(opt => {
-            opt.disabled = opt.value && opt.value === val;
-        });
-    };
-}
-
-async function handleExcelMatchFormSubmit(e) {
-    e.preventDefault();
-    const rows = Array.from(document.querySelectorAll('#excel-match-tbody tr'));
-    const partidos = [];
-    for (const row of rows) {
-        const torneoId = row.querySelector('.torneo-select').value;
-        const sede = row.querySelector('.sede-select').value;
-        const cancha = row.querySelector('.cancha-select').value;
-        const dia = row.querySelector('.excel-date').value;
-        const hora = row.querySelector('.excel-time').value;
-        const jugador1Id = row.querySelector('.jugador1-select').value;
-        const jugador2Id = row.querySelector('.jugador2-select').value;
-        if (!torneoId || !jugador1Id || !jugador2Id) continue;
-        const torneoObj = allTournaments.find(t => t.id == torneoId);
-        const jugador1Obj = allPlayers.find(j => j.id == jugador1Id);
-        const jugador2Obj = allPlayers.find(j => j.id == jugador2Id);
-        if (!torneoObj || !jugador1Obj || !jugador2Obj) continue;
-        // Convertir fecha a formato yyyy-mm-dd
-        let match_date = '';
-        if (dia) {
-            const parts = dia.split('/');
-            if (parts.length === 3) match_date = `${parts[2]}-${parts[1].padStart(2,'0')}-${parts[0].padStart(2,'0')}`;
+            input.value = state[col];
         }
-        partidos.push({
-            tournament_id: torneoObj.id,
-            category_id: torneoObj.category.id,
-            player1_id: jugador1Obj.id,
-            player2_id: jugador2Obj.id,
-            match_date: match_date || '2099-12-31',
-            match_time: hora || 'A definir',
-            location: `${sede} - ${cancha}`
-        });
+        input.className = 'input-field w-full text-xs';
+        input.onblur = function() {
+            state[col] = input.value;
+            // Si se cambia el torneo, limpiar jugadores
+            if (col === 'torneo') {
+                state.jugador1 = '';
+                state.jugador2 = '';
+            }
+            renderRow();
+        };
+        input.onkeydown = function(e) { if (e.key === 'Enter') { input.blur(); } };
+        cell.innerHTML = '';
+        cell.appendChild(input);
+        input.focus();
     }
-    if (partidos.length === 0) {
-        alert('No hay partidos válidos para guardar.');
-        return;
-    }
-    const { error } = await supabase.from('matches').insert(partidos);
-    if (error) {
-        alert('Error al guardar partidos: ' + error.message);
-    } else {
-        alert('Partidos guardados con éxito.');
-        formContainer.classList.add('hidden');
-        await loadInitialData();
-    }
+    renderRow();
+    tbody.appendChild(tr);
 }
 
 btnShowForm.addEventListener('click', () => {
