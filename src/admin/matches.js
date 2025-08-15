@@ -75,14 +75,24 @@ async function loadInitialData() {
 // Actualiza los contadores de las tarjetas resumen
 function updateSummaryCards() {
     const pendientes = allMatches.filter(m => !m.winner_id && m.status !== 'suspendido').length;
-    // Últimos 7 días
+    // Últimos 7 días EXACTAMENTE como el filtro visual (incluye status y rango de fechas)
     const now = new Date();
-    const sieteDiasAtras = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7);
-    // Solo partidos jugados (completados) en los últimos 7 días
+    const sieteDiasAtras = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7, 0, 0, 0, 0);
+    const finDelDia = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
     const recientes = allMatches.filter(m => {
         if (!m.winner_id) return false;
-        const matchDate = new Date(m.match_date);
-        return matchDate >= sieteDiasAtras && matchDate <= now;
+        // Acepta tanto 'YYYY-MM-DD' como 'DD/MM/YYYY'
+        let matchDate;
+        if (m.match_date.includes('-')) {
+            const [y, mth, d] = m.match_date.split('-');
+            matchDate = new Date(Number(y), Number(mth) - 1, Number(d));
+        } else if (m.match_date.includes('/')) {
+            const [d, mth, y] = m.match_date.split('/');
+            matchDate = new Date(Number(y), Number(mth) - 1, Number(d));
+        } else {
+            return false;
+        }
+        return matchDate >= sieteDiasAtras && matchDate <= finDelDia;
     }).length;
     const pendientesEl = document.getElementById('count-pendientes');
     const recientesEl = document.getElementById('count-recientes');
@@ -179,44 +189,23 @@ document.addEventListener('DOMContentLoaded', () => {
     if (cardRecientes) {
         cardRecientes.addEventListener('click', () => {
             filterStatusSelect.value = 'completado';
-            // Filtro adicional: solo últimos 7 días
+            // Calcular fechas para los últimos 7 días
             const now = new Date();
             const sieteDiasAtras = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7);
-            // Guardar referencia original
-            const originalApplyFiltersAndSort = applyFiltersAndSort;
-            // Parche temporal para filtrar solo últimos 7 días
-            window.applyFiltersAndSort = function() {
-                let processedMatches = [...allMatches];
-                const tournamentFilter = filterTournamentSelect.value;
-                const statusFilter = filterStatusSelect.value;
-                const sedeFilter = filterSedeSelect.value;
-                const canchaFilter = filterCanchaSelect.value;
-                const searchTerm = normalizeText(searchInput.value.toLowerCase());
-                if (searchTerm) {
-                    processedMatches = processedMatches.filter(m => 
-                        (m.player1 && normalizeText(m.player1.name.toLowerCase()).includes(searchTerm)) || 
-                        (m.player2 && normalizeText(m.player2.name.toLowerCase()).includes(searchTerm))
-                    );
-                }
-                if (tournamentFilter) {
-                    processedMatches = processedMatches.filter(m => m.tournament_id == tournamentFilter);
-                }
-                if (sedeFilter) {
-                    processedMatches = processedMatches.filter(m => m.location && m.location.startsWith(sedeFilter));
-                }
-                if (canchaFilter) {
-                    processedMatches = processedMatches.filter(m => m.location && m.location.endsWith(canchaFilter));
-                }
-                if (statusFilter === 'completado') {
-                    processedMatches = processedMatches.filter(m => !!m.winner_id && new Date(m.match_date) >= sieteDiasAtras && new Date(m.match_date) <= now);
-                } else if (statusFilter === 'pendiente') {
-                    processedMatches = processedMatches.filter(m => !m.winner_id && m.status !== 'suspendido');
-                } else if (statusFilter === 'suspendido') {
-                    processedMatches = processedMatches.filter(m => m.status === 'suspendido');
-                }
-                renderMatches(processedMatches);
-                updateBulkActionBar();
-            };
+            // Formatear fechas para flatpickr y el input (dd/mm/yyyy)
+            const pad = n => n.toString().padStart(2, '0');
+            const formatDMY = d => `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`;
+            const desdeDMY = formatDMY(sieteDiasAtras);
+            const hastaDMY = formatDMY(now);
+            // Setear el filtro de fecha visualmente y en flatpickr
+            if (window.flatpickrInstance) {
+                window.flatpickrInstance.setDate([sieteDiasAtras, now], true);
+            } else {
+                const filterDateRange = document.getElementById('filter-date-range');
+                filterDateRange.value = `${desdeDMY} a ${hastaDMY}`;
+            }
+            // Guardar el rango en la variable global para el filtro
+            window.filterDateRangeSelected = [sieteDiasAtras, now];
             applyFiltersAndSort();
             cardRecientes.classList.add('ring-2', 'ring-green-400');
             cardPendientes.classList.remove('ring-2', 'ring-yellow-400');
@@ -1190,13 +1179,19 @@ matchesContainer.addEventListener('click', (e) => {
 matchesContainer.addEventListener('change', (e) => {
     if (e.target.id === 'select-all-matches') {
         const isChecked = e.target.checked;
+        // Solo seleccionar los partidos actualmente visibles en la tabla
         const visibleRows = Array.from(matchesContainer.querySelectorAll('tr[data-match-id]'));
+        selectedMatches.clear();
         visibleRows.forEach(r => {
             const cb = r.querySelector('.match-checkbox');
             cb.checked = isChecked;
             const id = Number(cb.dataset.id);
-            isChecked ? selectedMatches.add(id) : selectedMatches.delete(id);
-            r.classList.toggle('bg-yellow-50', isChecked);
+            if (isChecked) {
+                selectedMatches.add(id);
+                r.classList.add('bg-yellow-50');
+            } else {
+                r.classList.remove('bg-yellow-50');
+            }
         });
         updateBulkActionBar();
     }
@@ -1204,7 +1199,6 @@ matchesContainer.addEventListener('change', (e) => {
 
 // Listeners para la barra de acciones
 document.getElementById('bulk-delete').addEventListener('click', handleBulkDelete);
-document.getElementById('bulk-program').addEventListener('click', handleBulkProgram);
 document.getElementById('bulk-report').addEventListener('click', handleBulkReport);
 document.getElementById('btn-import-excel').addEventListener('click', () => {
     // Obtener todas las categorías únicas de los torneos

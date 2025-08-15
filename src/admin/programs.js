@@ -1,6 +1,7 @@
+// Archivo eliminado: la gestión de programas ya no está disponible.
 import { renderHeader } from '../common/header.js';
 import { requireRole } from '../common/router.js';
-import { supabase } from '../common/supabase.js'; // <-- ¡RUTA CORREGIDA!
+import { supabase } from '../common/supabase.js';
 
 requireRole('admin');
 
@@ -16,7 +17,6 @@ const btnCancel = document.getElementById('btn-cancel');
 const programsList = document.getElementById('programs-list');
 
 // --- Carga de Datos ---
-
 async function populateMatches() {
     const { data, error } = await supabase
         .from('matches')
@@ -24,65 +24,64 @@ async function populateMatches() {
         .order('match_date', { ascending: true });
 
     if (error) {
-        console.error("Error al cargar partidos:", error);
-        matchesSelect.innerHTML = '<option disabled>Error al cargar</option>';
+        matchesSelect.innerHTML = '<option disabled>Error al cargar partidos</option>';
         return;
     }
-
-    matchesSelect.innerHTML = '';
-    data.forEach(match => {
-        const date = new Date(match.match_date).toLocaleDateString('es-AR');
-        matchesSelect.innerHTML += `<option value="${match.id}">${date} - ${match.player1.name} vs ${match.player2.name}</option>`;
-    });
+    matchesSelect.innerHTML = data.map(match => {
+        const date = new Date(match.match_date + 'T00:00:00').toLocaleDateString('es-AR');
+        return `<option value="${match.id}">${date} - ${match.player1.name} vs ${match.player2.name}</option>`;
+    }).join('');
 }
 
 // --- Renderizado ---
-
 async function renderPrograms() {
-    programsList.innerHTML = '<p>Cargando programas...</p>';
-    
-    const { data, error } = await supabase
-        .from('programs')
-        .select(`*`)
-        .order('created_at', { ascending: false });
+    programsList.innerHTML = '<p class="col-span-full text-center">Cargando programas...</p>';
+    const { data, error } = await supabase.from('programs').select(`*`).order('created_at', { ascending: false });
 
     if (error) {
-        programsList.innerHTML = '<p class="text-red-500">No se pudieron cargar los programas.</p>';
+        programsList.innerHTML = '<p class="col-span-full text-red-500">No se pudieron cargar los programas.</p>';
         return;
     }
-
     if (data.length === 0) {
-        programsList.innerHTML = '<p class="text-center text-gray-500 py-4">No hay programas creados.</p>';
+        programsList.innerHTML = '<p class="col-span-full text-center text-gray-500 py-4">No hay programas creados.</p>';
         return;
     }
-
-    programsList.innerHTML = data.map(program => `
-        <div class="flex justify-between items-center p-3 rounded-lg hover:bg-gray-50">
+    programsList.innerHTML = data.map(program => {
+        const adminUrl = `${window.location.origin}/src/admin/program-admin.html?id=${program.id}`;
+        const publicUrl = `${window.location.origin}/src/admin/program-public.html?id=${program.id}`;
+        return `
+        <div class="bg-white rounded-xl shadow-lg border p-5 flex flex-col justify-between gap-4">
             <div>
-                <p class="font-semibold text-gray-800">${program.title}</p>
-                <p class="text-sm text-gray-500">${program.match_ids?.length || 0} partidos incluidos</p>
+                <p class="font-bold text-lg text-gray-800">${program.title}</p>
+                <p class="text-sm text-gray-500">${program.match_ids?.length || 0} partidos</p>
             </div>
-            <div class="flex items-center gap-2">
-                <button data-action="edit" data-program='${JSON.stringify(program)}' class="text-blue-600 hover:text-blue-800 p-1">
-                    <span class="material-icons text-base">edit</span>
-                </button>
-                <button data-action="delete" data-id="${program.id}" class="text-red-600 hover:text-red-800 p-1">
-                    <span class="material-icons text-base">delete</span>
-                </button>
+            <div class="border-t pt-4 flex flex-col gap-2">
+                <a href="${adminUrl}" target="_blank" class="btn btn-primary w-full !justify-start !text-sm !py-2">
+                    <span class="material-icons">edit_square</span> Vista Admin
+                </a>
+                <div class="flex gap-2">
+                    <button data-action="copy-public" data-url="${publicUrl}" class="btn btn-secondary w-full !text-sm !py-2" title="Copiar enlace público">
+                        <span class="material-icons">link</span> Público
+                    </button>
+                    <button data-action="edit" data-program='${JSON.stringify(program)}' class="btn btn-secondary !p-2" title="Editar Programa">
+                        <span class="material-icons">edit</span>
+                    </button>
+                    <button data-action="delete" data-id="${program.id}" class="btn btn-secondary !p-2 !text-red-600" title="Eliminar Programa">
+                        <span class="material-icons">delete</span>
+                    </button>
+                </div>
             </div>
         </div>
-    `).join('');
+    `}).join('');
 }
 
-// --- Formulario ---
-
+// --- Lógica del Formulario ---
 function resetForm() {
     form.reset();
     programIdInput.value = '';
-    formTitle.textContent = 'Añadir Nuevo Programa';
+    formTitle.textContent = 'Crear Nuevo Programa';
     btnSave.textContent = 'Guardar Programa';
     btnCancel.classList.add('hidden');
-    // Deseleccionar todas las opciones en el select múltiple
     Array.from(matchesSelect.options).forEach(option => option.selected = false);
 }
 
@@ -97,24 +96,13 @@ async function handleFormSubmit(e) {
         alert("El título y al menos un partido son obligatorios.");
         return;
     }
-
-    const programData = { title, slug, match_ids };
-
-    let error;
-    if (id) {
-        const { error: updateError } = await supabase.from('programs').update(programData).eq('id', id);
-        error = updateError;
-    } else {
-        const { error: insertError } = await supabase.from('programs').insert([programData]);
-        error = insertError;
-    }
+    const programData = { title, slug, match_ids, confirmations: {} }; // Inicializa confirmations vacío
+    const { error } = id
+        ? await supabase.from('programs').update(programData).eq('id', id)
+        : await supabase.from('programs').insert([programData]);
 
     if (error) {
-        if (error.message && error.message.includes('duplicate key value') && error.message.includes('programs_slug_key')) {
-            alert('Ese nombre de programa ya existe, prueba con uno nuevo.');
-        } else {
-            alert(`Error al guardar el programa: ${error.message}`);
-        }
+        alert(`Error al guardar el programa: ${error.message}`);
     } else {
         resetForm();
         await renderPrograms();
@@ -122,7 +110,6 @@ async function handleFormSubmit(e) {
 }
 
 // --- Event Listeners ---
-
 document.addEventListener('DOMContentLoaded', async () => {
     header.innerHTML = renderHeader();
     await populateMatches();
@@ -142,12 +129,9 @@ programsList.addEventListener('click', async (e) => {
         const program = JSON.parse(button.dataset.program);
         programIdInput.value = program.id;
         programTitleInput.value = program.title;
-        
-        // Seleccionar los partidos correspondientes
         Array.from(matchesSelect.options).forEach(option => {
             option.selected = program.match_ids?.includes(Number(option.value));
         });
-        
         formTitle.textContent = 'Editar Programa';
         btnSave.textContent = 'Actualizar Programa';
         btnCancel.classList.remove('hidden');
@@ -157,12 +141,17 @@ programsList.addEventListener('click', async (e) => {
     if (action === 'delete') {
         const id = button.dataset.id;
         if (confirm('¿Está seguro de que desea eliminar este programa?')) {
-            const { error } = await supabase.from('programs').delete().eq('id', id);
-            if (error) {
-                alert('Error al eliminar el programa.');
-            } else {
-                await renderPrograms();
-            }
+            await supabase.from('programs').delete().eq('id', id);
+            await renderPrograms();
         }
+    }
+
+    if (action === 'copy-public' || action === 'copy-admin') {
+        const url = button.dataset.url;
+        navigator.clipboard.writeText(url).then(() => {
+            alert('¡Enlace copiado al portapapeles!');
+        }).catch(err => {
+            alert('Error al copiar el enlace.');
+        });
     }
 });
