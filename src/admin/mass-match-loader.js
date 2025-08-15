@@ -144,7 +144,6 @@ export function setupMassMatchLoader({
       btnAddRow.style.fontWeight = 'bold';
       headerContainer.appendChild(btnAddRow);
   }
-
   if (!btnSave) {
       btnSave = document.createElement('button');
       btnSave.innerHTML = `💾 Guardar Partidos`;
@@ -160,7 +159,6 @@ export function setupMassMatchLoader({
   }
   
   container.prepend(headerContainer);
-
 
 
   // --- OPCIONES CACHEADAS ---
@@ -325,8 +323,11 @@ export function setupMassMatchLoader({
 
     let inputElement;
 
-  // Función para guardar cambios
+  // Función para guardar cambios (solo una vez)
+  let saveChangeCalled = false;
   const saveChange = () => {
+    if (saveChangeCalled) return;
+    saveChangeCalled = true;
     if (!cell.classList.contains('is-editing')) return;
     const newValue = inputElement.value;
     const matchIndex = matchesData.findIndex(m => m.clientId == rowId);
@@ -355,7 +356,11 @@ export function setupMassMatchLoader({
       } else if (field === 'player1_id' || field === 'player2_id') {
         const playerIds = tournamentPlayersMap.get(Number(match.tournament_id)) || new Set();
         const players = allPlayers.filter(p => playerIds.has(p.id));
-        inputElement.innerHTML = '<option value="">Seleccionar</option>' + players.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+        let excludeId = null;
+        if (field === 'player1_id') excludeId = match.player2_id;
+        if (field === 'player2_id') excludeId = match.player1_id;
+        const filteredPlayers = excludeId ? players.filter(p => String(p.id) !== String(excludeId)) : players;
+        inputElement.innerHTML = '<option value="">Seleccionar</option>' + filteredPlayers.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
         inputElement.value = match[field] || '';
       } else if (field === 'sede') {
         inputElement.innerHTML = sedeOptionsHTML;
@@ -495,7 +500,6 @@ export function setupMassMatchLoader({
     if (cell) makeCellEditable(cell);
   });
 
-  // --- BOTÓN CREAR PARTIDO AGREGA FILA ---
   btnAddRow.addEventListener('click', addRow);
   btnSave.addEventListener('click', saveAllMatches);
   

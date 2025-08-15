@@ -967,12 +967,27 @@ btnShowForm.addEventListener('click', () => {
     // Oculta el formulario Excel-like
     if (formContainer) formContainer.classList.add('hidden');
     const massLoaderContainer = document.getElementById('mass-match-loader-container');
-    const btnAddRow = document.getElementById('btn-add-mass-row');
-    const btnSave = document.getElementById('btn-save-mass-matches');
     if (!showFormOpen) {
-        // Abrir modal
-        if (massLoaderContainer && btnAddRow && btnSave) {
+        // Abrir modal y crear botones dinámicamente si no existen
+        if (massLoaderContainer) {
             massLoaderContainer.classList.remove('hidden');
+            // Crear botones y contenedor si no existen
+            let btnAddRow = document.getElementById('btn-add-mass-row');
+            let btnSave = document.getElementById('btn-save-mass-matches');
+            if (!btnAddRow) {
+                btnAddRow = document.createElement('button');
+                btnAddRow.id = 'btn-add-mass-row';
+                btnAddRow.className = 'btn btn-secondary';
+                btnAddRow.textContent = 'Agregar Fila';
+                massLoaderContainer.prepend(btnAddRow);
+            }
+            if (!btnSave) {
+                btnSave = document.createElement('button');
+                btnSave.id = 'btn-save-mass-matches';
+                btnSave.className = 'btn btn-primary';
+                btnSave.textContent = 'Guardar Partidos';
+                massLoaderContainer.prepend(btnSave);
+            }
             setupMassMatchLoader({
                 container: massLoaderContainer,
                 btnAddRow,
