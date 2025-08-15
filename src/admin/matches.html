@@ -148,13 +148,15 @@
           <span class="material-icons text-gray-400 ml-2">event</span>
           <input type="text" id="filter-date-range" class="input-field border-0 focus:ring-0 bg-transparent !w-auto !py-1" placeholder="Rango de fechas" autocomplete="off" style="min-width:120px;">
         </div>
-        <button id="btn-clear-all-filters" class="ml-2 px-3 py-1 rounded bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-300 text-xs font-semibold transition" type="button">Limpiar filtros</button>
+        <button id="btn-clear-all-filters" class="ml-2 px-4 py-2 rounded-lg bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 shadow-sm text-sm font-semibold flex items-center gap-2 transition" type="button">
+          <span class="material-icons text-base align-middle">close</span>
+          Limpiar filtros
+        </button>
       </div>
       </div>
         </div>
       </div>
-      <div class="content-container max-w-7xl mx-auto">
-        
+      <div class="content-container max-w-7xl mx-auto mt-[-50px]">
       <div class="bg-white p-6 rounded-xl shadow-lg">
         <!-- Filtros aquí (sin cambios) -->
         <div id="matches-container" class="overflow-x-auto mt-4"></div>
