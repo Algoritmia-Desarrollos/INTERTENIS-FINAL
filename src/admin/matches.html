@@ -16,7 +16,7 @@
 <body class="bg-gray-50 text-gray-800">
   <header id="header"></header>
   <main class="flex-1 py-8">
-    <div class="content-container max-w-7xl mx-auto space-y-8">
+  <div class="content-container max-w-7xl mx-auto space-y-8">
       <div class="flex flex-wrap justify-between items-center gap-4">
         <h1 class="text-3xl font-bold text-gray-900">Gestión de Partidos</h1>
       </div>
@@ -139,13 +139,26 @@
                     <option value="Cancha 6">Cancha 6</option>
                 </select>
             </div>
-            <div class="relative">
-                <span class="material-icons absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">search</span>
-                <input type="text" id="search-player" class="input-field !pl-10" placeholder="Buscar por jugador...">
-            </div>
+      <div class="flex flex-row gap-4 items-center w-full">
+        <div class="flex-1 flex items-center bg-white rounded-lg shadow-sm border border-gray-200 px-2 py-1 gap-2 min-w-[200px]">
+          <span class="material-icons text-gray-400 ml-1">search</span>
+          <input type="text" id="search-player" class="input-field border-0 focus:ring-0 !pl-2 !py-1 bg-transparent" placeholder="Buscar por jugador..." style="min-width:120px;">
         </div>
-        <div id="matches-container" class="overflow-x-auto">
-          </div>
+        <div class="flex items-center bg-white rounded-lg shadow-sm border border-gray-200 px-2 py-1 gap-2 min-w-[200px]">
+          <span class="material-icons text-gray-400 ml-2">event</span>
+          <input type="text" id="filter-date-range" class="input-field border-0 focus:ring-0 bg-transparent !w-auto !py-1" placeholder="Rango de fechas" autocomplete="off" style="min-width:120px;">
+        </div>
+        <button id="btn-clear-all-filters" class="ml-2 px-3 py-1 rounded bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-300 text-xs font-semibold transition" type="button">Limpiar filtros</button>
+      </div>
+      </div>
+        </div>
+      </div>
+      <div class="content-container max-w-7xl mx-auto">
+        
+      <div class="bg-white p-6 rounded-xl shadow-lg">
+        <!-- Filtros aquí (sin cambios) -->
+        <div id="matches-container" class="overflow-x-auto mt-4"></div>
+      </div>
       </div>
 
     </div>

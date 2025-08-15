@@ -92,6 +92,54 @@ function updateSummaryCards() {
 
 // Listeners para las tarjetas resumen
 document.addEventListener('DOMContentLoaded', () => {
+    // Flatpickr para filtro de rango de fechas
+    window.filterDateRangeSelected = [];
+    function setupFlatpickrRange() {
+        if (window.flatpickr) {
+            flatpickr('#filter-date-range', {
+                mode: 'range',
+                dateFormat: 'd/m/Y',
+                allowInput: true,
+                locale: 'es',
+                onChange: function(selectedDates) {
+                    window.filterDateRangeSelected = selectedDates;
+                    applyFiltersAndSort();
+                }
+            });
+        } else {
+            const link = document.createElement('link');
+            link.rel = 'stylesheet';
+            link.href = 'https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css';
+            document.head.appendChild(link);
+            const script = document.createElement('script');
+            script.src = 'https://cdn.jsdelivr.net/npm/flatpickr';
+            script.onload = setupFlatpickrRange;
+            document.body.appendChild(script);
+        }
+    }
+    setupFlatpickrRange();
+    // Filtro por rango de fechas (un solo input)
+    const filterDateRange = document.getElementById('filter-date-range');
+    // Botón limpiar todos los filtros
+    const btnClearAllFilters = document.getElementById('btn-clear-all-filters');
+    if (btnClearAllFilters) {
+        btnClearAllFilters.addEventListener('click', () => {
+            // Limpiar selects
+            filterTournamentSelect.value = '';
+            filterStatusSelect.value = '';
+            filterSedeSelect.value = '';
+            filterCanchaSelect.value = '';
+            // Limpiar búsqueda
+            searchInput.value = '';
+            // Limpiar fecha
+            if (window.flatpickr && window.flatpickrInstance) {
+                window.flatpickrInstance.clear();
+            }
+            document.getElementById('filter-date-range').value = '';
+            window.filterDateRangeSelected = [];
+            applyFiltersAndSort();
+        });
+    }
     const cardPendientes = document.getElementById('card-pendientes');
     const cardRecientes = document.getElementById('card-recientes');
     if (cardPendientes) {
@@ -214,6 +262,22 @@ function updatePlayerSelectsInForm() {
 // --- Renderizado, Filtros y Ordenamiento ---
 function applyFiltersAndSort() {
     let processedMatches = [...allMatches];
+    const filterDateRange = document.getElementById('filter-date-range');
+    let fromDate = null, toDate = null;
+    if (window.filterDateRangeSelected && Array.isArray(window.filterDateRangeSelected) && window.filterDateRangeSelected.length === 2) {
+        fromDate = window.filterDateRangeSelected[0];
+        toDate = window.filterDateRangeSelected[1];
+    } else if (filterDateRange && filterDateRange.value) {
+        // fallback por si recargan y flatpickr no inicializó el array
+        const parts = filterDateRange.value.split(' a ');
+        if (parts.length === 2) {
+            const [from, to] = parts;
+            const [d1, m1, y1] = from.split('/');
+            const [d2, m2, y2] = to.split('/');
+            fromDate = new Date(Number(y1), Number(m1) - 1, Number(d1));
+            toDate = new Date(Number(y2), Number(m2) - 1, Number(d2));
+        }
+    }
     const tournamentFilter = filterTournamentSelect.value;
     const statusFilter = filterStatusSelect.value;
     const sedeFilter = filterSedeSelect.value;
@@ -225,6 +289,26 @@ function applyFiltersAndSort() {
             (m.player1 && normalizeText(m.player1.name.toLowerCase()).includes(searchTerm)) || 
             (m.player2 && normalizeText(m.player2.name.toLowerCase()).includes(searchTerm))
         );
+    }
+    // Filtro por rango de fechas
+    if (fromDate || toDate) {
+        processedMatches = processedMatches.filter(m => {
+            if (!m.match_date) return false;
+            // Acepta tanto 'YYYY-MM-DD' como 'DD/MM/YYYY'
+            let matchDate;
+            if (m.match_date.includes('-')) {
+                const [y, mth, d] = m.match_date.split('-');
+                matchDate = new Date(Number(y), Number(mth) - 1, Number(d));
+            } else if (m.match_date.includes('/')) {
+                const [d, mth, y] = m.match_date.split('/');
+                matchDate = new Date(Number(y), Number(mth) - 1, Number(d));
+            } else {
+                return false;
+            }
+            if (fromDate && matchDate < fromDate) return false;
+            if (toDate && matchDate > toDate) return false;
+            return true;
+        });
     }
     if (tournamentFilter) {
         processedMatches = processedMatches.filter(m => m.tournament_id == tournamentFilter);
@@ -578,7 +662,11 @@ async function handleCreateMatchSubmit(e) {
     }
     const { error } = await supabase.from('matches').insert([matchData]);
     if (error) {
-        alert(`Error al crear el partido: ${error.message}`);
+        if (error.message && error.message.includes('duplicate key value') && error.message.includes('nombre de programa ya existente')) {
+            alert('Ese nombre de programa ya existe, prueba con uno nuevo.');
+        } else {
+            alert(`Error al crear el partido: ${error.message}`);
+        }
     } else {
         player1SelectForm.value = "";
         player2SelectForm.value = "";

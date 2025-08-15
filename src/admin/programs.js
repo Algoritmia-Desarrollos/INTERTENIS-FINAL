@@ -110,7 +110,11 @@ async function handleFormSubmit(e) {
     }
 
     if (error) {
-        alert(`Error al guardar el programa: ${error.message}`);
+        if (error.message && error.message.includes('duplicate key value') && error.message.includes('programs_slug_key')) {
+            alert('Ese nombre de programa ya existe, prueba con uno nuevo.');
+        } else {
+            alert(`Error al guardar el programa: ${error.message}`);
+        }
     } else {
         resetForm();
         await renderPrograms();
