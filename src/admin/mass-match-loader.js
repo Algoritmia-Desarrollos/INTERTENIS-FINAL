@@ -323,65 +323,65 @@ export function setupMassMatchLoader({
 
     let inputElement;
 
-    // Función para guardar cambios
-    const saveChange = () => {
-        if (!cell.classList.contains('is-editing')) return;
-        const newValue = inputElement.value;
-        const matchIndex = matchesData.findIndex(m => m.clientId == rowId);
-        if (matchIndex > -1) {
-            matchesData[matchIndex][field] = newValue;
-            if (field === 'tournament_id') {
-                matchesData[matchIndex].player1_id = null;
-                matchesData[matchIndex].player2_id = null;
-                renderTable(); return;
-            }
-            let displayValue = newValue;
-            if (inputElement.tagName === 'SELECT') {
-                displayValue = inputElement.options[inputElement.selectedIndex]?.text || '---';
-            }
-            cell.innerHTML = displayValue || '---';
-        }
-        cell.classList.remove('is-editing');
-    };
-
-    switch (field) {
-        case 'tournament_id': case 'player1_id': case 'player2_id': case 'sede': case 'cancha':
-            inputElement = document.createElement('select');
-            if (field === 'tournament_id') {
-                inputElement.innerHTML = tournamentOptionsHTML;
-                inputElement.value = match.tournament_id || '';
-            } else if (field === 'player1_id' || field === 'player2_id') {
-                const playerIds = tournamentPlayersMap.get(Number(match.tournament_id)) || new Set();
-                const players = allPlayers.filter(p => playerIds.has(p.id));
-                inputElement.innerHTML = '<option value="">Seleccionar</option>' + players.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
-                inputElement.value = match[field] || '';
-            } else if (field === 'sede') {
-                inputElement.innerHTML = sedeOptionsHTML;
-                inputElement.value = match.sede || '';
-            } else if (field === 'cancha') {
-                inputElement.innerHTML = canchaOptionsHTML;
-                inputElement.value = match.cancha || '';
-            }
-            break;
-        
-    case 'match_time':
-      inputElement = document.createElement('select');
-      inputElement.className = 'editing-input';
-      inputElement.style.color = 'black';
-      inputElement.style.background = 'white';
-      // Generar opciones de 08:00 a 22:45 cada 15 minutos
-      let options = '<option value="">Seleccionar</option>';
-      for (let h = 8; h <= 22; h++) {
-        for (let m = 0; m < 60; m += 15) {
-          let hour = h.toString().padStart(2, '0');
-          let min = m.toString().padStart(2, '0');
-          let value = `${hour}:${min}`;
-          options += `<option value="${value}">${value}</option>`;
-        }
+  // Función para guardar cambios
+  const saveChange = () => {
+    if (!cell.classList.contains('is-editing')) return;
+    const newValue = inputElement.value;
+    const matchIndex = matchesData.findIndex(m => m.clientId == rowId);
+    if (matchIndex > -1) {
+      matchesData[matchIndex][field] = newValue;
+      if (field === 'tournament_id') {
+        matchesData[matchIndex].player1_id = null;
+        matchesData[matchIndex].player2_id = null;
+        renderTable(); return;
       }
-      inputElement.innerHTML = options;
-      inputElement.value = match.match_time || '';
+      let displayValue = newValue;
+      if (inputElement.tagName === 'SELECT') {
+        displayValue = inputElement.options[inputElement.selectedIndex]?.text || '---';
+      }
+      cell.innerHTML = displayValue || '---';
+    }
+    cell.classList.remove('is-editing');
+  };
+
+  switch (field) {
+    case 'tournament_id': case 'player1_id': case 'player2_id': case 'sede': case 'cancha':
+      inputElement = document.createElement('select');
+      if (field === 'tournament_id') {
+        inputElement.innerHTML = tournamentOptionsHTML;
+        inputElement.value = match.tournament_id || '';
+      } else if (field === 'player1_id' || field === 'player2_id') {
+        const playerIds = tournamentPlayersMap.get(Number(match.tournament_id)) || new Set();
+        const players = allPlayers.filter(p => playerIds.has(p.id));
+        inputElement.innerHTML = '<option value="">Seleccionar</option>' + players.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+        inputElement.value = match[field] || '';
+      } else if (field === 'sede') {
+        inputElement.innerHTML = sedeOptionsHTML;
+        inputElement.value = match.sede || '';
+      } else if (field === 'cancha') {
+        inputElement.innerHTML = canchaOptionsHTML;
+        inputElement.value = match.cancha || '';
+      }
       break;
+        
+  case 'match_time':
+    inputElement = document.createElement('select');
+    inputElement.className = 'editing-input';
+    inputElement.style.color = 'black';
+    inputElement.style.background = 'white';
+    // Generar opciones de 08:00 a 22:45 cada 15 minutos
+    let options = '<option value="">Seleccionar</option>';
+    for (let h = 8; h <= 22; h++) {
+    for (let m = 0; m < 60; m += 15) {
+      let hour = h.toString().padStart(2, '0');
+      let min = m.toString().padStart(2, '0');
+      let value = `${hour}:${min}`;
+      options += `<option value="${value}">${value}</option>`;
+    }
+    }
+    inputElement.innerHTML = options;
+    inputElement.value = match.match_time || '';
+    break;
 
         case 'match_date':
             inputElement = document.createElement('input');
@@ -427,30 +427,37 @@ export function setupMassMatchLoader({
   inputElement.className = 'editing-input';
   inputElement.style.color = 'black';
   inputElement.style.background = 'white';
-    cell.appendChild(inputElement);
-    inputElement.focus();
-    
-    // MEJORA: Abrir el selector de hora automáticamente
-    if ((inputElement.tagName === 'SELECT' || inputElement.type === 'time') && typeof inputElement.showPicker === 'function') {
-        setTimeout(() => inputElement.showPicker(), 0);
-    }
-    
-    inputElement.addEventListener('blur', saveChange);
-    inputElement.addEventListener('keydown', e => {
-        if (e.key === 'Enter' || e.key === 'Tab') { e.preventDefault(); inputElement.blur(); } 
-        else if (e.key === 'Escape') { cell.innerHTML = originalContent; cell.classList.remove('is-editing'); }
+  cell.appendChild(inputElement);
+  inputElement.focus();
+
+  // MEJORA: Abrir el selector de hora automáticamente
+  if ((inputElement.tagName === 'SELECT' || inputElement.type === 'time') && typeof inputElement.showPicker === 'function') {
+      setTimeout(() => inputElement.showPicker(), 0);
+  }
+
+  // Confirmar selección automáticamente al elegir una opción en <select>
+  if (inputElement.tagName === 'SELECT') {
+    inputElement.addEventListener('change', () => {
+      saveChange();
     });
-      // Restaurar comportamiento estándar del select, pero forzar apertura hacia abajo solo con CSS moderno
-      if (inputElement.tagName === 'SELECT') {
-        inputElement.style.color = 'black';
-        inputElement.style.background = 'white';
-        inputElement.style.direction = 'ltr';
-        // CSS para forzar apertura hacia abajo en navegadores modernos
-        inputElement.style.position = '';
-        inputElement.style.zIndex = '';
-        inputElement.style.boxShadow = '';
-        setTimeout(() => inputElement.focus(), 0);
-      }
+  }
+
+  inputElement.addEventListener('blur', saveChange);
+  inputElement.addEventListener('keydown', e => {
+      if (e.key === 'Enter' || e.key === 'Tab') { e.preventDefault(); inputElement.blur(); } 
+      else if (e.key === 'Escape') { cell.innerHTML = originalContent; cell.classList.remove('is-editing'); }
+  });
+  // Restaurar comportamiento estándar del select, pero forzar apertura hacia abajo solo con CSS moderno
+  if (inputElement.tagName === 'SELECT') {
+    inputElement.style.color = 'black';
+    inputElement.style.background = 'white';
+    inputElement.style.direction = 'ltr';
+    // CSS para forzar apertura hacia abajo en navegadores modernos
+    inputElement.style.position = '';
+    inputElement.style.zIndex = '';
+    inputElement.style.boxShadow = '';
+    setTimeout(() => inputElement.focus(), 0);
+  }
   }
 
   // --- OPERACIONES DE FILA ---
