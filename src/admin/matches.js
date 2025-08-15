@@ -96,16 +96,21 @@ document.addEventListener('DOMContentLoaded', () => {
     window.filterDateRangeSelected = [];
     function setupFlatpickrRange() {
         if (window.flatpickr) {
-            flatpickr('#filter-date-range', {
-                mode: 'range',
-                dateFormat: 'd/m/Y',
-                allowInput: true,
-                locale: 'es',
-                onChange: function(selectedDates) {
-                    window.filterDateRangeSelected = selectedDates;
-                    applyFiltersAndSort();
-                }
-            });
+                        window.flatpickrInstance = flatpickr('#filter-date-range', {
+                                mode: 'range',
+                                dateFormat: 'd/m/Y',
+                                altInput: true,
+                                altFormat: 'd/m',
+                                allowInput: true,
+                                locale: {
+                                    ...flatpickr.l10ns.es,
+                                    rangeSeparator: ' a '
+                                },
+                                onChange: function(selectedDates) {
+                                        window.filterDateRangeSelected = selectedDates;
+                                        applyFiltersAndSort();
+                                }
+                        });
         } else {
             const link = document.createElement('link');
             link.rel = 'stylesheet';
@@ -122,23 +127,44 @@ document.addEventListener('DOMContentLoaded', () => {
     const filterDateRange = document.getElementById('filter-date-range');
     // Botón limpiar todos los filtros
     const btnClearAllFilters = document.getElementById('btn-clear-all-filters');
+    function anyFilterActive() {
+        return (
+            filterTournamentSelect.value ||
+            filterStatusSelect.value ||
+            filterSedeSelect.value ||
+            filterCanchaSelect.value ||
+            searchInput.value ||
+            document.getElementById('filter-date-range').value
+        );
+    }
+    function updateClearFiltersBtn() {
+        if (btnClearAllFilters) {
+            if (anyFilterActive()) {
+                btnClearAllFilters.classList.remove('hidden');
+            } else {
+                btnClearAllFilters.classList.add('hidden');
+            }
+        }
+    }
     if (btnClearAllFilters) {
         btnClearAllFilters.addEventListener('click', () => {
-            // Limpiar selects
             filterTournamentSelect.value = '';
             filterStatusSelect.value = '';
             filterSedeSelect.value = '';
             filterCanchaSelect.value = '';
-            // Limpiar búsqueda
             searchInput.value = '';
-            // Limpiar fecha
             if (window.flatpickr && window.flatpickrInstance) {
                 window.flatpickrInstance.clear();
             }
             document.getElementById('filter-date-range').value = '';
             window.filterDateRangeSelected = [];
             applyFiltersAndSort();
+            updateClearFiltersBtn();
         });
+        [filterTournamentSelect, filterStatusSelect, filterSedeSelect, filterCanchaSelect, searchInput, document.getElementById('filter-date-range')].forEach(el => {
+            el.addEventListener('input', updateClearFiltersBtn);
+        });
+        updateClearFiltersBtn();
     }
     const cardPendientes = document.getElementById('card-pendientes');
     const cardRecientes = document.getElementById('card-recientes');
@@ -400,8 +426,8 @@ function renderMatches(matchesToRender) {
                         </td>
                         <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">${match.category.name}</td>
                         <td class="px-4 py-3 text-center">
-                            <button class="text-white bg-blue-600 hover:bg-blue-700 border border-blue-700 rounded-full px-2 py-1 transition-colors duration-150 shadow-md focus:outline-none focus:ring-2 focus:ring-blue-400 flex items-center justify-center" data-action="edit" style="min-width: 32px; min-height: 32px; width: 32px; height: 32px;">
-                                <span class="material-icons" style="font-size: 18px;">edit</span>
+                            <button class="p-1 hover:bg-gray-100 rounded transition" data-action="edit" title="Editar / Cargar Resultado">
+                                <span class="material-icons text-blue-600" style="font-size: 22px;">edit</span>
                             </button>
                         </td>
                     </tr>
