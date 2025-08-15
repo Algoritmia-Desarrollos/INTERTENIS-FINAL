@@ -391,39 +391,50 @@ export function setupMassMatchLoader({
     break;
 
         case 'match_date':
-            inputElement = document.createElement('input');
-            inputElement.type = 'text';
-            inputElement.placeholder = 'Seleccionar fecha...';
-            cell.appendChild(inputElement);
-            
-            function openCalendar() {
-                const fp = flatpickr(inputElement, {
-                    dateFormat: 'd/m/Y', allowInput: true,
-                    defaultDate: match.match_date || 'today',
-                    onClose: (selectedDates, dateStr, instance) => {
-                        const finalValue = instance.input.value;
-                        const matchIndex = matchesData.findIndex(m => m.clientId == rowId);
-                        if (matchIndex > -1) matchesData[matchIndex].match_date = finalValue;
-                        cell.innerHTML = finalValue || '---';
-                        cell.classList.remove('is-editing');
-                    }
-                });
-                fp.open();
-            }
+      inputElement = document.createElement('input');
+      inputElement.type = 'text';
+      inputElement.placeholder = 'Seleccionar fecha...';
+      // Evitar que el input expanda la celda
+      inputElement.style.width = '100%';
+      inputElement.style.height = '100%';
+      inputElement.style.boxSizing = 'border-box';
+      inputElement.style.fontSize = 'inherit';
+      inputElement.style.fontFamily = 'inherit';
+      inputElement.style.background = 'white';
+      inputElement.style.border = 'none';
+      inputElement.style.outline = 'none';
+      inputElement.style.padding = '0 2px';
+      inputElement.style.margin = '0';
+      cell.appendChild(inputElement);
 
-            if (window.flatpickr) {
-                openCalendar();
-            } else {
-                const link = document.createElement('link');
-                link.rel = 'stylesheet';
-                link.href = 'https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css';
-                document.head.appendChild(link);
-                const script = document.createElement('script');
-                script.src = 'https://cdn.jsdelivr.net/npm/flatpickr';
-                script.onload = openCalendar;
-                document.body.appendChild(script);
-            }
-            return; // Evitar listeners genéricos
+      function openCalendar() {
+        const fp = flatpickr(inputElement, {
+          dateFormat: 'd/m/Y', allowInput: true,
+          defaultDate: match.match_date || 'today',
+          onClose: (selectedDates, dateStr, instance) => {
+            const finalValue = instance.input.value;
+            const matchIndex = matchesData.findIndex(m => m.clientId == rowId);
+            if (matchIndex > -1) matchesData[matchIndex].match_date = finalValue;
+            cell.innerHTML = finalValue || '---';
+            cell.classList.remove('is-editing');
+          }
+        });
+        fp.open();
+      }
+
+      if (window.flatpickr) {
+        openCalendar();
+      } else {
+        const link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = 'https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css';
+        document.head.appendChild(link);
+        const script = document.createElement('script');
+        script.src = 'https://cdn.jsdelivr.net/npm/flatpickr';
+        script.onload = openCalendar;
+        document.body.appendChild(script);
+      }
+      return; // Evitar listeners genéricos
 
         default:
             cell.innerHTML = originalContent;
