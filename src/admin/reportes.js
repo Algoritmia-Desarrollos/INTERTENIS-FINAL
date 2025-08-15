@@ -1,4 +1,5 @@
 import { renderHeader } from '../common/header.js';
+import { supabase } from '../common/supabase.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     // 1. Renderizar el encabezado (se ocultará al imprimir)
@@ -6,10 +7,10 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // 2. Obtener y procesar los datos de los partidos
     const reportData = JSON.parse(localStorage.getItem('reportMatches') || '[]');
-    const reportContent = document.getElementById('report-content');
+    const pagesContainer = document.getElementById('report-pages-container');
     
     if (reportData.length === 0) {
-        reportContent.innerHTML = '<p class="text-center text-gray-500 py-10">No hay partidos para el reporte. Vuelve a la página anterior y selecciona los que desees incluir.</p>';
+        pagesContainer.innerHTML = '<p class="text-center text-gray-500 py-10">No hay partidos para el reporte. Vuelve a la página anterior y selecciona los que desees incluir.</p>';
         return;
     }
 
@@ -17,86 +18,131 @@ document.addEventListener('DOMContentLoaded', () => {
     const groupedMatches = reportData.reduce((acc, match) => {
         const date = match.date;
         const sede = match.location ? match.location.split(' - ')[0] : 'Sede no definida';
-        
-        if (!acc[date]) {
-            acc[date] = {};
-        }
-        if (!acc[date][sede]) {
-            acc[date][sede] = [];
-        }
+        if (!acc[date]) acc[date] = {};
+        if (!acc[date][sede]) acc[date][sede] = [];
         acc[date][sede].push(match);
         return acc;
     }, {});
 
-    // Ordenar las fechas
     const sortedDates = Object.keys(groupedMatches).sort((a, b) => new Date(a) - new Date(b));
 
-    // 4. Renderizar el contenido agrupado
+    // 4. Lógica de paginación
+    const A4_PAGE_HEIGHT_MM = 297;
+    const PADDING_MM = 20 * 2;
+    const HEADER_HEIGHT_MM = 25;
+    const TABLE_HEADER_HEIGHT_MM = 10;
+    const ROW_HEIGHT_MM = 8;
+    const SECTION_HEADER_HEIGHT_MM = 15;
+    
+    const maxContentHeight = A4_PAGE_HEIGHT_MM - PADDING_MM - HEADER_HEIGHT_MM;
+    let pageCount = 1;
+    let currentHeight = 0;
 
-    // --- NUEVO: Separador visual cada "alto de hoja" (A4 horizontal: 842px) ---
-    let finalHtml = '';
-    const PAGE_HEIGHT = 842; // px, 29,7cm de alto (A4 horizontal)
-    let bloques = [];
-    let bloqueActual = '';
-    let alturaActual = 0;
-    let tempDiv = document.createElement('div');
+    function createNewPage() {
+        const page = document.createElement('div');
+        page.className = 'page';
+        page.innerHTML = `
+            <div class="page-header flex justify-between items-center">
+                <h1 class="text-2xl font-bold">Reporte de Partidos</h1>
+                <p class="text-sm text-gray-500">Página ${pageCount}</p>
+            </div>
+            <div class="page-content"></div>
+        `;
+        pagesContainer.appendChild(page);
+        currentHeight = 0;
+        return page.querySelector('.page-content');
+    }
+
+    let container = createNewPage();
+
     for (const date of sortedDates) {
         const sedes = groupedMatches[date];
         const formattedDate = new Date(date + 'T00:00:00').toLocaleDateString('es-AR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+        
         for (const sede in sedes) {
-            let bloqueHtml = `<div class="a3-page-block" style="overflow:hidden;position:relative;display:flex;flex-direction:column;justify-content:flex-start;">
-                <div class="fecha-sede-block flex items-center justify-between mb-2 mt-8">
-                    <h2 class="text-2xl font-bold text-gray-800 capitalize">${formattedDate}</h2>
-                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-base font-bold bg-green-50 text-green-700 border border-green-300">
-                        <span class="material-icons mr-1 text-green-500" style="font-size:1.1em;">location_on</span> ${sede}
-                    </span>
-                </div>
-                <div class="overflow-x-auto"><table class="min-w-full table-fixed"><colgroup><col style="width: 100px;"><col style="width: 100px;"><col style="width: 180px;"><col style="width: 60px;"><col style="width: 120px;"><col style="width: 60px;"><col style="width: 180px;"><col style="width: 80px;"></colgroup><thead class="bg-gray-50"><tr><th class="px-3 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Cancha</th><th class="px-3 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Hora</th><th class="px-3 py-2 text-right text-xs font-semibold text-gray-500 uppercase">Jugador 1</th><th class="px-3 py-2 text-center text-xs font-semibold text-gray-500 uppercase">Pts</th><th class="px-3 py-2 text-center text-xs font-semibold text-gray-500 uppercase">Resultado</th><th class="px-3 py-2 text-center text-xs font-semibold text-gray-500 uppercase">Pts</th><th class="px-3 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Jugador 2</th><th class="px-3 py-2 text-left text-xs font-semibold text-gray-500 uppercase">CATEGORÍA</th></tr></thead><tbody class="divide-y divide-gray-200">`;
-            sedes[sede].forEach(match => {
-                const cancha = match.location ? match.location.split(' - ')[1] : 'N/A';
-                const p1_class = match.player1.isWinner ? 'text-yellow-600 font-bold' : 'text-gray-700';
-                const p2_class = match.player2.isWinner ? 'text-yellow-600 font-bold' : 'text-gray-700';
-                let hora = match.time || '';
-                if (hora && hora.length >= 5) hora = hora.substring(0,5);
-                bloqueHtml += `<tr><td class="px-3 py-3 text-sm whitespace-nowrap">${cancha}</td><td class="px-3 py-3 text-sm whitespace-nowrap">${hora}</td><td class="px-3 py-3 text-sm whitespace-nowrap text-right ${p1_class}"><span>${match.player1.name}</span>${match.player1.image ? `<img src="${match.player1.image}" alt="logo" class="inline-block h-5 w-5 rounded-full object-cover ml-1 align-middle" style="vertical-align:middle;">` : ''}</td><td class="px-3 py-3 text-2xl font-black text-center ${p1_class}">${match.player1.points}</td><td class="px-3 py-3 text-base font-mono font-bold text-center text-gray-800">${match.sets}</td><td class="px-3 py-3 text-2xl font-black text-center ${p2_class}">${match.player2.points}</td><td class="px-3 py-3 text-sm whitespace-nowrap text-left ${p2_class}">${match.player2.image ? `<img src="${match.player2.image}" alt="logo" class="inline-block h-5 w-5 rounded-full object-cover mr-1 align-middle" style="vertical-align:middle;">` : ''}<span>${match.player2.name}</span></td><td class="px-3 py-3 text-sm whitespace-nowrap text-gray-500 text-center">${match.category}</td></tr>`;
-            });
-            bloqueHtml += `</tbody></table></div></div>`;
-            // Medir altura acumulada
-            tempDiv.innerHTML = bloqueHtml;
-            document.body.appendChild(tempDiv);
-            const bloqueHeight = tempDiv.offsetHeight;
-            document.body.removeChild(tempDiv);
-            // Si al sumar este bloque se supera el alto de hoja, forzar salto
-            if (alturaActual + bloqueHeight > PAGE_HEIGHT && bloqueActual !== '') {
-                bloques.push(bloqueActual + '<div class="web-page-divider"></div>');
-                bloqueActual = '';
-                alturaActual = 0;
+            const matches = sedes[sede];
+            const neededHeightForSection = SECTION_HEADER_HEIGHT_MM + TABLE_HEADER_HEIGHT_MM + ROW_HEIGHT_MM;
+
+            if (currentHeight + neededHeightForSection > maxContentHeight) {
+                pageCount++;
+                container = createNewPage();
             }
-            bloqueActual += bloqueHtml;
-            alturaActual += bloqueHeight;
+
+            const sectionTitle = document.createElement('div');
+            sectionTitle.className = 'flex items-center gap-4 mb-2 mt-4';
+            sectionTitle.innerHTML = `<h2 class="text-xl font-bold text-gray-800 capitalize">${formattedDate}</h2><span class="text-lg font-semibold text-gray-700">| Sede: ${sede}</span>`;
+            container.appendChild(sectionTitle);
+            currentHeight += SECTION_HEADER_HEIGHT_MM;
+
+            let table = document.createElement('table');
+            table.className = 'report-table';
+            table.innerHTML = `<thead><tr><th>Cancha</th><th>Hora</th><th class="text-right">Jugador 1</th><th class="text-center">Pts</th><th class="text-center">Resultado</th><th class="text-center">Pts</th><th>Jugador 2</th><th class="text-center">Categoría</th></tr></thead><tbody></tbody>`;
+            container.appendChild(table);
+            let tbody = table.querySelector('tbody');
+            currentHeight += TABLE_HEADER_HEIGHT_MM;
+            
+            for (const match of matches) {
+                if (currentHeight + ROW_HEIGHT_MM > maxContentHeight) {
+                    pageCount++;
+                    container = createNewPage();
+                    
+                    const newSectionTitle = sectionTitle.cloneNode(true);
+                    newSectionTitle.querySelector('span').textContent = `| Sede: ${sede} (cont.)`;
+                    container.appendChild(newSectionTitle);
+                    currentHeight += SECTION_HEADER_HEIGHT_MM;
+
+                    table = document.createElement('table');
+                    table.className = 'report-table';
+                    table.innerHTML = `<thead><tr><th>Cancha</th><th>Hora</th><th class="text-right">Jugador 1</th><th class="text-center">Pts</th><th class="text-center">Resultado</th><th class="text-center">Pts</th><th>Jugador 2</th><th class="text-center">Categoría</th></tr></thead><tbody></tbody>`;
+                    container.appendChild(table);
+                    tbody = table.querySelector('tbody');
+                    currentHeight += TABLE_HEADER_HEIGHT_MM;
+                }
+
+                const cancha = match.location ? match.location.split(' - ')[1] : 'N/A';
+                const p1_class = match.player1.isWinner ? 'winner' : '';
+                const p2_class = match.player2.isWinner ? 'winner' : '';
+                let hora = match.time || '';
+                if (hora && hora.length >= 5) hora = hora.substring(0, 5);
+
+                const row = tbody.insertRow();
+                row.innerHTML = `<td class="text-center">${cancha}</td><td class="text-center">${hora}</td><td class="text-right ${p1_class}">${match.player1.name}</td><td class="text-center font-bold ${p1_class}">${match.player1.points}</td><td class="text-center font-mono">${match.sets}</td><td class="text-center font-bold ${p2_class}">${match.player2.points}</td><td class="${p2_class}">${match.player2.name}</td><td class="text-center">${match.category}</td>`;
+                currentHeight += ROW_HEIGHT_MM;
+            }
         }
     }
-    if (bloqueActual !== '') {
-        bloques.push(bloqueActual + '<div class="web-page-divider"></div>');
-    }
-    reportContent.innerHTML = bloques.join('');
 
+    // 5. Lógica para los botones de acción
+    document.getElementById('btn-save-pdf').addEventListener('click', () => {
+        const element = document.getElementById('report-pages-container');
+        const opt = {
+            margin: 0,
+            filename: `reporte_partidos_${new Date().toLocaleDateString('es-AR').replace(/\//g, '-')}.pdf`,
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: { scale: 2, useCORS: true, logging: false },
+            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        };
+        html2pdf().set(opt).from(element).save();
+    });
 
-    // 5. Lógica para descargar PDF
-    // PDF download ancho personalizado
-    const btnSavePdf = document.getElementById('btn-save-pdf');
-    if (btnSavePdf) {
-        btnSavePdf.addEventListener('click', (e) => {
-            e.preventDefault();
-            const element = document.getElementById('report-container');
-            const opt = {
-                margin: 0,
-                filename: `reporte_partidos_${new Date().toLocaleDateString('es-AR').replace(/\//g, '-')}.pdf`,
-                image: { type: 'jpeg', quality: 0.98 },
-                html2canvas: { scale: 2, useCORS: true },
-                jsPDF: { unit: 'pt', format: [1191, 842], orientation: 'landscape' }
-            };
-            html2pdf().set(opt).from(element).save();
+    document.getElementById('btn-save-report').addEventListener('click', async () => {
+        if (!reportData || reportData.length === 0) {
+            alert('No hay datos de reporte para guardar.');
+            return;
+        }
+        const title = prompt('Ingresa un título para guardar este reporte:', 'Reporte de Partidos ' + new Date().toLocaleDateString('es-AR'));
+        if (!title) return;
+        
+        const { error } = await supabase.from('reports').insert({
+            title: title,
+            report_data: reportData // 'report_data' debe ser el nombre de tu columna JSON en Supabase
         });
-    }
+
+        if (error) {
+            alert('Error al guardar el reporte: ' + error.message);
+        } else {
+            alert('Reporte guardado con éxito.');
+            window.location.href = 'reportes-historicos.html';
+        }
+    });
 });
