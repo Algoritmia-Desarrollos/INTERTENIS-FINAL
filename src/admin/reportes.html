@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -15,9 +16,30 @@
         @media print {
             body { -webkit-print-color-adjust: exact; }
             .no-print { display: none !important; }
+            .web-page-divider {
+                display: block !important;
+                page-break-after: always !important;
+                break-after: page !important;
+                height: 0 !important;
+                border: none !important;
+                margin: 0 !important;
+                background: none !important;
+            }
+            .a3-page-block {
+                page-break-inside: avoid !important;
+                break-inside: avoid !important;
+            }
         }
         .page-break {
             page-break-after: always;
+        }
+        .web-page-divider {
+            display: block;
+            width: 100%;
+            height: 32px;
+            border-bottom: 2px dashed #bbb;
+            margin: 32px 0 32px 0;
+            background: repeating-linear-gradient(90deg, #eee, #eee 10px, transparent 10px, transparent 20px);
         }
         /* Forzar ancho fijo en todas las columnas de las tablas de reporte */
         #report-container table.table-fixed th,
@@ -73,8 +95,19 @@
             border-radius: 16px;
             box-shadow: 0 2px 8px 0 rgba(0,0,0,0.04);
             padding: 0 !important;
-            max-width: 1200px !important;
+            max-width: 1600px !important;
             width: 100%;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        #report-container .overflow-x-auto {
+            display: flex;
+            justify-content: center;
+        }
+        #report-container table {
+            margin-left: auto;
+            margin-right: auto;
+            page-break-inside: avoid !important;
         }
     </style>
 </head>
@@ -102,7 +135,7 @@
                                 </div>
             </div>
             
-            <div id="report-container" class="bg-white rounded-xl shadow-lg">
+            <div id="report-container" class="bg-white rounded-xl shadow-lg pb-12" style="max-width:1200px; margin-left:auto; margin-right:auto;">
                 <div id="report-content" class="p-8 md:p-12">
                     </div>
             </div>
@@ -138,25 +171,5 @@
             }
         });
         </script>
-    <script>
-    // Ajustar el tamaño del PDF generado
-    window.addEventListener('DOMContentLoaded', () => {
-        const btn = document.getElementById('btn-save-pdf');
-        if (btn) {
-            btn.addEventListener('click', (e) => {
-                e.preventDefault();
-                const element = document.getElementById('report-container');
-                const opt = {
-                    margin: 0.5,
-                    filename: `reporte_partidos_${new Date().toLocaleDateString('es-AR').replace(/\//g, '-')}.pdf`,
-                    image: { type: 'jpeg', quality: 0.98 },
-                    html2canvas: { scale: 2, useCORS: true },
-                    jsPDF: { unit: 'pt', format: [1200, 842], orientation: 'landscape' }
-                };
-                html2pdf().set(opt).from(element).save();
-            });
-        }
-    });
-    </script>
 </body>
 </html>
