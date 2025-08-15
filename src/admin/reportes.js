@@ -106,7 +106,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (hora && hora.length >= 5) hora = hora.substring(0, 5);
 
                 const row = tbody.insertRow();
-                row.innerHTML = `<td class="text-center">${cancha}</td><td class="text-center">${hora}</td><td class="text-right ${p1_class}">${match.player1.name}</td><td class="text-center font-bold ${p1_class}">${match.player1.points}</td><td class="text-center font-mono">${match.sets}</td><td class="text-center font-bold ${p2_class}">${match.player2.points}</td><td class="${p2_class}">${match.player2.name}</td><td class="text-center">${match.category}</td>`;
+                row.innerHTML = `<td class="text-center">${cancha}</td><td class="text-center">${hora}</td><td class="text-right font-bold ${p1_class}">${match.player1.name}</td><td class="text-center font-bold ${p1_class}">${match.player1.points}</td><td class="text-center font-mono">${match.sets}</td><td class="text-center font-bold ${p2_class}">${match.player2.points}</td><td class="font-bold ${p2_class}">${match.player2.name}</td><td class="text-center">${match.category}</td>`;
                 currentHeight += ROW_HEIGHT_MM;
             }
         }

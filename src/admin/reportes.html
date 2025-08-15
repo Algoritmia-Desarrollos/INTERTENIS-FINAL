@@ -13,26 +13,22 @@
     <style>
         /* Estilos para la vista en pantalla y la exportación a PDF */
         body {
-            background-color: #fff;
+            background-color: #e0e0e0; /* Un fondo gris para que las hojas resalten */
         }
         main {
-            max-width: 210mm;
+            max-width: 210mm; /* Ancho de una hoja A4 */
             margin: 20px auto;
         }
         .page {
-            background: #fff;
+            background: white;
             width: 210mm;
-            min-height: 297mm;
+            min-height: 297mm; /* Usamos min-height para que se ajuste si hay poco contenido */
             padding: 20mm;
-            margin-bottom: 24px;
-            box-shadow: 0 8px 32px 0 rgba(0,0,0,0.18), 0 1.5px 6px 0 rgba(0,0,0,0.10);
-            border: 1.5px solid #e0e0e0;
-            border-radius: 8px;
-            page-break-after: always;
+            margin-bottom: 20px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
             box-sizing: border-box;
             display: flex;
             flex-direction: column;
-            transition: box-shadow 0.2s;
         }
         .page-header {
             border-bottom: 2px solid #ccc;
@@ -88,7 +84,7 @@
         }
     </style>
 </head>
-<body>
+<body class="bg-gray-200">
     <header id="header" class="no-print"></header>
 
     <main id="report-main-container">
