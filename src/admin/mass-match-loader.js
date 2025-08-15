@@ -144,6 +144,7 @@ export function setupMassMatchLoader({
       btnAddRow.style.fontWeight = 'bold';
       headerContainer.appendChild(btnAddRow);
   }
+
   if (!btnSave) {
       btnSave = document.createElement('button');
       btnSave.innerHTML = `💾 Guardar Partidos`;
@@ -159,6 +160,7 @@ export function setupMassMatchLoader({
   }
   
   container.prepend(headerContainer);
+
 
 
   // --- OPCIONES CACHEADAS ---
@@ -493,6 +495,7 @@ export function setupMassMatchLoader({
     if (cell) makeCellEditable(cell);
   });
 
+  // --- BOTÓN CREAR PARTIDO AGREGA FILA ---
   btnAddRow.addEventListener('click', addRow);
   btnSave.addEventListener('click', saveAllMatches);
   

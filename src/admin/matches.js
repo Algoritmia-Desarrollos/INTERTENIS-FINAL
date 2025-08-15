@@ -23,6 +23,7 @@ const bulkActionBar = document.getElementById('bulk-action-bar');
 const selectedCountSpan = document.getElementById('selected-count');
 const modalContainer = document.getElementById('score-modal-container');
 
+
 // --- Estado Global ---
 let allMatches = [];
 let allPlayers = [];
@@ -282,7 +283,19 @@ function renderMatches(matchesToRender) {
                     <tr class="clickable-row ${selectedMatches.has(match.id) ? 'bg-yellow-50' : 'bg-white'} hover:bg-gray-100 ${match.status === 'suspendido' ? '!bg-red-50' : ''}" data-match-id="${match.id}">
                         <td class="p-4"><input type="checkbox" class="match-checkbox" data-id="${match.id}" ${selectedMatches.has(match.id) ? 'checked' : ''}></td>
                         <td class="px-4 py-3 whitespace-nowrap text-sm">
-                            ${new Date(match.match_date).toLocaleDateString('es-AR')}
+                            ${(() => {
+                                // Parsear como fecha local (no UTC)
+                                if (!match.match_date) return '';
+                                const parts = match.match_date.split('-');
+                                if (parts.length === 3) {
+                                    const yyyy = Number(parts[0]);
+                                    const mm = Number(parts[1]) - 1;
+                                    const dd = Number(parts[2]);
+                                    const localDate = new Date(yyyy, mm, dd);
+                                    return localDate.toLocaleDateString('es-AR');
+                                }
+                                return match.match_date;
+                            })()}
                             <span class="block text-xs text-gray-400">${time_string} hs</span>
                         </td>
                         <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">${match.location || 'A definir'}</td>
@@ -474,13 +487,29 @@ async function saveMatch(matchId) {
     else if (sede) location = sede;
     else if (cancha) location = cancha;
 
+    // Parse and format date as YYYY-MM-DD to avoid timezone issues
+    let formattedDate = match_date;
+    if (match_date) {
+        // Handles both 'Y-m-d' and 'd/m/Y' formats
+        let parts;
+        if (match_date.includes('-')) {
+            // 'Y-m-d'
+            parts = match_date.split('-');
+            formattedDate = `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
+        } else if (match_date.includes('/')) {
+            // 'd/m/Y'
+            parts = match_date.split('/');
+            formattedDate = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+        }
+    }
+
     let matchData = {
         player1_id: p1_id,
         player2_id: p2_id,
         sets: sets.length > 0 ? sets : null,
         winner_id: winner_id,
         status: 'programado',
-        match_date,
+        match_date: formattedDate,
         match_time,
         location
     };
@@ -504,12 +533,36 @@ async function handleCreateMatchSubmit(e) {
         return;
     }
 
+
+    // Formatear la fecha como YYYY-MM-DD para evitar desfase por zona horaria
+    let rawDate = matchDateForm.value;
+    let formattedDate = rawDate;
+    if (rawDate) {
+        let dateObj;
+        if (rawDate.includes('-')) {
+            // 'Y-m-d'
+            const parts = rawDate.split('-');
+            dateObj = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+        } else if (rawDate.includes('/')) {
+            // 'd/m/Y'
+            const parts = rawDate.split('/');
+            dateObj = new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]));
+        }
+        if (dateObj) {
+            dateObj.setDate(dateObj.getDate() + 1); // Sumar un día
+            const yyyy = dateObj.getFullYear();
+            const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
+            const dd = String(dateObj.getDate()).padStart(2, '0');
+            formattedDate = `${yyyy}-${mm}-${dd}`;
+        }
+    }
+
     const matchData = {
         tournament_id: tournamentId,
         category_id: tournament.category.id,
         player1_id: player1SelectForm.value,
         player2_id: player2SelectForm.value,
-        match_date: matchDateForm.value,
+        match_date: formattedDate,
         match_time: matchTimeForm.value || null,
         location: `${sedeSelectForm.value} - ${canchaSelectForm.value}`
     };
@@ -909,24 +962,34 @@ function addExcelMatchRow() {
 
 import { setupMassMatchLoader } from './mass-match-loader.js';
 
+let showFormOpen = false;
 btnShowForm.addEventListener('click', () => {
     // Oculta el formulario Excel-like
     if (formContainer) formContainer.classList.add('hidden');
-    // Muestra el loader masivo
     const massLoaderContainer = document.getElementById('mass-match-loader-container');
     const btnAddRow = document.getElementById('btn-add-mass-row');
     const btnSave = document.getElementById('btn-save-mass-matches');
-    if (massLoaderContainer && btnAddRow && btnSave) {
-        massLoaderContainer.classList.remove('hidden');
-        setupMassMatchLoader({
-            container: massLoaderContainer,
-            btnAddRow,
-            btnSave,
-            allTournaments,
-            allPlayers,
-            tournamentPlayersMap,
-            loadInitialData
-        });
+    if (!showFormOpen) {
+        // Abrir modal
+        if (massLoaderContainer && btnAddRow && btnSave) {
+            massLoaderContainer.classList.remove('hidden');
+            setupMassMatchLoader({
+                container: massLoaderContainer,
+                btnAddRow,
+                btnSave,
+                allTournaments,
+                allPlayers,
+                tournamentPlayersMap,
+                loadInitialData
+            });
+        }
+        btnShowForm.innerHTML = '✖ Cerrar';
+        showFormOpen = true;
+    } else {
+        // Cerrar modal
+        if (massLoaderContainer) massLoaderContainer.classList.add('hidden');
+        btnShowForm.innerHTML = '✚ Crear Partido';
+        showFormOpen = false;
     }
 });
 // Listeners del formulario antiguo eliminados
