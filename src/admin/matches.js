@@ -362,7 +362,19 @@ function renderMatches(matchesToRender) {
     }
 
     matchesContainer.innerHTML = `
-        <table class="min-w-full">
+        <table class="min-w-full table-fixed">
+            <colgroup>
+                <col style="width: 48px;">
+                <col style="width: 120px;">
+                <col style="width: 140px;">
+                <col style="width: 180px;">
+                <col style="width: 48px;">
+                <col style="width: 120px;">
+                <col style="width: 48px;">
+                <col style="width: 180px;">
+                <col style="width: 80px;">
+                <col style="width: 90px;">
+            </colgroup>
             <thead class="bg-gray-50">
                 <tr>
                     <th class="p-4 text-left"><input type="checkbox" id="select-all-matches"></th>
@@ -442,7 +454,15 @@ function renderMatches(matchesToRender) {
 function openScoreModal(match) {
     const sets = match.sets || [];
     const isPlayed = !!match.winner_id;
-    const playersInCategory = allPlayers.filter(p => p.category_id === match.category_id);
+    // Use players registered in the tournament for this match
+    let playersInTournament = [];
+    if (tournamentPlayersMap.has(match.tournament_id)) {
+        const playerIds = tournamentPlayersMap.get(match.tournament_id);
+        playersInTournament = allPlayers.filter(p => playerIds.has(p.id));
+    } else {
+        // fallback to category if tournament not found
+        playersInTournament = allPlayers.filter(p => p.category_id === match.category_id);
+    }
 
     modalContainer.innerHTML = `
         <div id="modal-overlay" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
@@ -455,13 +475,13 @@ function openScoreModal(match) {
                         <div>
                             <label class="block text-sm font-medium text-gray-700">Jugador A</label>
                             <select id="player1-select-modal" class="input-field mt-1" ${isPlayed ? 'disabled' : ''}>
-                                ${playersInCategory.map(p => `<option value="${p.id}" ${p.id === match.player1_id ? 'selected' : ''}>${p.name}</option>`).join('')}
+                                ${playersInTournament.map(p => `<option value="${p.id}" ${p.id === match.player1_id ? 'selected' : ''}>${p.name}</option>`).join('')}
                             </select>
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700">Jugador B</label>
                             <select id="player2-select-modal" class="input-field mt-1" ${isPlayed ? 'disabled' : ''}>
-                                ${playersInCategory.map(p => `<option value="${p.id}" ${p.id === match.player2_id ? 'selected' : ''}>${p.name}</option>`).join('')}
+                                ${playersInTournament.map(p => `<option value="${p.id}" ${p.id === match.player2_id ? 'selected' : ''}>${p.name}</option>`).join('')}
                             </select>
                         </div>
                     </div>
