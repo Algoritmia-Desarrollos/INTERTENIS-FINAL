@@ -76,7 +76,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             let table = document.createElement('table');
             table.className = 'report-table';
-            table.innerHTML = `<thead><tr><th style='width:54px;min-width:54px;max-width:54px;text-align:center;'>Cancha</th><th>Hora</th><th class="text-right">Jugador 1</th><th class="text-center">Pts</th><th class="text-center">Resultado</th><th class="text-center">Pts</th><th>Jugador 2</th><th class="text-center">Cat.</th></tr></thead><tbody></tbody>`;
+            table.innerHTML = `<thead><tr><th style='width:54px;min-width:54px;max-width:54px;text-align:center;'>Cancha</th><th>Hora</th><th class="text-right">Jugador 1</th><th class="text-center pts-col">Pts</th><th class="text-center">Resultado</th><th class="text-center pts-col">Pts</th><th>Jugador 2</th><th class="text-center">Cat.</th></tr></thead><tbody></tbody>`;
             container.appendChild(table);
             let tbody = table.querySelector('tbody');
             currentHeight += TABLE_HEADER_HEIGHT_MM;
@@ -132,7 +132,15 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                     const p1TeamColor = getTeamColor(match.player1.teamName);
                     const p2TeamColor = getTeamColor(match.player2.teamName);
-                    row.innerHTML = `<td style='width:54px;min-width:54px;max-width:54px;text-align:center;'>${cancha}</td><td class="text-center">${hora}</td><td class="text-right font-bold ${p1_class}">${match.player1.name}</td><td style='text-align:center;${p1TeamColor ? `background:${p1TeamColor};color:#111;font-weight:bold;` : ''}' class="font-bold ${p1_class}">${match.player1.points}</td><td style='text-align:center;' class="font-mono">${setsDisplay}</td><td style='text-align:center;${p2TeamColor ? `background:${p2TeamColor};color:#111;font-weight:bold;` : ''}' class="font-bold ${p2_class}">${match.player2.points}</td><td class="font-bold ${p2_class}">${match.player2.name}</td><td class="cat-col" style="text-align:center;margin:auto;color:${catColor};font-family:'Segoe UI Black','Arial Black',Arial,sans-serif;font-weight:900;letter-spacing:0.5px;">${match.category}</td>`;
+                    // Determinar si el partido se jugó (hay sets cargados)
+                    const played = !!(match.sets && match.sets.trim() !== '');
+                    let p1NameStyle = '';
+                    let p2NameStyle = '';
+                    if (played) {
+                        if (!match.player1.isWinner) p1NameStyle = 'color:#6b716f;';
+                        if (!match.player2.isWinner) p2NameStyle = 'color:#6b716f;';
+                    }
+                    row.innerHTML = `<td style='width:54px;min-width:54px;max-width:54px;text-align:center;'>${cancha}</td><td class="text-center">${hora}</td><td class="text-right font-bold ${p1_class}" style='${p1NameStyle}'>${match.player1.name}</td><td class="pts-col" style='text-align:center;background:#3a3838;color:#f2bb03;font-weight:bold;'>${match.player1.points}</td><td style='text-align:center;' class="font-mono">${setsDisplay}</td><td class="pts-col" style='text-align:center;background:#3a3838;color:#f2bb03;font-weight:bold;'>${match.player2.points}</td><td class="font-bold ${p2_class}" style='${p2NameStyle}'>${match.player2.name}</td><td class="cat-col" style="text-align:center;margin:auto;color:${catColor};font-family:'Segoe UI Black','Arial Black',Arial,sans-serif;font-weight:900;letter-spacing:0.5px;">${match.category}</td>`;
                 currentHeight += ROW_HEIGHT_MM;
             }
         }
