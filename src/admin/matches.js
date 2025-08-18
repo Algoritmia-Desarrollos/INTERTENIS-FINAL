@@ -274,6 +274,21 @@ function updatePlayerSelectsInForm() {
     }
 }
 
+
+// --- Utilidad para contraste de color (blanco o negro según fondo) ---
+function getContrastYIQ(hexcolor) {
+    if (!hexcolor) return '#222';
+    let hex = hexcolor.replace('#', '');
+    if (hex.length === 3) {
+        hex = hex.split('').map(x => x + x).join('');
+    }
+    const r = parseInt(hex.substr(0,2),16);
+    const g = parseInt(hex.substr(2,2),16);
+    const b = parseInt(hex.substr(4,2),16);
+    const yiq = ((r*299)+(g*587)+(b*114))/1000;
+    return (yiq >= 128) ? '#222' : '#fff';
+}
+
 // --- Renderizado, Filtros y Ordenamiento ---
 function applyFiltersAndSort() {
     let processedMatches = [...allMatches];
@@ -386,7 +401,7 @@ function renderMatches(matchesToRender) {
                     const p1_class = no_winner ? 'text-gray-800' : p1_winner ? 'text-yellow-600 font-bold' : 'text-gray-500';
                     const p2_class = no_winner ? 'text-gray-800' : p2_winner ? 'text-yellow-600 font-bold' : 'text-gray-500';
                     const sets = match.sets || [];
-                    const result_string = match.status === 'suspendido' ? 'SUSPENDIDO' : (sets.length > 0 ? sets.map(s => `${s.p1}-${s.p2}`).join(', ') : '-');
+                    const result_string = match.status === 'suspendido' ? 'SUSPENDIDO' : (sets.length > 0 ? sets.map(s => `${s.p1}/${s.p2}`).join(', ') : '-');
                     const time_string = match.match_time ? match.match_time.substring(0, 5) : 'HH:MM';
                     // Calcular puntos usando la misma lógica que dashboard.js
                     const { p1_points, p2_points } = calculatePoints(match);
@@ -425,7 +440,12 @@ function renderMatches(matchesToRender) {
                                 <span>${match.player2.name}</span>
                             </div>
                         </td>
-                        <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">${match.category.name}</td>
+                        <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
+                            <span class="inline-flex items-center justify-center w-7 h-7 rounded-full align-middle border border-gray-300 font-bold text-xs"
+                                style="background:${match.category.color || '#e5e7eb'}; color:${getContrastYIQ(match.category.color || '#e5e7eb')};">
+                                ${match.category.name}
+                            </span>
+                        </td>
                         <td class="px-4 py-3 text-center">
                             <button class="p-1 hover:bg-gray-100 rounded transition" data-action="edit" title="Editar / Cargar Resultado">
                                 <span class="material-icons text-blue-600" style="font-size: 22px;">edit</span>

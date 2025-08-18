@@ -13,6 +13,7 @@ const categoryNameInput = document.getElementById('category-name');
 const btnSave = document.getElementById('btn-save');
 const btnCancel = document.getElementById('btn-cancel');
 const categoriesList = document.getElementById('categories-list');
+const categoryColorInput = document.getElementById('category-color');
 
 // --- Funciones de Renderizado ---
 
@@ -37,7 +38,10 @@ async function renderCategories() {
 
     categoriesList.innerHTML = data.map(category => `
         <div class="flex justify-between items-center p-3 rounded-lg hover:bg-gray-50">
-            <p class="font-semibold text-gray-800">${category.name}</p>
+            <div class="flex items-center gap-2">
+                <span class="inline-block w-5 h-5 rounded-full border border-gray-300" style="background:${category.color || '#e5e7eb'}"></span>
+                <p class="font-semibold text-gray-800">${category.name}</p>
+            </div>
             <div class="flex items-center gap-2">
                 <button data-action="edit" data-category='${JSON.stringify(category)}' class="text-blue-600 hover:text-blue-800 p-1">
                     <span class="material-icons text-base">edit</span>
@@ -55,6 +59,7 @@ async function renderCategories() {
 function resetForm() {
     form.reset();
     categoryIdInput.value = '';
+    if (categoryColorInput) categoryColorInput.value = '#e5e7eb';
     formTitle.textContent = 'Añadir Nueva Categoría';
     btnSave.textContent = 'Guardar Categoría';
     btnCancel.classList.add('hidden');
@@ -64,6 +69,7 @@ async function handleFormSubmit(e) {
     e.preventDefault();
     const id = categoryIdInput.value;
     const name = categoryNameInput.value.trim();
+    const color = categoryColorInput ? categoryColorInput.value : '#e5e7eb';
 
     if (!name) {
         alert("El nombre de la categoría es obligatorio.");
@@ -72,10 +78,10 @@ async function handleFormSubmit(e) {
 
     let error;
     if (id) { // Modo Edición
-        const { error: updateError } = await supabase.from('categories').update({ name }).eq('id', id);
+        const { error: updateError } = await supabase.from('categories').update({ name, color }).eq('id', id);
         error = updateError;
     } else { // Modo Creación
-        const { error: insertError } = await supabase.from('categories').insert([{ name }]);
+        const { error: insertError } = await supabase.from('categories').insert([{ name, color }]);
         error = insertError;
     }
 
@@ -107,7 +113,7 @@ categoriesList.addEventListener('click', async (e) => {
         const category = JSON.parse(button.dataset.category);
         categoryIdInput.value = category.id;
         categoryNameInput.value = category.name;
-        
+        if (categoryColorInput) categoryColorInput.value = category.color || '#e5e7eb';
         formTitle.textContent = 'Editar Categoría';
         btnSave.textContent = 'Actualizar Categoría';
         btnCancel.classList.remove('hidden');
