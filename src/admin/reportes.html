@@ -47,8 +47,15 @@
             padding: 6px 4px;
             font-size: 9pt;
             border: 1px solid #eee;
-            text-align: left;
+            text-align: center;
             vertical-align: middle;
+            background: #111;
+            color: #fff;
+        }
+        .report-table tbody tr:first-child td {
+        }
+        .report-table tbody tr:nth-child(2) td {
+            /* Se elimina el fondo naranja de la primera fila de datos */
         }
         .report-table th.cat-col, .report-table td.cat-col {
             width: 32px;
@@ -57,14 +64,21 @@
             text-align: center;
         }
         .report-table th {
-            background-color: #f2f2f2;
-            font-weight: 600;
+            background-color: #ffc000 !important;
+            font-weight: 700;
+            color: #222 !important;
+        }
+        .report-table th:first-child,
+        .report-table td:first-child {
+            background: #ffc000 !important;
+            color: #222 !important;
+            font-weight: bold;
         }
         .text-right { text-align: right; }
         .text-center { text-align: center; }
         .font-bold { font-weight: 700; }
         .font-mono { font-family: monospace; }
-        .winner { font-weight: 700; color: #b45309; }
+    .winner { font-weight: 700; color: #f4ec05 !important; }
 
         /* Estilos específicos para la impresión */
         @media print {
@@ -86,6 +100,7 @@
                 width: 100%;
                 height: 100%;
                 padding: 15mm;
+                background: #111 !important;
             }
         }
     </style>

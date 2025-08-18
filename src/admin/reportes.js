@@ -114,7 +114,25 @@ document.addEventListener('DOMContentLoaded', () => {
                 const catColor = match.category_color || '#b45309';
                     // Reemplazar '-' por '/' en el resultado de sets, sin espacios
                     const setsDisplay = (match.sets || '').replace(/\s*-\s*/g, '/');
-                    row.innerHTML = `<td style='width:54px;min-width:54px;max-width:54px;text-align:center;'>${cancha}</td><td class="text-center">${hora}</td><td class="text-right font-bold ${p1_class}">${match.player1.name}</td><td style='text-align:center;' class="font-bold ${p1_class}">${match.player1.points}</td><td style='text-align:center;' class="font-mono">${setsDisplay}</td><td style='text-align:center;' class="font-bold ${p2_class}">${match.player2.points}</td><td class="font-bold ${p2_class}">${match.player2.name}</td><td class="cat-col" style="text-align:center;margin:auto;color:${catColor};font-family:'Segoe UI Black','Arial Black',Arial,sans-serif;font-weight:900;letter-spacing:0.5px;">${match.category}</td>`;
+                    // Colores de equipos
+                    const teamColors = {
+                        lakemo: '#ffcc06',
+                        melabanko: '#c25b19',
+                        muro: '#312533',
+                        nunkafuera: '#33511b'
+                    };
+                    function getTeamColor(name) {
+                        if (!name) return '';
+                        const n = name.toLowerCase();
+                        if (n.includes('lakemo')) return teamColors.lakemo;
+                        if (n.includes('melabanko')) return teamColors.melabanko;
+                        if (n.includes('muro')) return teamColors.muro;
+                        if (n.includes('nunkafuera')) return teamColors.nunkafuera;
+                        return '';
+                    }
+                    const p1TeamColor = getTeamColor(match.player1.teamName);
+                    const p2TeamColor = getTeamColor(match.player2.teamName);
+                    row.innerHTML = `<td style='width:54px;min-width:54px;max-width:54px;text-align:center;'>${cancha}</td><td class="text-center">${hora}</td><td class="text-right font-bold ${p1_class}">${match.player1.name}</td><td style='text-align:center;${p1TeamColor ? `background:${p1TeamColor};color:#111;font-weight:bold;` : ''}' class="font-bold ${p1_class}">${match.player1.points}</td><td style='text-align:center;' class="font-mono">${setsDisplay}</td><td style='text-align:center;${p2TeamColor ? `background:${p2TeamColor};color:#111;font-weight:bold;` : ''}' class="font-bold ${p2_class}">${match.player2.points}</td><td class="font-bold ${p2_class}">${match.player2.name}</td><td class="cat-col" style="text-align:center;margin:auto;color:${catColor};font-family:'Segoe UI Black','Arial Black',Arial,sans-serif;font-weight:900;letter-spacing:0.5px;">${match.category}</td>`;
                 currentHeight += ROW_HEIGHT_MM;
             }
         }
