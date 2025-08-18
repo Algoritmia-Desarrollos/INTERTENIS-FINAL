@@ -69,7 +69,7 @@ async function loadInitialData() {
         supabase.from('players').select('*').order('name'),
         supabase.from('tournaments').select('*, category:category_id(id, name)').order('name'),
         // <-- CAMBIO AQUÍ: Se añade `color` a la consulta de la categoría -->
-        supabase.from('matches').select(`*, category:category_id(id, name, color), player1:player1_id(*, team:team_id(image_url)), player2:player2_id(*, team:team_id(image_url)), winner:winner_id(name)`).order('match_date', { ascending: false }),
+supabase.from('matches').select(`*, category:category_id(id, name, color), player1:player1_id(*, team:team_id(name, image_url, color)), player2:player2_id(*, team:team_id(name, image_url, color)), winner:winner_id(name)`).order('match_date', { ascending: false }),
         supabase.from('tournament_players').select('tournament_id, player_id')
     ]);
 
@@ -798,13 +798,16 @@ function handleBulkReport() {
                 name: match.player1?.name || '',
                 points: p1_points ?? '',
                 isWinner: match.winner_id === match.player1_id,
-                image: match.player1?.team?.image_url || ''
+        image: match.player1?.team?.image_url || '',
+        teamColor: match.player1?.team?.color // <-- AÑADE ESTA LÍNEA
+
             },
             player2: {
                 name: match.player2?.name || '',
                 points: p2_points ?? '',
                 isWinner: match.winner_id === match.player2_id,
-                image: match.player2?.team?.image_url || ''
+        image: match.player2?.team?.image_url || '',
+        teamColor: match.player2?.team?.color // <-- AÑADE ESTA LÍNEA
             },
             sets: (match.sets && match.sets.length > 0) ? match.sets.map(s => `${s.p1}-${s.p2}`).join(', ') : ''
         };

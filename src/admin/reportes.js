@@ -130,8 +130,20 @@ document.addEventListener('DOMContentLoaded', async () => {
                         const n = name.trim().toLowerCase();
                         return teamColorMap[n] || '';
                     }
-                    const p1TeamColor = getTeamColor(match.player1.teamName);
-                    const p2TeamColor = getTeamColor(match.player2.teamName);
+                    function isColorLight(hex) {
+                        if (!hex) return false;
+                        let c = hex.replace('#', '');
+                        if (c.length === 3) c = c.split('').map(x => x + x).join('');
+                        const r = parseInt(c.substr(0,2),16);
+                        const g = parseInt(c.substr(2,2),16);
+                        const b = parseInt(c.substr(4,2),16);
+                        // Percepción de luminosidad
+                        return (0.299*r + 0.587*g + 0.114*b) > 186;
+                    }
+                    const p1TeamColor = match.player1.teamColor;
+                    const p2TeamColor = match.player2.teamColor;
+                    const p1TextColor = isColorLight(p1TeamColor) ? '#222' : '#fff';
+                    const p2TextColor = isColorLight(p2TeamColor) ? '#222' : '#fff';
                     // Determinar si el partido se jugó (hay sets cargados)
                     const played = !!(match.sets && match.sets.trim() !== '');
                     let p1NameStyle = '';
@@ -141,6 +153,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         if (!match.player2.isWinner) p2NameStyle = 'color:#6b716f;';
                     }
                     row.innerHTML = `<td style='width:54px;min-width:54px;max-width:54px;text-align:center;'>${cancha}</td><td class="text-center">${hora}</td><td class="text-right font-bold ${p1_class}" style='${p1NameStyle}'>${match.player1.name}</td><td class="pts-col" style='text-align:center;background:${p1TeamColor || '#3a3838'};color:#f2bb03;font-weight:bold;'>${match.player1.points}</td><td style='text-align:center;' class="font-mono">${setsDisplay}</td><td class="pts-col" style='text-align:center;background:${p2TeamColor || '#3a3838'};color:#f2bb03;font-weight:bold;'>${match.player2.points}</td><td class="font-bold ${p2_class}" style='${p2NameStyle}'>${match.player2.name}</td><td class="cat-col" style="text-align:center;margin:auto;color:${catColor};font-family:'Segoe UI Black','Arial Black',Arial,sans-serif;font-weight:900;letter-spacing:0.5px;">${match.category}</td>`;
+row.innerHTML = `<td style='width:54px;min-width:54px;max-width:54px;text-align:center;'>${cancha}</td><td class="text-center">${hora}</td><td class="text-right font-bold ${p1_class}" style='${p1NameStyle}'>${match.player1.name}</td><td class="pts-col" style='text-align:center;background:${p1TeamColor};color:${p1TextColor};font-weight:700;'>${match.player1.points}</td><td style='text-align:center;' class="font-mono">${setsDisplay}</td><td class="pts-col" style='text-align:center;background:${p2TeamColor};color:${p2TextColor};font-weight:700;'>${match.player2.points}</td><td class="font-bold ${p2_class}" style='${p2NameStyle}'>${match.player2.name}</td><td class="cat-col" style="text-align:center;margin:auto;color:${catColor};font-family:'Segoe UI Black','Arial Black',Arial,sans-serif;font-weight:900;letter-spacing:0.5px;">${match.category}</td>`;
                 currentHeight += ROW_HEIGHT_MM;
             }
         }
