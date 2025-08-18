@@ -88,7 +88,7 @@ document.addEventListener('DOMContentLoaded', () => {
             </colgroup>
             <thead><tr>
                 <th class="text-center">Cancha</th>
-                <th class="text-center">Hora</th>
+                <th class="text-left">Hora</th>
                 <th class="text-right">Jugador 1</th>
                 <th class="text-center">Pts</th>
                 <th class="text-center">Resultado</th>
@@ -130,7 +130,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const row = tbody.insertRow();
                 row.innerHTML = `
                     <td class="text-center" style="text-align:center;">${cancha}</td>
-                    <td class="text-center" style="text-align:center;">${hora}</td>
+                    <td class="text-left">${hora}</td>
                     <td class="text-right font-bold ${p1_class}">${match.player1.name}</td>
                     <td class="text-center font-bold ${p1_class}" style="text-align:center;">${match.player1.points}</td>
                     <td class="text-center font-mono" style="text-align:center;">${match.sets}</td>
