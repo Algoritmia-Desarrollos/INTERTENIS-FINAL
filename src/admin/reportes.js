@@ -80,7 +80,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             const sectionTitle = document.createElement('div');
             sectionTitle.className = 'flex items-center gap-4 mb-2 mt-4';
-            sectionTitle.innerHTML = `<h2 class="text-xl font-bold text-gray-800 capitalize">${formattedDate}</h2><span class="text-lg font-semibold text-gray-700">| Sede: ${sede}</span>`;
+            sectionTitle.innerHTML = `<h2 class="text-xl font-bold text-black-800 capitalize">${formattedDate}</h2><span class="text-lg font-semibold text-black-600">| Sede: ${sede}</span>`;
             container.appendChild(sectionTitle);
             currentHeight += SECTION_HEADER_HEIGHT_MM;
 
