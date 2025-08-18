@@ -76,7 +76,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
             let table = document.createElement('table');
             table.className = 'report-table';
-            table.innerHTML = `<thead><tr><th>Cancha</th><th>Hora</th><th class="text-right">Jugador 1</th><th class="text-center">Pts</th><th class="text-center">Resultado</th><th class="text-center">Pts</th><th>Jugador 2</th><th class="text-center">Categoría</th></tr></thead><tbody></tbody>`;
+            table.innerHTML = `<colgroup>
+                <col style="width: 40px; text-align: center;">
+                <col>
+                <col>
+                <col>
+                <col>
+                <col>
+                <col>
+                <col style="width: 40px;">
+            </colgroup>
+            <thead><tr>
+                <th class="text-center">Cancha</th>
+                <th class="text-center">Hora</th>
+                <th class="text-right">Jugador 1</th>
+                <th class="text-center">Pts</th>
+                <th class="text-center">Resultado</th>
+                <th class="text-center">Pts</th>
+                <th class="text-right">Jugador 2</th>
+                <th class="text-center">Cat.</th>
+            </tr></thead><tbody></tbody>`;
             container.appendChild(table);
             let tbody = table.querySelector('tbody');
             currentHeight += TABLE_HEADER_HEIGHT_MM;
@@ -99,14 +118,26 @@ document.addEventListener('DOMContentLoaded', () => {
                     currentHeight += TABLE_HEADER_HEIGHT_MM;
                 }
 
-                const cancha = match.location ? match.location.split(' - ')[1] : 'N/A';
+                let cancha = match.location ? match.location.split(' - ')[1] : 'N/A';
+                if (cancha && cancha.toLowerCase().startsWith('cancha ')) {
+                    cancha = cancha.replace(/cancha\s*/i, '');
+                }
                 const p1_class = match.player1.isWinner ? 'winner' : '';
                 const p2_class = match.player2.isWinner ? 'winner' : '';
                 let hora = match.time || '';
                 if (hora && hora.length >= 5) hora = hora.substring(0, 5);
 
                 const row = tbody.insertRow();
-                row.innerHTML = `<td class="text-center">${cancha}</td><td class="text-center">${hora}</td><td class="text-right font-bold ${p1_class}">${match.player1.name}</td><td class="text-center font-bold ${p1_class}">${match.player1.points}</td><td class="text-center font-mono">${match.sets}</td><td class="text-center font-bold ${p2_class}">${match.player2.points}</td><td class="font-bold ${p2_class}">${match.player2.name}</td><td class="text-center">${match.category}</td>`;
+                row.innerHTML = `
+                    <td class="text-center" style="text-align:center;">${cancha}</td>
+                    <td class="text-center" style="text-align:center;">${hora}</td>
+                    <td class="text-right font-bold ${p1_class}">${match.player1.name}</td>
+                    <td class="text-center font-bold ${p1_class}" style="text-align:center;">${match.player1.points}</td>
+                    <td class="text-center font-mono" style="text-align:center;">${match.sets}</td>
+                    <td class="text-center font-bold ${p2_class}" style="text-align:center;">${match.player2.points}</td>
+                    <td class="text-right font-bold ${p2_class}">${match.player2.name}</td>
+                    <td class="text-center"><span class='inline-flex items-center justify-center w-7 h-7 rounded-full align-middle font-extrabold text-xs' style='background:transparent; color:${match.category_color || '#e5e7eb'};'>${match.category}</span></td>
+                `;
                 currentHeight += ROW_HEIGHT_MM;
             }
         }

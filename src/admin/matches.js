@@ -12,7 +12,6 @@ requireRole('admin');
 const header = document.getElementById('header');
 const formContainer = document.getElementById('form-container');
 const btnShowForm = document.getElementById('btn-show-form');
-// const btnCancelForm = document.getElementById('btn-cancel-form'); // Ya no se usa
 const matchesContainer = document.getElementById('matches-container');
 const filterTournamentSelect = document.getElementById('filter-tournament');
 const filterStatusSelect = document.getElementById('filter-status');
@@ -32,7 +31,27 @@ let tournamentPlayersMap = new Map();
 let selectedMatches = new Set();
 let clickTimer = null;
 
-// --- Función Auxiliar ---
+// --- Funciones Auxiliares ---
+
+// <-- CAMBIO AQUÍ: Función añadida para calcular el contraste del texto -->
+/**
+ * Devuelve un color de texto (blanco o negro) que contraste con el color de fondo.
+ * @param {string} hexcolor - El color de fondo en formato hexadecimal (ej: '#RRGGBB').
+ * @returns {string} '#ffffff' (blanco) o '#1f2937' (negro).
+ */
+function getContrastYIQ(hexcolor) {
+    if (!hexcolor) return '#1f2937'; // Color de texto por defecto si no hay color de fondo
+    let hex = hexcolor.replace('#', '');
+    if (hex.length === 3) {
+        hex = hex.split('').map(x => x + x).join('');
+    }
+    const r = parseInt(hex.substring(0, 2), 16);
+    const g = parseInt(hex.substring(2, 4), 16);
+    const b = parseInt(hex.substring(4, 6), 16);
+    const yiq = ((r * 299) + (g * 587) + (b * 114)) / 1000;
+    return (yiq >= 128) ? '#1f2937' : '#ffffff';
+}
+
 function normalizeText(text) {
     if (!text) return '';
     return text.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
@@ -49,7 +68,8 @@ async function loadInitialData() {
     ] = await Promise.all([
         supabase.from('players').select('*').order('name'),
         supabase.from('tournaments').select('*, category:category_id(id, name)').order('name'),
-        supabase.from('matches').select(`*, category:category_id(id, name), player1:player1_id(*, team:team_id(image_url)), player2:player2_id(*, team:team_id(image_url)), winner:winner_id(name)`).order('match_date', { ascending: false }),
+        // <-- CAMBIO AQUÍ: Se añade `color` a la consulta de la categoría -->
+        supabase.from('matches').select(`*, category:category_id(id, name, color), player1:player1_id(*, team:team_id(image_url)), player2:player2_id(*, team:team_id(image_url)), winner:winner_id(name)`).order('match_date', { ascending: false }),
         supabase.from('tournament_players').select('tournament_id, player_id')
     ]);
 
@@ -189,22 +209,18 @@ document.addEventListener('DOMContentLoaded', () => {
     if (cardRecientes) {
         cardRecientes.addEventListener('click', () => {
             filterStatusSelect.value = 'completado';
-            // Calcular fechas para los últimos 7 días
             const now = new Date();
             const sieteDiasAtras = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7);
-            // Formatear fechas para flatpickr y el input (dd/mm/yyyy)
             const pad = n => n.toString().padStart(2, '0');
             const formatDMY = d => `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`;
             const desdeDMY = formatDMY(sieteDiasAtras);
             const hastaDMY = formatDMY(now);
-            // Setear el filtro de fecha visualmente y en flatpickr
             if (window.flatpickrInstance) {
                 window.flatpickrInstance.setDate([sieteDiasAtras, now], true);
             } else {
                 const filterDateRange = document.getElementById('filter-date-range');
                 filterDateRange.value = `${desdeDMY} a ${hastaDMY}`;
             }
-            // Guardar el rango en la variable global para el filtro
             window.filterDateRangeSelected = [sieteDiasAtras, now];
             applyFiltersAndSort();
             cardRecientes.classList.add('ring-2', 'ring-green-400');
@@ -212,10 +228,8 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Selección instantánea en selects del formulario de partido
 });
 
-// Selección instantánea en selects del formulario de partido (fuera del if principal)
 document.addEventListener('DOMContentLoaded', () => {
     const player1SelectForm = document.getElementById('player1-select-form');
     const player2SelectForm = document.getElementById('player2-select-form');
@@ -235,8 +249,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-// Función populateFormSelects eliminada: ya no se usa formulario antiguo
-
 function populateFilterSelects() {
     filterTournamentSelect.innerHTML = '<option value="">Todos los Torneos</option>';
     allTournaments.forEach(t => filterTournamentSelect.innerHTML += `<option value="${t.id}">${t.name}</option>`);
@@ -252,7 +264,6 @@ function updatePlayerSelectsInForm() {
         const playerIds = tournamentPlayersMap.get(Number(tournamentId)) || new Set();
         const playersInTournament = allPlayers.filter(p => playerIds.has(p.id));
 
-        // Guardar selección previa
         const prevPlayer1 = player1SelectForm.value;
         const prevPlayer2 = player2SelectForm.value;
 
@@ -274,21 +285,6 @@ function updatePlayerSelectsInForm() {
     }
 }
 
-
-// --- Utilidad para contraste de color (blanco o negro según fondo) ---
-function getContrastYIQ(hexcolor) {
-    if (!hexcolor) return '#222';
-    let hex = hexcolor.replace('#', '');
-    if (hex.length === 3) {
-        hex = hex.split('').map(x => x + x).join('');
-    }
-    const r = parseInt(hex.substr(0,2),16);
-    const g = parseInt(hex.substr(2,2),16);
-    const b = parseInt(hex.substr(4,2),16);
-    const yiq = ((r*299)+(g*587)+(b*114))/1000;
-    return (yiq >= 128) ? '#222' : '#fff';
-}
-
 // --- Renderizado, Filtros y Ordenamiento ---
 function applyFiltersAndSort() {
     let processedMatches = [...allMatches];
@@ -298,7 +294,6 @@ function applyFiltersAndSort() {
         fromDate = window.filterDateRangeSelected[0];
         toDate = window.filterDateRangeSelected[1];
     } else if (filterDateRange && filterDateRange.value) {
-        // fallback por si recargan y flatpickr no inicializó el array
         const parts = filterDateRange.value.split(' a ');
         if (parts.length === 2) {
             const [from, to] = parts;
@@ -320,11 +315,9 @@ function applyFiltersAndSort() {
             (m.player2 && normalizeText(m.player2.name.toLowerCase()).includes(searchTerm))
         );
     }
-    // Filtro por rango de fechas
     if (fromDate || toDate) {
         processedMatches = processedMatches.filter(m => {
             if (!m.match_date) return false;
-            // Acepta tanto 'YYYY-MM-DD' como 'DD/MM/YYYY'
             let matchDate;
             if (m.match_date.includes('-')) {
                 const [y, mth, d] = m.match_date.split('-');
@@ -403,14 +396,13 @@ function renderMatches(matchesToRender) {
                     const sets = match.sets || [];
                     const result_string = match.status === 'suspendido' ? 'SUSPENDIDO' : (sets.length > 0 ? sets.map(s => `${s.p1}/${s.p2}`).join(', ') : '-');
                     const time_string = match.match_time ? match.match_time.substring(0, 5) : 'HH:MM';
-                    // Calcular puntos usando la misma lógica que dashboard.js
                     const { p1_points, p2_points } = calculatePoints(match);
+                    
                     return `
                     <tr class="clickable-row ${selectedMatches.has(match.id) ? 'bg-yellow-50' : 'bg-white'} hover:bg-gray-100 ${match.status === 'suspendido' ? '!bg-red-50' : ''}" data-match-id="${match.id}">
                         <td class="p-4"><input type="checkbox" class="match-checkbox" data-id="${match.id}" ${selectedMatches.has(match.id) ? 'checked' : ''}></td>
                         <td class="px-4 py-3 whitespace-nowrap text-sm">
                             ${(() => {
-                                // Parsear como fecha local (no UTC)
                                 if (!match.match_date) return '';
                                 const parts = match.match_date.split('-');
                                 if (parts.length === 3) {
@@ -441,8 +433,8 @@ function renderMatches(matchesToRender) {
                             </div>
                         </td>
                         <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
-                            <span class="inline-flex items-center justify-center w-7 h-7 rounded-full align-middle border border-gray-300 font-bold text-xs"
-                                style="background:${match.category.color || '#e5e7eb'}; color:${getContrastYIQ(match.category.color || '#e5e7eb')};">
+                            <span class="inline-flex items-center justify-center w-7 h-7 rounded-full align-middle font-extrabold text-xs"
+                                style="background:transparent; color:${match.category.color || '#e5e7eb'};">
                                 ${match.category.name}
                             </span>
                         </td>
@@ -460,16 +452,23 @@ function renderMatches(matchesToRender) {
 }
 
 // --- Lógica de Modales ---
+// (El resto de las funciones como openScoreModal, closeModal, saveMatch, etc. no necesitan cambios)
+
+// --- Mantenemos el resto del archivo sin cambios ---
+// ... (openScoreModal, closeModal, saveMatch, handleCreateMatchSubmit, clearScore, deleteMatch, suspendMatch)
+// ... (updateBulkActionBar, handleBulkDelete, handleBulkProgram, handleBulkReport, etc.)
+// ... (Todos los Event Listeners)
+
+// --- COPIA Y PEGA DESDE AQUÍ HACIA ABAJO EN TU ARCHIVO ---
+
 function openScoreModal(match) {
     const sets = match.sets || [];
     const isPlayed = !!match.winner_id;
-    // Use players registered in the tournament for this match
     let playersInTournament = [];
     if (tournamentPlayersMap.has(match.tournament_id)) {
         const playerIds = tournamentPlayersMap.get(match.tournament_id);
         playersInTournament = allPlayers.filter(p => playerIds.has(p.id));
     } else {
-        // fallback to category if tournament not found
         playersInTournament = allPlayers.filter(p => p.category_id === match.category_id);
     }
 
@@ -551,7 +550,6 @@ function openScoreModal(match) {
         </div>
     `;
 
-    // Cargar flatpickr dinámicamente si no está presente
     if (!window.flatpickr) {
         const link = document.createElement('link');
         link.rel = 'stylesheet';
@@ -616,7 +614,6 @@ async function saveMatch(matchId) {
         winner_id = p1SetsWon > p2SetsWon ? p1_id : p2_id;
     }
     
-    // Obtener los valores de los campos nuevos
     const match_date = document.getElementById('match-date-modal').value;
     const match_time = document.getElementById('match-time-modal').value;
     const sede = document.getElementById('match-sede-modal').value;
@@ -626,17 +623,13 @@ async function saveMatch(matchId) {
     else if (sede) location = sede;
     else if (cancha) location = cancha;
 
-    // Parse and format date as YYYY-MM-DD to avoid timezone issues
     let formattedDate = match_date;
     if (match_date) {
-        // Handles both 'Y-m-d' and 'd/m/Y' formats
         let parts;
         if (match_date.includes('-')) {
-            // 'Y-m-d'
             parts = match_date.split('-');
             formattedDate = `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
         } else if (match_date.includes('/')) {
-            // 'd/m/Y'
             parts = match_date.split('/');
             formattedDate = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
         }
@@ -672,23 +665,19 @@ async function handleCreateMatchSubmit(e) {
         return;
     }
 
-
-    // Formatear la fecha como YYYY-MM-DD para evitar desfase por zona horaria
     let rawDate = matchDateForm.value;
     let formattedDate = rawDate;
     if (rawDate) {
         let dateObj;
         if (rawDate.includes('-')) {
-            // 'Y-m-d'
             const parts = rawDate.split('-');
             dateObj = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
         } else if (rawDate.includes('/')) {
-            // 'd/m/Y'
             const parts = rawDate.split('/');
             dateObj = new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]));
         }
         if (dateObj) {
-            dateObj.setDate(dateObj.getDate() + 1); // Sumar un día
+            dateObj.setDate(dateObj.getDate() + 1);
             const yyyy = dateObj.getFullYear();
             const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
             const dd = String(dateObj.getDate()).padStart(2, '0');
@@ -753,7 +742,6 @@ async function suspendMatch(matchId) {
     }
 }
 
-// --- Lógica de Acciones Masivas ---
 function updateBulkActionBar() {
     selectedCountSpan.textContent = selectedMatches.size;
     if (selectedMatches.size > 0) {
@@ -796,7 +784,6 @@ function handleBulkReport() {
         alert("No hay partidos seleccionados para el reporte.");
         return;
     }
-    // Obtener los datos de los partidos seleccionados en el formato esperado por reportes.js
     const reportMatches = Array.from(selectedMatches).map(id => {
         const match = allMatches.find(m => m.id === id);
         if (!match) return null;
@@ -806,6 +793,7 @@ function handleBulkReport() {
             time: match.match_time || '',
             location: match.location || '',
             category: match.category?.name || '',
+            category_color: match.category?.color || '#e5e7eb',
             player1: {
                 name: match.player1?.name || '',
                 points: p1_points ?? '',
@@ -829,292 +817,23 @@ function handleImportExcel() {
     alert("Función para importar partidos desde Excel en desarrollo.");
 }
 
-// --- Event Listeners ---
 document.addEventListener('DOMContentLoaded', async () => {
     header.innerHTML = renderHeader();
     await loadInitialData();
-    // Oculta el formulario Excel-like al cargar
     if (formContainer) formContainer.classList.add('hidden');
-    // Oculta el loader masivo al cargar (si existe)
     const massLoaderContainer = document.getElementById('mass-match-loader-container');
     if (massLoaderContainer) massLoaderContainer.classList.add('hidden');
 });
-
-
-
-function renderExcelLikeMatchForm() {
-    if (!formContainer) return;
-    // Opciones
-    const torneoOptions = `<option value="">Seleccionar torneo</option>` + allTournaments.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
-    // Helper para opciones de jugador según torneo
-    function getJugadoresOptions(torneoId) {
-        let options = '<option value="">Seleccionar jugador</option>';
-        if (!torneoId) return options;
-        const playerIds = tournamentPlayersMap.get(Number(torneoId)) || new Set();
-        const jugadores = allPlayers.filter(p => playerIds.has(p.id));
-        jugadores.forEach(p => {
-            options += `<option value="${p.id}">${p.name}</option>`;
-        });
-        return options;
-    }
-    const jugadoresOptions = '<option value="">Seleccionar jugador</option>';
-    const sedeOptions = ['Funes', 'Centro'].map(s => `<option value="${s}">${s}</option>`).join('');
-    const canchaOptions = [1,2,3,4,5,6].map(n => `<option value="Cancha ${n}">Cancha ${n}</option>`).join('');
-    formContainer.innerHTML = `
-        <form id="excel-match-form" class="bg-[#f8f9fa] border border-[#e3e6ec] rounded-xl shadow p-4 flex flex-col gap-4 max-w-full">
-            <h2 class="text-xl font-bold mb-2">Revisa los Partidos Encontrados</h2>
-            <div class="flex flex-row items-center gap-4 w-full border rounded bg-white p-4">
-                <div class="flex flex-col w-1/6 min-w-[150px]">
-                    <span class="text-xs font-semibold mb-1">TORNEO</span>
-                    <select id="torneo-select" class="input-field w-full">${torneoOptions}</select>
-                </div>
-                <div class="flex flex-col w-1/6 min-w-[150px]">
-                    <span class="text-xs font-semibold mb-1">JUGADOR 1</span>
-                    <select id="jugador1-select" class="input-field w-full">${jugadoresOptions}</select>
-                </div>
-                <div class="flex flex-col w-1/6 min-w-[150px]">
-                    <span class="text-xs font-semibold mb-1">JUGADOR 2</span>
-                    <select id="jugador2-select" class="input-field w-full">${jugadoresOptions}</select>
-                </div>
-                <div class="flex flex-col w-1/7 min-w-[120px]">
-                    <span class="text-xs font-semibold mb-1">FECHA</span>
-                    <div class="relative flex items-center">
-                        <input id="fecha-input" type="text" class="input-field w-full pr-8" autocomplete="off" />
-                        <span class="material-icons absolute right-2 text-gray-400 cursor-pointer" id="fecha-calendar-icon" style="font-size:20px;">calendar_today</span>
-                    </div>
-                </div>
-                <div class="flex flex-col w-1/8 min-w-[100px]">
-                    <span class="text-xs font-semibold mb-1">HORA</span>
-                    <input id="hora-input" type="time" class="input-field w-full" />
-                </div>
-                <div class="flex flex-col w-1/8 min-w-[100px]">
-                    <span class="text-xs font-semibold mb-1">SEDE</span>
-                    <select id="sede-select" class="input-field w-full">${sedeOptions}</select>
-                </div>
-                <div class="flex flex-col w-1/8 min-w-[100px]">
-                    <span class="text-xs font-semibold mb-1">CANCHA</span>
-                    <select id="cancha-select" class="input-field w-full">${canchaOptions}</select>
-                </div>
-            </div>
-            <div class="flex flex-row gap-4 justify-end mt-2">
-                <button type="button" id="btn-cancel-form" class="bg-[#e3e6ec] text-[#4e5d6c] font-semibold rounded px-6 py-2">Cancelar</button>
-                <button type="submit" class="bg-[#556b1e] hover:bg-[#405312] text-white font-semibold rounded px-6 py-2 flex items-center gap-2">
-                    <span class="material-icons">save</span> Importar 1 Partidos
-                </button>
-            </div>
-        </form>
-    `;
-    // Flatpickr para fecha y click en icono
-    let fechaFlatpickr = null;
-    if (window.flatpickr) {
-        fechaFlatpickr = flatpickr('#fecha-input', {dateFormat: 'd/m/Y', allowInput: true});
-    }
-    const calendarIcon = document.getElementById('fecha-calendar-icon');
-    const fechaInput = document.getElementById('fecha-input');
-    if (calendarIcon && fechaInput && fechaFlatpickr) {
-        calendarIcon.addEventListener('click', () => fechaFlatpickr.open());
-    }
-    // Filtrar jugadores por torneo
-    const torneoSelect = document.getElementById('torneo-select');
-    const jugador1Select = document.getElementById('jugador1-select');
-    const jugador2Select = document.getElementById('jugador2-select');
-    function updateJugadores() {
-        const torneoId = torneoSelect.value;
-        jugador1Select.innerHTML = getJugadoresOptions(torneoId);
-        jugador2Select.innerHTML = getJugadoresOptions(torneoId);
-    }
-    torneoSelect.addEventListener('change', updateJugadores);
-    // Inicializar selects de jugadores
-    updateJugadores();
-    document.getElementById('btn-cancel-form').onclick = () => formContainer.classList.add('hidden');
-    document.getElementById('excel-match-form').onsubmit = handleExcelMatchFormSubmit;
-}
-
-
-function renderExcelMatchRows(count) {
-    const tbody = document.getElementById('excel-match-tbody');
-    if (!tbody) return;
-    for (let i = 0; i < count; i++) {
-        addExcelMatchRow();
-    }
-}
-
-
-function addExcelMatchRow() {
-    const tbody = document.getElementById('excel-match-tbody');
-    if (!tbody) return;
-    const torneoOptions = `<option value="">Seleccionar torneo</option>` + allTournaments.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
-    const sedeOptions = ['Funes', 'Centro'].map(s => `<option value="${s}">${s}</option>`).join('');
-    const canchaOptions = [1,2,3,4,5,6].map(n => `<option value="Cancha ${n}">Cancha ${n}</option>`).join('');
-    const tr = document.createElement('tr');
-    // Estado de la fila
-    const state = {
-        torneo: '', sede: 'Funes', cancha: 'Cancha 1', dia: '', hora: '', jugador1: '', jugador2: ''
-    };
-    // Helpers para mostrar nombres
-    function getTorneoName(id) {
-        if (!id) return '';
-        const t = allTournaments.find(t => t.id == id);
-        return t ? t.name : '';
-    }
-    function getJugadorName(id) {
-        if (!id) return '';
-        const j = allPlayers.find(j => j.id == id);
-        return j ? j.name : '';
-    }
-    // Renderiza la fila en modo texto plano tipo Excel
-    function renderRow() {
-        tr.innerHTML = '';
-        // Torneo
-        let tdTorneo = document.createElement('td');
-        tdTorneo.className = 'excel-cell';
-        tdTorneo.dataset.col = 'torneo';
-        tdTorneo.textContent = getTorneoName(state.torneo);
-        tdTorneo.ondblclick = function() { editCell(tdTorneo); };
-        tr.appendChild(tdTorneo);
-        // Sede
-        let tdSede = document.createElement('td');
-        tdSede.className = 'excel-cell';
-        tdSede.dataset.col = 'sede';
-        tdSede.textContent = state.sede;
-        tdSede.ondblclick = function() { editCell(tdSede); };
-        tr.appendChild(tdSede);
-        // Cancha
-        let tdCancha = document.createElement('td');
-        tdCancha.className = 'excel-cell';
-        tdCancha.dataset.col = 'cancha';
-        tdCancha.textContent = state.cancha;
-        tdCancha.ondblclick = function() { editCell(tdCancha); };
-        tr.appendChild(tdCancha);
-        // Día
-        let tdDia = document.createElement('td');
-        tdDia.className = 'excel-cell';
-        tdDia.dataset.col = 'dia';
-        tdDia.textContent = state.dia;
-        tdDia.ondblclick = function() { editCell(tdDia); };
-        tr.appendChild(tdDia);
-        // Hora
-        let tdHora = document.createElement('td');
-        tdHora.className = 'excel-cell';
-        tdHora.dataset.col = 'hora';
-        tdHora.textContent = state.hora;
-        tdHora.ondblclick = function() { editCell(tdHora); };
-        tr.appendChild(tdHora);
-        // Jugador 1
-        let tdJ1 = document.createElement('td');
-        tdJ1.className = 'excel-cell';
-        tdJ1.dataset.col = 'jugador1';
-        tdJ1.textContent = getJugadorName(state.jugador1);
-        tdJ1.ondblclick = function() { editCell(tdJ1); };
-        tr.appendChild(tdJ1);
-        // Jugador 2
-        let tdJ2 = document.createElement('td');
-        tdJ2.className = 'excel-cell';
-        tdJ2.dataset.col = 'jugador2';
-        tdJ2.textContent = getJugadorName(state.jugador2);
-        tdJ2.ondblclick = function() { editCell(tdJ2); };
-        tr.appendChild(tdJ2);
-        // Acciones
-        let tdAcc = document.createElement('td');
-        tdAcc.className = 'flex gap-1 justify-center';
-        let btnDup = document.createElement('button');
-        btnDup.type = 'button';
-        btnDup.className = 'btn btn-secondary btn-duplicate-row text-xs px-1 py-1';
-        btnDup.title = 'Duplicar fila';
-        btnDup.textContent = '⧉';
-        btnDup.onclick = function(e) {
-            const clone = tr.cloneNode(true);
-            tbody.insertBefore(clone, tr.nextSibling);
-            setTimeout(function() {
-                // Reasignar listeners a la nueva fila
-                Array.from(clone.querySelectorAll('.excel-cell')).forEach(function(cell) {
-                    cell.ondblclick = function() { editCell(cell); };
-                });
-                clone.querySelector('.btn-remove-row').onclick = function(e) { e.target.closest('tr').remove(); };
-                clone.querySelector('.btn-duplicate-row').onclick = btnDup.onclick;
-            }, 0);
-        };
-        let btnDel = document.createElement('button');
-        btnDel.type = 'button';
-        btnDel.className = 'btn btn-secondary btn-remove-row text-xs px-1 py-1';
-        btnDel.title = 'Eliminar fila';
-        btnDel.textContent = '✕';
-        btnDel.onclick = function(e) { e.target.closest('tr').remove(); };
-        tdAcc.appendChild(btnDup);
-        tdAcc.appendChild(btnDel);
-        tr.appendChild(tdAcc);
-    }
-    // Editar celda
-    function editCell(cell) {
-        const col = cell.dataset.col;
-        let input;
-        if (col === 'torneo') {
-            input = document.createElement('select');
-            input.innerHTML = torneoOptions;
-            input.value = state.torneo;
-        } else if (col === 'sede') {
-            input = document.createElement('select');
-            input.innerHTML = sedeOptions;
-            input.value = state.sede;
-        } else if (col === 'cancha') {
-            input = document.createElement('select');
-            input.innerHTML = canchaOptions;
-            input.value = state.cancha;
-        } else if (col === 'dia') {
-            input = document.createElement('input');
-            input.type = 'text';
-            input.value = state.dia;
-            input.placeholder = 'dd/mm/aaaa';
-            if (window.flatpickr) flatpickr(input, {dateFormat: 'd/m/Y', allowInput: true});
-        } else if (col === 'hora') {
-            input = document.createElement('input');
-            input.type = 'text';
-            input.value = state.hora;
-            input.placeholder = 'hh:mm';
-            if (window.flatpickr) flatpickr(input, {enableTime: true, noCalendar: true, dateFormat: 'H:i', time_24hr: true, allowInput: true});
-        } else if (col === 'jugador1' || col === 'jugador2') {
-            input = document.createElement('select');
-            input.innerHTML = '<option value="">Seleccione jugador</option>';
-            if (state.torneo) {
-                const playerIds = tournamentPlayersMap.get(Number(state.torneo)) || new Set();
-                const jugadores = allPlayers.filter(function(p) { return playerIds.has(p.id); });
-                jugadores.forEach(function(j) {
-                    input.innerHTML += `<option value="${j.id}">${j.name}</option>`;
-                });
-            }
-            input.value = state[col];
-        }
-        input.className = 'input-field w-full text-xs';
-        input.onblur = function() {
-            state[col] = input.value;
-            // Si se cambia el torneo, limpiar jugadores
-            if (col === 'torneo') {
-                state.jugador1 = '';
-                state.jugador2 = '';
-            }
-            renderRow();
-        };
-        input.onkeydown = function(e) { if (e.key === 'Enter') { input.blur(); } };
-        cell.innerHTML = '';
-        cell.appendChild(input);
-        input.focus();
-    }
-    renderRow();
-    tbody.appendChild(tr);
-}
 
 import { setupMassMatchLoader } from './mass-match-loader.js';
 
 let showFormOpen = false;
 btnShowForm.addEventListener('click', () => {
-    // Oculta el formulario Excel-like
     if (formContainer) formContainer.classList.add('hidden');
     const massLoaderContainer = document.getElementById('mass-match-loader-container');
     if (!showFormOpen) {
-        // Abrir modal y crear botones dinámicamente si no existen
         if (massLoaderContainer) {
             massLoaderContainer.classList.remove('hidden');
-            // Crear botones y contenedor si no existen
             let btnAddRow = document.getElementById('btn-add-mass-row');
             let btnSave = document.getElementById('btn-save-mass-matches');
             if (!btnAddRow) {
@@ -1144,13 +863,11 @@ btnShowForm.addEventListener('click', () => {
         btnShowForm.innerHTML = '✖ Cerrar';
         showFormOpen = true;
     } else {
-        // Cerrar modal
         if (massLoaderContainer) massLoaderContainer.classList.add('hidden');
         btnShowForm.innerHTML = '✚ Crear Partido';
         showFormOpen = false;
     }
 });
-// Listeners del formulario antiguo eliminados
 
 [filterTournamentSelect, filterStatusSelect, filterSedeSelect, filterCanchaSelect, searchInput].forEach(el => {
     if(el) el.addEventListener('input', applyFiltersAndSort);
@@ -1162,14 +879,12 @@ matchesContainer.addEventListener('click', (e) => {
 
     const matchId = Number(row.dataset.matchId);
     
-    // Si se hizo clic en el botón de editar
     if (e.target.closest('button[data-action="edit"]')) {
         const matchData = allMatches.find(m => m.id === matchId);
         if (matchData) openScoreModal(matchData);
         return;
     }
     
-    // Si se hizo clic en un checkbox
     const checkbox = e.target.closest('.match-checkbox');
     if (checkbox) {
         e.stopPropagation();
@@ -1179,7 +894,6 @@ matchesContainer.addEventListener('click', (e) => {
         return;
     }
     
-    // Click en la fila: selección instantánea
     if (!e.target.closest('button[data-action="edit"]') && !e.target.closest('.match-checkbox')) {
         const checkboxInRow = row.querySelector('.match-checkbox');
         checkboxInRow.checked = !checkboxInRow.checked;
@@ -1188,7 +902,6 @@ matchesContainer.addEventListener('click', (e) => {
         updateBulkActionBar();
     }
 
-    // Doble click en la fila: abrir modal (restaurar funcionalidad)
     row.addEventListener('dblclick', (ev) => {
         if (ev.target.closest('button[data-action="edit"]') || ev.target.closest('.match-checkbox')) return;
         const matchData = allMatches.find(m => m.id === matchId);
@@ -1199,7 +912,6 @@ matchesContainer.addEventListener('click', (e) => {
 matchesContainer.addEventListener('change', (e) => {
     if (e.target.id === 'select-all-matches') {
         const isChecked = e.target.checked;
-        // Solo seleccionar los partidos actualmente visibles en la tabla
         const visibleRows = Array.from(matchesContainer.querySelectorAll('tr[data-match-id]'));
         selectedMatches.clear();
         visibleRows.forEach(r => {
@@ -1217,11 +929,9 @@ matchesContainer.addEventListener('change', (e) => {
     }
 });
 
-// Listeners para la barra de acciones
 document.getElementById('bulk-delete').addEventListener('click', handleBulkDelete);
 document.getElementById('bulk-report').addEventListener('click', handleBulkReport);
 document.getElementById('btn-import-excel').addEventListener('click', () => {
-    // Obtener todas las categorías únicas de los torneos
     const allCategories = Array.from(new Set(allTournaments.map(t => t.category?.name))).map(name => {
         const t = allTournaments.find(tt => tt.category?.name === name);
         return t ? t.category : null;
@@ -1232,7 +942,6 @@ document.getElementById('btn-import-excel').addEventListener('click', () => {
 });
 document.getElementById('bulk-deselect').addEventListener('click', () => {
     selectedMatches.clear();
-    // Desmarcar todos los checkboxes visibles
     document.querySelectorAll('.match-checkbox').forEach(cb => {
         cb.checked = false;
         const row = cb.closest('tr[data-match-id]');

@@ -31,7 +31,7 @@ async function loadDashboardData() {
         supabase.from('players').select('*', { count: 'exact', head: true }),
         supabase.from('matches').select('*', { count: 'exact', head: true }),
         supabase.from('matches').select(`*, 
-            category:category_id(id, name),
+            category:category_id(id, name, color),
             player1:player1_id(*, team:team_id(image_url)), 
             player2:player2_id(*, team:team_id(image_url)), 
             winner:winner_id(name)`)
@@ -125,7 +125,11 @@ async function loadDashboardData() {
                                     <span>${match.player2.name}</span>
                                 </div>
                             </td>
-                            <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">${match.category.name}</td>
+                            <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
+                                <span class="inline-flex items-center justify-center w-7 h-7 rounded-full align-middle font-extrabold text-xs" style="background:transparent; color:${match.category?.color || '#e5e7eb'};">
+                                    ${match.category.name}
+                                </span>
+                            </td>
                         </tr>
                         `
                     }).join('')}
