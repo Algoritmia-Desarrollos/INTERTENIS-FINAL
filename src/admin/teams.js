@@ -17,6 +17,7 @@ const teamImageInput = document.getElementById('team-image');
 const btnSave = document.getElementById('btn-save');
 const btnCancel = document.getElementById('btn-cancel');
 const teamsList = document.getElementById('teams-list');
+const teamColorInput = document.getElementById('team-color');
 
 // --- Funciones de Renderizado ---
 
@@ -39,10 +40,29 @@ async function renderTeams() {
         return;
     }
 
-    teamsList.innerHTML = data.map(team => `
+    // Asignar color por defecto si el equipo es uno de los conocidos
+    const defaultColors = {
+        lakemo: '#ffcc06',
+        melabanko: '#c25b19',
+        muro: '#312533',
+        nunkafuera: '#33511b'
+    };
+    teamsList.innerHTML = data.map(team => {
+        let color = team.color;
+        const name = team.name ? team.name.toLowerCase() : '';
+        if (!color) {
+            if (name.includes('lakemo')) color = defaultColors.lakemo;
+            else if (name.includes('melabanko')) color = defaultColors.melabanko;
+            else if (name.includes('muro')) color = defaultColors.muro;
+            else if (name.includes('nunkafuera')) color = defaultColors.nunkafuera;
+            else color = '#cccccc';
+        }
+        return `
         <div class="flex justify-between items-center p-3 rounded-lg hover:bg-gray-50">
             <div class="flex items-center gap-4">
-                <img src="${team.image_url || 'https://via.placeholder.com/40'}" alt="Logo" class="h-10 w-10 rounded-full object-cover bg-gray-200">
+                <span class="inline-block w-10 h-10 rounded-full border-2 border-gray-300 flex items-center justify-center" style="background:${color}">
+                    <img src="${team.image_url || 'https://via.placeholder.com/40'}" alt="Logo" class="h-8 w-8 rounded-full object-cover bg-gray-200">
+                </span>
                 <div>
                     <p class="font-semibold text-gray-800">${team.name}</p>
                 </div>
@@ -56,7 +76,8 @@ async function renderTeams() {
                 </button>
             </div>
         </div>
-    `).join('');
+        `;
+    }).join('');
 }
 
 // --- Lógica de Formulario ---
@@ -73,6 +94,7 @@ async function handleFormSubmit(e) {
     e.preventDefault();
     const id = teamIdInput.value;
     const name = teamNameInput.value.trim();
+    const color = teamColorInput.value;
     const file = teamImageInput.files[0];
     let image_url = null;
     if (!name) {
@@ -87,7 +109,7 @@ async function handleFormSubmit(e) {
             return;
         }
     }
-    const teamData = { name, image_url };
+    const teamData = { name, color, image_url };
     let error;
     if (id) {
         const { error: updateError } = await supabase.from('teams').update(teamData).eq('id', id);
@@ -124,8 +146,8 @@ teamsList.addEventListener('click', async (e) => {
         const team = JSON.parse(button.dataset.team);
         teamIdInput.value = team.id;
         teamNameInput.value = team.name;
-        teamImageInput.value = team.image_url;
-        
+        teamColorInput.value = team.color || '#ffcc06';
+        teamImageInput.value = '';
         formTitle.textContent = 'Editar Equipo';
         btnSave.textContent = 'Actualizar Equipo';
         btnCancel.classList.remove('hidden');

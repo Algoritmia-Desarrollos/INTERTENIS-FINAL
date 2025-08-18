@@ -1,14 +1,24 @@
 import { renderHeader } from '../common/header.js';
 import { supabase } from '../common/supabase.js';
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     // 1. Renderizar el encabezado (se ocultará al imprimir)
     document.getElementById('header').innerHTML = renderHeader();
     
+
     // 2. Obtener y procesar los datos de los partidos
     const reportData = JSON.parse(localStorage.getItem('reportMatches') || '[]');
     const pagesContainer = document.getElementById('report-pages-container');
-    
+
+    // Obtener todos los equipos y sus colores
+    const { data: teamsData, error: teamsError } = await supabase.from('teams').select('name,color');
+    const teamColorMap = {};
+    if (!teamsError && Array.isArray(teamsData)) {
+        teamsData.forEach(t => {
+            if (t.name && t.color) teamColorMap[t.name.trim().toLowerCase()] = t.color;
+        });
+    }
+
     if (reportData.length === 0) {
         pagesContainer.innerHTML = '<p class="text-center text-gray-500 py-10">No hay partidos para el reporte. Vuelve a la página anterior y selecciona los que desees incluir.</p>';
         return;
@@ -114,21 +124,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 const catColor = match.category_color || '#b45309';
                     // Reemplazar '-' por '/' en el resultado de sets, sin espacios
                     const setsDisplay = (match.sets || '').replace(/\s*-\s*/g, '/');
-                    // Colores de equipos
-                    const teamColors = {
-                        lakemo: '#ffcc06',
-                        melabanko: '#c25b19',
-                        muro: '#312533',
-                        nunkafuera: '#33511b'
-                    };
+                    // Colores de equipos desde la base
                     function getTeamColor(name) {
                         if (!name) return '';
-                        const n = name.toLowerCase();
-                        if (n.includes('lakemo')) return teamColors.lakemo;
-                        if (n.includes('melabanko')) return teamColors.melabanko;
-                        if (n.includes('muro')) return teamColors.muro;
-                        if (n.includes('nunkafuera')) return teamColors.nunkafuera;
-                        return '';
+                        const n = name.trim().toLowerCase();
+                        return teamColorMap[n] || '';
                     }
                     const p1TeamColor = getTeamColor(match.player1.teamName);
                     const p2TeamColor = getTeamColor(match.player2.teamName);
@@ -140,7 +140,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         if (!match.player1.isWinner) p1NameStyle = 'color:#6b716f;';
                         if (!match.player2.isWinner) p2NameStyle = 'color:#6b716f;';
                     }
-                    row.innerHTML = `<td style='width:54px;min-width:54px;max-width:54px;text-align:center;'>${cancha}</td><td class="text-center">${hora}</td><td class="text-right font-bold ${p1_class}" style='${p1NameStyle}'>${match.player1.name}</td><td class="pts-col" style='text-align:center;background:#3a3838;color:#f2bb03;font-weight:bold;'>${match.player1.points}</td><td style='text-align:center;' class="font-mono">${setsDisplay}</td><td class="pts-col" style='text-align:center;background:#3a3838;color:#f2bb03;font-weight:bold;'>${match.player2.points}</td><td class="font-bold ${p2_class}" style='${p2NameStyle}'>${match.player2.name}</td><td class="cat-col" style="text-align:center;margin:auto;color:${catColor};font-family:'Segoe UI Black','Arial Black',Arial,sans-serif;font-weight:900;letter-spacing:0.5px;">${match.category}</td>`;
+                    row.innerHTML = `<td style='width:54px;min-width:54px;max-width:54px;text-align:center;'>${cancha}</td><td class="text-center">${hora}</td><td class="text-right font-bold ${p1_class}" style='${p1NameStyle}'>${match.player1.name}</td><td class="pts-col" style='text-align:center;background:${p1TeamColor || '#3a3838'};color:#f2bb03;font-weight:bold;'>${match.player1.points}</td><td style='text-align:center;' class="font-mono">${setsDisplay}</td><td class="pts-col" style='text-align:center;background:${p2TeamColor || '#3a3838'};color:#f2bb03;font-weight:bold;'>${match.player2.points}</td><td class="font-bold ${p2_class}" style='${p2NameStyle}'>${match.player2.name}</td><td class="cat-col" style="text-align:center;margin:auto;color:${catColor};font-family:'Segoe UI Black','Arial Black',Arial,sans-serif;font-weight:900;letter-spacing:0.5px;">${match.category}</td>`;
                 currentHeight += ROW_HEIGHT_MM;
             }
         }
