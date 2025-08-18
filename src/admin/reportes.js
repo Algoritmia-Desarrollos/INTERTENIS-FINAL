@@ -112,7 +112,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 const row = tbody.insertRow();
                 const catColor = match.category_color || '#b45309';
-                    row.innerHTML = `<td style='width:54px;min-width:54px;max-width:54px;text-align:center;'>${cancha}</td><td class="text-center">${hora}</td><td class="text-right font-bold ${p1_class}">${match.player1.name}</td><td style='text-align:center;' class="font-bold ${p1_class}">${match.player1.points}</td><td style='text-align:center;' class="font-mono">${match.sets}</td><td style='text-align:center;' class="font-bold ${p2_class}">${match.player2.points}</td><td class="font-bold ${p2_class}">${match.player2.name}</td><td class="cat-col" style="text-align:center;margin:auto;color:${catColor};font-family:'Segoe UI Black','Arial Black',Arial,sans-serif;font-weight:900;letter-spacing:0.5px;">${match.category}</td>`;
+                    // Reemplazar '-' por '/' en el resultado de sets, sin espacios
+                    const setsDisplay = (match.sets || '').replace(/\s*-\s*/g, '/');
+                    row.innerHTML = `<td style='width:54px;min-width:54px;max-width:54px;text-align:center;'>${cancha}</td><td class="text-center">${hora}</td><td class="text-right font-bold ${p1_class}">${match.player1.name}</td><td style='text-align:center;' class="font-bold ${p1_class}">${match.player1.points}</td><td style='text-align:center;' class="font-mono">${setsDisplay}</td><td style='text-align:center;' class="font-bold ${p2_class}">${match.player2.points}</td><td class="font-bold ${p2_class}">${match.player2.name}</td><td class="cat-col" style="text-align:center;margin:auto;color:${catColor};font-family:'Segoe UI Black','Arial Black',Arial,sans-serif;font-weight:900;letter-spacing:0.5px;">${match.category}</td>`;
                 currentHeight += ROW_HEIGHT_MM;
             }
         }
