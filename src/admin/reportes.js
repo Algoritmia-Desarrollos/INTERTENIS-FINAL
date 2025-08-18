@@ -128,13 +128,22 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (hora && hora.length >= 5) hora = hora.substring(0, 5);
 
                 const row = tbody.insertRow();
+                function getTeamBgFromName(name) {
+                    if (!name) return '';
+                    const t = name.toLowerCase();
+                    if (t.includes('lakemo')) return 'background:#ffe066; color:#222;';
+                    if (t.includes('melabanko')) return 'background:#e8593b; color:#fff;';
+                    if (t.includes('muro')) return 'background:#444; color:#fff;';
+                    if (t.includes('nunkafuera')) return 'background:#5cb85c; color:#fff;';
+                    return '';
+                }
                 row.innerHTML = `
                     <td class="text-center" style="text-align:center;">${cancha}</td>
                     <td class="text-left">${hora}</td>
                     <td class="text-right font-bold ${p1_class}">${match.player1.name}</td>
-                    <td class="text-center font-bold ${p1_class}" style="text-align:center;">${match.player1.points}</td>
+                    <td class="text-center font-bold ${p1_class}" style="text-align:center;${getTeamBgFromName(match.player1.team || match.player1.team_name)}">${match.player1.points}</td>
                     <td class="text-center font-mono" style="text-align:center;">${match.sets}</td>
-                    <td class="text-center font-bold ${p2_class}" style="text-align:center;">${match.player2.points}</td>
+                    <td class="text-center font-bold ${p2_class}" style="text-align:center;${getTeamBgFromName(match.player2.team || match.player2.team_name)}">${match.player2.points}</td>
                     <td class="text-right font-bold ${p2_class}">${match.player2.name}</td>
                     <td class="text-center"><span class='inline-flex items-center justify-center w-7 h-7 rounded-full align-middle font-extrabold text-xs' style='background:transparent; color:${match.category_color || '#e5e7eb'};'>${match.category}</span></td>
                 `;
