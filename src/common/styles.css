@@ -12,6 +12,22 @@ body {
   background-color: var(--background-color);
   color: var(--text-primary);
 }
+
+/* Fondo y texto para modo oscuro en contenedores principales */
+.bg-dark, .bg-[#181818], .bg-[#232323], .bg-[#222222] {
+  background-color: #181818 !important;
+  color: #f3f4f6 !important;
+}
+.text-on-dark, .bg-[#232323] *, .bg-[#222222] *, .bg-[#181818] * {
+  color: #f3f4f6 !important;
+}
+
+/* Ajuste para títulos y textos destacados sobre fondo oscuro */
+.bg-[#232323] h1, .bg-[#232323] h2, .bg-[#232323] h3,
+.bg-[#222222] h1, .bg-[#222222] h2, .bg-[#222222] h3,
+.bg-[#181818] h1, .bg-[#181818] h2, .bg-[#181818] h3 {
+  color: #fff !important;
+}
 .content-container {
   width: 100%;
   max-width: 80rem;

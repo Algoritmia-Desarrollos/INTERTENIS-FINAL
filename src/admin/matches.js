@@ -85,8 +85,7 @@ async function loadInitialData() {
     ] = await Promise.all([
         supabase.from('players').select('*').order('name'),
         supabase.from('tournaments').select('*, category:category_id(id, name)').order('name'),
-        supabase.from('matches').select(`*, category:category_id(id, name, color), player1:player1_id(*, team:team_id(name, image_url, color)), player2:player2_id(*, team:team_id(name, image_url, color)), winner:winner_id(name)`).order('match_date', { ascending: true, nullsFirst: false }).order('match_time', { ascending: true, nullsFirst: false }),
-        supabase.from('tournament_players').select('tournament_id, player_id')
+supabase.from('matches').select(`*, category:category_id(id, name, color), player1:player1_id(*, team:team_id(name, image_url, color)), player2:player2_id(*, team:team_id(name, image_url, color)), winner:winner_id(name)`).order('match_date', { ascending: true, nullsFirst: false }).order('match_time', { ascending: true, nullsFirst: false }),        supabase.from('tournament_players').select('tournament_id, player_id')
     ]);
 
     allPlayers = playersData || [];
@@ -329,7 +328,14 @@ const sortedDates = Object.keys(groupedByDate).sort((a, b) => {
             const month = dateObj.toLocaleDateString('es-AR', { month: 'long' });
             let formattedDate = `${weekday} ${day} de ${month}`;
             formattedDate = formattedDate.charAt(0).toUpperCase() + formattedDate.slice(1);
-                        const headerBgColor = sede.toLowerCase() === 'centro' ? '#222222' : '#fdc100';
+                        let headerBgColor;
+                        if (sede.toLowerCase() === 'centro') {
+                            headerBgColor = '#222222';
+                        } else if (sede.toLowerCase() === 'muro') {
+                            headerBgColor = '#2e2f31';
+                        } else {
+                            headerBgColor = '#fdc100';
+                        }
                         const headerTextColor = sede.toLowerCase() === 'centro' ? '#ffc000' : '#000000';
                         tableHTML += `
                             <tr>
@@ -516,8 +522,8 @@ function handleBulkReport() {
         return {
             date: match.match_date ? match.match_date.split('T')[0] : '', time: match.match_time || '', location: match.location || '',
             category: match.category?.name || '', category_color: match.category?.color || '#e5e7eb',
-            player1: { name: match.player1?.name || '', points: p1_points ?? '', isWinner: match.winner_id === match.player1_id, teamColor: match.player1?.team?.color },
-            player2: { name: match.player2?.name || '', points: p2_points ?? '', isWinner: match.winner_id === match.player2_id, teamColor: match.player2?.team?.color },
+            player1: { name: match.player1?.name || '', points: p1_points ?? '', isWinner: match.winner_id === match.player1_id, teamColor: match.player1?.team?.color, teamImage: match.player1?.team?.image_url },
+            player2: { name: match.player2?.name || '', points: p2_points ?? '', isWinner: match.winner_id === match.player2_id, teamColor: match.player2?.team?.color, teamImage: match.player2?.team?.image_url },
             sets: (match.sets && match.sets.length > 0) ? match.sets.map(s => `${s.p1}-${s.p2}`).join(', ') : ''
         };
     }).filter(Boolean);
