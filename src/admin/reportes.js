@@ -14,6 +14,41 @@ document.addEventListener('DOMContentLoaded', async () => {
         return;
     }
 
+    // --- NUEVA FUNCIÓN PARA OBTENER DATOS DEL CLIMA ---
+    async function fetchWeatherData() {
+        const locations = {
+            centro: { lat: -32.95, lon: -60.64 }, // Coordenadas de Rosario
+            funes: { lat: -32.92, lon: -60.81 }   // Coordenadas de Funes
+        };
+        const weatherCache = { centro: {}, funes: {} };
+
+        try {
+            for (const key in locations) {
+                const loc = locations[key];
+                const url = `https://api.open-meteo.com/v1/forecast?latitude=${loc.lat}&longitude=${loc.lon}&daily=weather_code,temperature_2m_max,temperature_2m_min,wind_speed_10m_max&timezone=auto&forecast_days=16`;
+                
+                const response = await fetch(url);
+                if (!response.ok) continue;
+
+                const data = await response.json();
+                data.daily.time.forEach((date, index) => {
+                    weatherCache[key][date] = {
+                        maxTemp: Math.round(data.daily.temperature_2m_max[index]),
+                        minTemp: Math.round(data.daily.temperature_2m_min[index]),
+                        windSpeed: Math.round(data.daily.wind_speed_10m_max[index]),
+                        weatherCode: data.daily.weather_code[index]
+                    };
+                });
+            }
+        } catch (error) {
+            console.error("No se pudo obtener la información del clima:", error);
+        }
+        return weatherCache;
+    }
+
+    // Llama a la API antes de renderizar
+    const weatherData = await fetchWeatherData();
+
     // 3. Agrupar partidos por fecha y luego por sede
     const groupedMatches = reportData.reduce((acc, match) => {
         const date = match.date;
@@ -59,21 +94,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         table.style.tableLayout = 'fixed'; 
         table.innerHTML = `
             <colgroup>
-                <col style="width: 6%">
-                <col style="width: 9%">
-                <col style="width: 25%">
-                <col style="width: 6%">
-                <col style="width: 18%">
-                <col style="width: 6%">
-                <col style="width: 25%">
-                <col style="width: 5%">
+                <col style="width: 6%"><col style="width: 9%"><col style="width: 25%"><col style="width: 6%"><col style="width: 18%"><col style="width: 6%"><col style="width: 25%"><col style="width: 5%">
             </colgroup>
         `;
         container.appendChild(table);
         return table;
     }
 
-    function createHeaderRow(tbody, sede, formattedDate) {
+    // --- FUNCIÓN MODIFICADA PARA AÑADIR EL CLIMA ---
+    function createHeaderRow(tbody, sede, date, formattedDate) {
         const headerRow = tbody.insertRow();
         headerRow.className = 'date-header-row';
 
@@ -87,24 +116,38 @@ document.addEventListener('DOMContentLoaded', async () => {
             textColor = '#000000';
         }
 
+        function weatherCodeToEmoji(code) {
+            const icons = { 0: '☀️', 1: '🌤️', 2: '⛅️', 3: '🌥️', 45: '🌫️', 48: '🌫️', 51: '🌦️', 53: '🌦️', 55: '🌦️', 61: '🌧️', 63: '🌧️', 65: '🌧️', 80: '⛈️', 81: '⛈️', 82: '⛈️', 95: '🌩️' };
+            return icons[code] || '🌐';
+        }
+
+        let weatherHTML = '';
+        const weather = weatherData[sede.toLowerCase().trim()]?.[date];
+        if (weather) {
+            weatherHTML = `
+                <div style="display: flex; align-items: center; gap: 15px; font-size: 0.9em;">
+                    <div style="text-align: right;">
+                        <div>${weather.maxTemp}° / ${weather.minTemp}°</div>
+                        <div style="font-size: 0.8em; opacity: 0.9;">${weather.windSpeed} km/h</div>
+                    </div>
+                    <div style="font-size: 1.8em;">${weatherCodeToEmoji(weather.weatherCode)}</div>
+                </div>
+            `;
+        }
+
         const headerCell = headerRow.insertCell();
-        headerCell.colSpan = 8; 
-        
-        // --- CÓDIGO CORREGIDO ---
-        // Se aplica el estilo con !important para asegurar que sobreescriba
-        // cualquier otra regla del archivo HTML.
-        headerCell.style.cssText = `
-            background-color: ${bgColor} !important; 
-            color: ${textColor} !important;
-            font-weight: 700;
-            font-size: 11pt;
-            padding: 8px 15px;
-        `;
+        headerCell.colSpan = 8;
+        headerCell.style.backgroundColor = bgColor;
+        headerCell.style.color = textColor;
+        headerCell.style.fontWeight = '700';
+        headerCell.style.fontSize = '11pt';
+        headerCell.style.padding = '8px 15px';
         
         headerCell.innerHTML = `
             <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
                 <span style="text-align: left;">${sede.toUpperCase()}</span>
                 <span style="text-align: center; flex-grow: 1;">${formattedDate}</span>
+                <span style="text-align: right;">${weatherHTML}</span>
             </div>
         `;
     }
@@ -139,21 +182,21 @@ document.addEventListener('DOMContentLoaded', async () => {
             const table = createTable(container);
             let tbody = table.createTBody();
             
-            createHeaderRow(tbody, sede, formattedDate);
+            createHeaderRow(tbody, sede, date, formattedDate);
             currentHeight += HEADER_ROW_HEIGHT_MM;
             
             for (const match of matches) {
                 if (currentHeight + ROW_HEIGHT_MM > maxContentHeight) {
                     pageCount++;
                     container = createNewPage();
-                    
                     const newTable = createTable(container);
                     tbody = newTable.createTBody();
-
-                    createHeaderRow(tbody, sede, `${formattedDate} (cont.)`);
+                    createHeaderRow(tbody, sede, date, `${formattedDate} (cont.)`);
                     currentHeight = HEADER_ROW_HEIGHT_MM;
                 }
 
+                const row = tbody.insertRow();
+                row.className = 'data-row';
                 let cancha = match.location ? match.location.split(' - ')[1] : 'N/A';
                 if (typeof cancha === 'string') {
                     const matchNum = cancha.match(/\d+/);
@@ -163,40 +206,27 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const p2_class = match.player2.isWinner ? 'winner' : '';
                 let hora = match.time || '';
                 if (hora && hora.length >= 5) hora = hora.substring(0, 5);
-
-                const row = tbody.insertRow();
-                const catColor = match.category_color || '#b45309';
-                // Reemplaza guiones por / y luego comas por espacio
-                const setsDisplay = (match.sets || '').replace(/\s*-\s*/g, '/').replace(/,\s*/g, ' ');
-
+                // Reemplaza guiones por / y elimina la coma dejando solo espacio
+                // Reemplaza guiones por / y separa los sets por espacio
+                const setsDisplay = (match.sets || '')
+                    .split(',')
+                    .map(s => s.trim().replace(/\s*-\s*/g, '/'))
+                    .filter(Boolean)
+                    .join(' ');
                 function isColorLight(hex) {
                     if (!hex) return false;
                     let c = hex.replace('#', '');
                     if (c.length === 3) c = c.split('').map(x => x + x).join('');
-                    const r = parseInt(c.substr(0,2),16);
-                    const g = parseInt(c.substr(2,2),16);
-                    const b = parseInt(c.substr(4,2),16);
+                    const r = parseInt(c.substr(0,2),16), g = parseInt(c.substr(2,2),16), b = parseInt(c.substr(4,2),16);
                     return (0.299*r + 0.587*g + 0.114*b) > 186;
                 }
-
-                const p1TeamColor = match.player1.teamColor;
-                const p2TeamColor = match.player2.teamColor;
-                const p1TextColor = isColorLight(p1TeamColor) ? '#222' : '#fff';
-                const p2TextColor = isColorLight(p2TeamColor) ? '#222' : '#fff';
-
+                const p1TeamColor = match.player1.teamColor, p2TeamColor = match.player2.teamColor;
+                const p1TextColor = isColorLight(p1TeamColor) ? '#222' : '#fff', p2TextColor = isColorLight(p2TeamColor) ? '#222' : '#fff';
                 const played = !!(match.sets && match.sets.trim() !== '');
                 let p1NameStyle = played && !match.player1.isWinner ? 'color:#6b716f;' : '';
                 let p2NameStyle = played && !match.player2.isWinner ? 'color:#6b716f;' : '';
-                
                 row.innerHTML = `
-                    <td>${cancha}</td>
-                    <td class="text-center">${hora}</td>
-                    <td class="text-right font-bold ${p1_class}" style='${p1NameStyle}'>${match.player1.name}</td>
-                    <td class="pts-col" style='text-align:center;background:${p1TeamColor || '#3a3838'};color:${p1TextColor};font-weight:700;'>${match.player1.points}</td>
-                    <td style='text-align:center;' class="font-mono">${setsDisplay}</td>
-                    <td class="pts-col" style='text-align:center;background:${p2TeamColor || '#3a3838'};color:${p2TextColor};font-weight:700;'>${match.player2.points}</td>
-                    <td class="font-bold ${p2_class}" style='${p2NameStyle}'>${match.player2.name}</td>
-                    <td class="cat-col" style="color:${catColor};font-family:'Segoe UI Black',Arial,sans-serif;font-weight:900;">${match.category}</td>
+                    <td>${cancha}</td><td class="text-center">${hora}</td><td class="text-right font-bold ${p1_class}" style='${p1NameStyle}'>${match.player1.name}</td><td class="pts-col" style='text-align:center;background:${p1TeamColor || '#3a3838'};color:${p1TextColor};font-weight:700;'>${match.player1.points}</td><td style='text-align:center;' class="font-mono">${setsDisplay}</td><td class="pts-col" style='text-align:center;background:${p2TeamColor || '#3a3838'};color:${p2TextColor};font-weight:700;'>${match.player2.points}</td><td class="font-bold ${p2_class}" style='${p2NameStyle}'>${match.player2.name}</td><td class="cat-col" style="color:${match.category_color || '#b45309'};font-family:'Segoe UI Black',Arial,sans-serif;font-weight:900;">${match.category}</td>
                 `;
                 currentHeight += ROW_HEIGHT_MM;
             }
@@ -206,34 +236,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     // 5. Lógica para los botones de acción
     document.getElementById('btn-save-pdf').addEventListener('click', () => {
         const element = document.getElementById('report-pages-container');
-        const opt = {
-            margin: 0,
-            filename: `reporte_partidos_${new Date().toLocaleDateString('es-AR').replace(/\//g, '-')}.pdf`,
-            image: { type: 'jpeg', quality: 0.98 },
-            html2canvas: { scale: 2, useCORS: true, logging: false },
-            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-        };
-        html2pdf().set(opt).from(element).save();
+        html2pdf().set({ margin: 0, filename: `reporte_partidos.pdf`, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } }).from(element).save();
     });
-
     document.getElementById('btn-save-report').addEventListener('click', async () => {
-        if (!reportData || reportData.length === 0) {
-            alert('No hay datos de reporte para guardar.');
-            return;
-        }
+        if (!reportData || reportData.length === 0) return alert('No hay datos de reporte para guardar.');
         const title = prompt('Ingresa un título para guardar este reporte:', 'Reporte de Partidos ' + new Date().toLocaleDateString('es-AR'));
         if (!title) return;
-        
-        const { error } = await supabase.from('reports').insert({
-            title: title,
-            report_data: reportData
-        });
-
-        if (error) {
-            alert('Error al guardar el reporte: ' + error.message);
-        } else {
-            alert('Reporte guardado con éxito.');
-            window.location.href = 'reportes-historicos.html';
-        }
+        const { error } = await supabase.from('reports').insert({ title: title, report_data: reportData });
+        if (error) alert('Error al guardar el reporte: ' + error.message);
+        else { alert('Reporte guardado con éxito.'); window.location.href = 'reportes-historicos.html'; }
     });
 });

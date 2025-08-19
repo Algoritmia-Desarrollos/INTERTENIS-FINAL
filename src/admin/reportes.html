@@ -11,18 +11,17 @@
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"/>
     <style>
-        /* Estilos para la vista en pantalla y la exportación a PDF */
         body {
-            background-color: #e0e0e0; /* Un fondo gris para que las hojas resalten */
+            background-color: #e0e0e0;
         }
         main {
-            max-width: 210mm; /* Ancho de una hoja A4 */
+            max-width: 210mm;
             margin: 20px auto;
         }
         .page {
             background: white;
             width: 210mm;
-            min-height: 297mm; /* Usamos min-height para que se ajuste si hay poco contenido */
+            min-height: 297mm;
             padding: 20mm;
             margin-bottom: 20px;
             box-shadow: 0 0 10px rgba(0,0,0,0.1);
@@ -46,13 +45,13 @@
         .report-table th, .report-table td {
             padding: 6px 4px;
             font-size: 9pt;
-            border: 1px solid #888888; /* Borde gris oscuro para todas las celdas */
+            border: 1px solid #888888;
             text-align: center;
             vertical-align: middle;
             background: #111;
             color: #fff;
         }
-        .report-table td:first-child { /* Estilo para la primera celda (cancha) */
+        .report-table tr.data-row td:first-child {
             background: #ffc000 !important;
             color: #222 !important;
             font-weight: bold;
@@ -61,55 +60,16 @@
             font-weight: 700; 
             color: #f4ec05 !important; 
         }
-
-        /* --- NUEVOS ESTILOS PARA LA FILA DE FECHA/SEDE --- */
-        .report-table .sede-cell {
-            background-color: #ffc000 !important;
-            color: #000 !important;
-            font-weight: 700;
-            text-align: center;
-            font-size: 11pt;
-        }
-        .report-table .date-cell {
-            background-color: #111 !important;
-            color: #ffc000 !important;
-            font-weight: 700;
-            text-align: left;
-            padding-left: 15px;
-            font-size: 11pt;
-            text-transform: capitalize;
-        }
-        /* --- FIN DE NUEVOS ESTILOS --- */
-
-
-        /* Estilos específicos para la impresión */
         @media print {
-            body {
-                background: none;
-                -webkit-print-color-adjust: exact;
-                print-color-adjust: exact;
-            }
-            main {
-                margin: 0;
-                width: 100%;
-            }
-            .no-print {
-                display: none !important;
-            }
-            .page {
-                box-shadow: none;
-                margin: 0;
-                width: 100%;
-                height: 100%;
-                padding: 15mm;
-                background: #111 !important;
-            }
+            body { background: none; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            main { margin: 0; width: 100%; }
+            .no-print { display: none !important; }
+            .page { box-shadow: none; margin: 0; width: 100%; height: 100%; padding: 15mm; background: #111 !important; }
         }
     </style>
 </head>
 <body class="bg-gray-200">
     <header id="header" class="no-print"></header>
-
     <main id="report-main-container">
         <div class="no-print content-container max-w-[210mm] mx-auto p-4 bg-white mb-4 rounded-b-xl shadow-lg">
             <div class="flex flex-wrap justify-between items-center gap-4">
@@ -130,10 +90,8 @@
                 </div>
             </div>
         </div>
-        
         <div id="report-pages-container"></div>
     </main>
-    
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script type="module" src="reportes.js"></script>
 </body>
