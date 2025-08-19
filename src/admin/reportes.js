@@ -109,7 +109,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         let bgColor, textColor;
 
         if (sede.toLowerCase().trim() === 'centro') {
-            bgColor = '#111111'; 
+            bgColor = '#222222'; // gris oscuro
             textColor = '#ffc000';
         } else { 
             bgColor = '#fdc100'; 
@@ -223,7 +223,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 let p2NameStyle = played && !match.player2.isWinner ? 'color:#6b716f;' : '';
 
                 // --- AJUSTE DE COLOR PARA LA CELDA DE LA CANCHA ---
-                const canchaBackgroundColor = sede.toLowerCase().trim() === 'centro' ? '#111111' : '#ffc000';
+                // Cambiar color de la primera columna para 'centro' a gris oscuro
+                const canchaBackgroundColor = sede.toLowerCase().trim() === 'centro' ? '#222222' : '#ffc000';
                 const canchaTextColor = sede.toLowerCase().trim() === 'centro' ? '#ffc000' : '#222';
 
                 row.innerHTML = `
