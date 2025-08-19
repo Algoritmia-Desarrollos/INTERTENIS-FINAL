@@ -154,47 +154,47 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     let container = createNewPage();
 
+    // Reemplazo del bucle para iterar correctamente por fechas y sedes
     for (const date of sortedDates) {
         const sedes = groupedMatches[date];
-        
-        const dateObj = new Date(date + 'T00:00:00');
-        const weekday = dateObj.toLocaleDateString('es-AR', { weekday: 'long' });
-        const day = dateObj.getDate();
-        const month = dateObj.toLocaleDateString('es-AR', { month: 'long' });
-        let formattedDate = `${weekday} ${day} de ${month}`;
-        formattedDate = formattedDate.charAt(0).toUpperCase() + formattedDate.slice(1);
-        
+        const formattedDate = new Date(date).toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' });
         for (const sede in sedes) {
             const matches = sedes[sede];
-            
-            if (currentHeight > 0 && (currentHeight + SPACER_HEIGHT_MM + HEADER_ROW_HEIGHT_MM + ROW_HEIGHT_MM > maxContentHeight)) {
+
+            // --- NUEVA LÓGICA DE PAGINACIÓN ---
+            // 1. Calcular la altura total que necesitará esta tabla completa.
+            const tableHeight = HEADER_ROW_HEIGHT_MM + (matches.length * ROW_HEIGHT_MM);
+            // Se necesita un espaciador si no es el primer elemento de la página.
+            const spacerHeight = (currentHeight > 0) ? SPACER_HEIGHT_MM : 0;
+
+            // 2. Comprobar si la tabla completa (con su espaciador) cabe en el espacio restante.
+            if (currentHeight + spacerHeight + tableHeight > maxContentHeight) {
+                // Si no cabe, crear una nueva página y reiniciar la altura.
                 pageCount++;
                 container = createNewPage();
+                currentHeight = 0; // La altura se reinicia para la nueva página.
+            }
+            // --- FIN DE LA NUEVA LÓGICA ---
+
+            // Añadir un espaciador solo si es necesario (si no estamos al inicio de una página).
+            if (currentHeight > 0) {
+                const spacer = document.createElement('div');
+                spacer.style.height = `${SPACER_HEIGHT_MM}mm`;
+                container.appendChild(spacer);
+                currentHeight += SPACER_HEIGHT_MM;
             }
 
-            if (container.children.length > 0) {
-                 const spacer = document.createElement('div');
-                 spacer.style.height = `${SPACER_HEIGHT_MM}mm`;
-                 container.appendChild(spacer);
-                 currentHeight += SPACER_HEIGHT_MM;
-            }
-
+            // Ahora que sabemos que la tabla cabe, la creamos.
             const table = createTable(container);
             let tbody = table.createTBody();
-            
+
+            // Crear el encabezado SIN "(cont.)" porque la tabla nunca se corta.
             createHeaderRow(tbody, sede, date, formattedDate);
             currentHeight += HEADER_ROW_HEIGHT_MM;
-            
-            for (const match of matches) {
-                if (currentHeight + ROW_HEIGHT_MM > maxContentHeight) {
-                    pageCount++;
-                    container = createNewPage();
-                    const newTable = createTable(container);
-                    tbody = newTable.createTBody();
-                    createHeaderRow(tbody, sede, date, `${formattedDate} (cont.)`);
-                    currentHeight = HEADER_ROW_HEIGHT_MM;
-                }
 
+            // Bucle para añadir todas las filas de partidos.
+            // YA NO SE NECESITA la comprobación de página aquí dentro.
+            for (const match of matches) {
                 const row = tbody.insertRow();
                 row.className = 'data-row';
                 let cancha = match.location ? match.location.split(' - ')[1] : 'N/A';
@@ -207,7 +207,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 let hora = match.time || '';
                 if (hora && hora.length >= 5) hora = hora.substring(0, 5);
                 const setsDisplay = (match.sets || '').split(/\s*,\s*/).map(s => s.replace(/\s*-\s*/g, '/')).join(' ');
-                
+
                 function isColorLight(hex) {
                     if (!hex) return false;
                     let c = hex.replace('#', '');
@@ -222,12 +222,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 let p1NameStyle = played && !match.player1.isWinner ? 'color:#6b716f;' : '';
                 let p2NameStyle = played && !match.player2.isWinner ? 'color:#6b716f;' : '';
 
-                // Si el partido no se jugó, dejar la celda de puntos vacía
                 const p1PointsDisplay = played ? match.player1.points : '';
                 const p2PointsDisplay = played ? match.player2.points : '';
 
-                // --- AJUSTE DE COLOR PARA LA CELDA DE LA CANCHA ---
-                // Cambiar color de la primera columna para 'centro' a gris oscuro
                 const canchaBackgroundColor = sede.toLowerCase().trim() === 'centro' ? '#222222' : '#ffc000';
                 const canchaTextColor = sede.toLowerCase().trim() === 'centro' ? '#ffc000' : '#222';
 
