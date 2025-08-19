@@ -46,35 +46,41 @@
         .report-table th, .report-table td {
             padding: 6px 4px;
             font-size: 9pt;
-            border: 1px solid #888888;
+            border: 1px solid #888888; /* Borde gris oscuro para todas las celdas */
             text-align: center;
             vertical-align: middle;
             background: #111;
             color: #fff;
         }
-     
-        .report-table th.cat-col, .report-table td.cat-col {
-            width: 32px;
-            min-width: 32px;
-            max-width: 32px;
-            text-align: center;
-        }
-        .report-table th {
-            background-color: #ffc000 !important;
-            font-weight: 700;
-            color: #222 !important;
-        }
-        .report-table th:first-child,
-        .report-table td:first-child {
+        .report-table td:first-child { /* Estilo para la primera celda (cancha) */
             background: #ffc000 !important;
             color: #222 !important;
             font-weight: bold;
         }
-        .text-right { text-align: right; }
-        .text-center { text-align: center; }
-        .font-bold { font-weight: 700; }
-        .font-mono { font-family: monospace; }
-    .winner { font-weight: 700; color: #f4ec05 !important; }
+        .winner { 
+            font-weight: 700; 
+            color: #f4ec05 !important; 
+        }
+
+        /* --- NUEVOS ESTILOS PARA LA FILA DE FECHA/SEDE --- */
+        .report-table .sede-cell {
+            background-color: #ffc000 !important;
+            color: #000 !important;
+            font-weight: 700;
+            text-align: center;
+            font-size: 11pt;
+        }
+        .report-table .date-cell {
+            background-color: #111 !important;
+            color: #ffc000 !important;
+            font-weight: 700;
+            text-align: left;
+            padding-left: 15px;
+            font-size: 11pt;
+            text-transform: capitalize;
+        }
+        /* --- FIN DE NUEVOS ESTILOS --- */
+
 
         /* Estilos específicos para la impresión */
         @media print {
@@ -127,32 +133,6 @@
         
         <div id="report-pages-container"></div>
     </main>
-    <script>
-    // Cambia el encabezado y celdas de la columna de categoría a 'Cat.' y ajusta el ancho
-    document.addEventListener('DOMContentLoaded', function() {
-        const tables = document.querySelectorAll('.report-table');
-        tables.forEach(table => {
-            // Cambia el encabezado
-            const ths = table.querySelectorAll('th');
-            ths.forEach(th => {
-                if (th.textContent.trim().toLowerCase() === 'categoria' || th.textContent.trim().toLowerCase() === 'cat.' ) {
-                    th.textContent = 'Cat.';
-                    th.classList.add('cat-col');
-                }
-            });
-            // Cambia las celdas
-            const rows = table.querySelectorAll('tr');
-            rows.forEach(row => {
-                const cells = row.querySelectorAll('td');
-                if (cells.length > 0) {
-                    // Busca la celda de categoría por posición (última)
-                    const catCell = cells[cells.length-1];
-                    catCell.classList.add('cat-col');
-                }
-            });
-        });
-    });
-    </script>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script type="module" src="reportes.js"></script>
