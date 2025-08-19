@@ -1,11 +1,23 @@
 import { renderHeader } from '../common/header.js';
 import { requireRole } from '../common/router.js';
 import { supabase } from '../common/supabase.js';
+import { calculatePoints } from './calculatePoints.js';
 
 requireRole('admin');
 
 let lastMatchesData = []; // Guardar los datos de los partidos para el modal
 let allPlayers = []; // Guardar todos los jugadores para los selects del modal
+
+// --- Funciones Auxiliares (copiadas de matches.js para consistencia visual) ---
+function isColorLight(hex) {
+    if (!hex) return false;
+    let c = hex.replace('#', '');
+    if (c.length === 3) c = c.split('').map(x => x + x).join('');
+    const r = parseInt(c.substr(0, 2), 16),
+          g = parseInt(c.substr(2, 2), 16),
+          b = parseInt(c.substr(4, 2), 16);
+    return ((0.299 * r + 0.587 * g + 0.114 * b) > 150);
+}
 
 // --- Carga Inicial ---
 document.addEventListener('DOMContentLoaded', async () => {
@@ -32,10 +44,11 @@ async function loadDashboardData() {
         supabase.from('matches').select('*', { count: 'exact', head: true }),
         supabase.from('matches').select(`*, 
             category:category_id(id, name, color),
-            player1:player1_id(*, team:team_id(image_url)), 
-            player2:player2_id(*, team:team_id(image_url)), 
+            player1:player1_id(*, team:team_id(name, image_url, color)), 
+            player2:player2_id(*, team:team_id(name, image_url, color)), 
             winner:winner_id(name)`)
-        .order('match_date', { ascending: false })
+        .order('match_date', { ascending: false, nullsFirst: false })
+        .order('match_time', { ascending: false, nullsFirst: false })
         .limit(15),
         supabase.from('players').select('*').order('name')
     ]);
@@ -43,7 +56,7 @@ async function loadDashboardData() {
     lastMatchesData = lastMatches || [];
     allPlayers = players || [];
 
-    // --- Renderizar Tarjetas de Resumen como Enlaces ---
+    // --- Renderizar Tarjetas de Resumen ---
     summaryContainer.innerHTML = `
         <a href="tournaments.html" class="block bg-white p-6 rounded-xl shadow-sm border flex items-center gap-4 transition hover:shadow-md hover:border-yellow-300">
             <span class="material-icons text-4xl text-yellow-500">emoji_events</span>
@@ -66,80 +79,159 @@ async function loadDashboardData() {
                 <p class="text-2xl font-bold">${matchCount ?? 0}</p>
             </div>
         </a>
+         <a href="rankings.html" class="block bg-white p-6 rounded-xl shadow-sm border flex items-center gap-4 transition hover:shadow-md hover:border-yellow-300">
+            <span class="material-icons text-4xl text-yellow-500">leaderboard</span>
+            <div>
+                <p class="text-gray-500">Rankings</p>
+                <p class="text-2xl font-bold">Ver</p>
+            </div>
+        </a>
     `;
 
-    // --- Renderizar Nueva Tabla de Últimos Partidos ---
+    // --- Renderizar Tabla de Últimos Partidos ---
     if (matchesError || lastMatchesData.length === 0) {
-        matchesContainer.innerHTML = '<p class="text-center text-gray-500 py-4">No hay partidos registrados.</p>';
+        matchesContainer.innerHTML = '<div class="bg-white rounded-xl shadow-sm border p-4"><p class="text-center text-gray-500 py-4">No hay partidos registrados.</p></div>';
         return;
     }
-
-    matchesContainer.innerHTML = `
-        <div class="overflow-x-auto">
-            <table class="min-w-full">
-                <thead class="bg-gray-50">
-                    <tr>
-                        <th class="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Fecha y Hora</th>
-                        <th class="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Cancha</th>
-                        <th class="px-4 py-2 text-right text-xs font-semibold text-gray-500 uppercase">Jugador A</th>
-                        <th class="px-4 py-2 text-center text-xs font-semibold text-gray-500 uppercase">Pts</th>
-                        <th class="px-4 py-2 text-center text-xs font-semibold text-gray-500 uppercase">Resultado (Games)</th>
-                        <th class="px-4 py-2 text-center text-xs font-semibold text-gray-500 uppercase">Pts</th>
-                        <th class="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Jugador B</th>
-                        <th class="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Categoría</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-gray-200">
-                    ${lastMatchesData.map(match => {
-                        const { p1_points, p2_points } = calculatePoints(match);
-                        const p1_winner = match.winner_id === match.player1_id;
-                        const p2_winner = match.winner_id === match.player2_id;
-                        const no_winner = !match.winner_id;
-
-                        const p1_class = no_winner ? 'text-gray-800' : p1_winner ? 'text-yellow-600 font-bold' : 'text-gray-500';
-                        const p2_class = no_winner ? 'text-gray-800' : p2_winner ? 'text-yellow-600 font-bold' : 'text-gray-500';
-                        
-                        const sets = match.sets || [];
-                        const result_string = sets.length > 0 ? sets.map(s => `${s.p1}/${s.p2}`).join(' ') : '-';
-                        const time_string = match.match_time ? match.match_time.substring(0, 5) : 'HH:MM';
-
-                        return `
-                        <tr class="hover:bg-gray-100 cursor-pointer" data-match-id="${match.id}">
-                            <td class="px-4 py-3 whitespace-nowrap text-sm">
-                                ${new Date(match.match_date).toLocaleDateString('es-AR')}
-                                <span class="block text-xs text-gray-400">${time_string} hs</span>
-                            </td>
-                            <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">${match.location || 'A definir'}</td>
-                            <td class="px-4 py-3 whitespace-nowrap text-sm text-right ${p1_class}">
-                                <div class="flex items-center justify-end gap-2">
-                                    <span>${match.player1.name}</span>
-                                    <img src="${match.player1.team?.image_url || 'https://via.placeholder.com/24'}" class="h-6 w-6 rounded-full object-cover">
-                                </div>
-                            </td>
-                            <td class="px-4 py-3 whitespace-nowrap text-center font-bold text-lg ${p1_class}">${p1_points}</td>
-                            <td class="px-4 py-3 whitespace-nowrap text-sm text-center font-mono font-semibold">${result_string}</td>
-                            <td class="px-4 py-3 whitespace-nowrap text-center font-bold text-lg ${p2_class}">${p2_points}</td>
-                            <td class="px-4 py-3 whitespace-nowrap text-sm ${p2_class}">
-                                <div class="flex items-center gap-2">
-                                    <img src="${match.player2.team?.image_url || 'https://via.placeholder.com/24'}" class="h-6 w-6 rounded-full object-cover">
-                                    <span>${match.player2.name}</span>
-                                </div>
-                            </td>
-                            <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
-                                <span class="inline-flex items-center justify-center w-7 h-7 rounded-full align-middle font-extrabold text-xs" style="background:transparent; color:${match.category?.color || '#e5e7eb'};">
-                                    ${match.category.name}
-                                </span>
-                            </td>
-                        </tr>
-                        `
-                    }).join('')}
-                </tbody>
-            </table>
-        </div>
-    `;
+    
+    renderLastMatches(lastMatchesData);
 }
 
-// --- Lógica del Modal ---
+
+function renderLastMatches(matchesToRender) {
+    const matchesContainer = document.getElementById('matches-container');
+
+    const groupedByDate = matchesToRender.reduce((acc, match) => {
+        const date = match.match_date || 'Sin fecha';
+        if (!acc[date]) acc[date] = [];
+        acc[date].push(match);
+        return acc;
+    }, {});
+
+    const sortedDates = Object.keys(groupedByDate).sort((a, b) => new Date(b) - new Date(a));
+    
+    let tableHTML = '';
+
+    for (const [dateIdx, date] of sortedDates.entries()) {
+        if (dateIdx > 0) tableHTML += `<tr><td colspan="9" style="height: 18px; background: transparent; border: none;"></td></tr>`;
+        
+        const groupedBySede = groupedByDate[date].reduce((acc, match) => {
+            const sede = (match.location ? match.location.split(' - ')[0] : 'Sede no definida').trim();
+            if(!acc[sede]) acc[sede] = [];
+            acc[sede].push(match);
+            return acc;
+        }, {});
+
+        let sedeIdx = 0;
+        for(const sede in groupedBySede) {
+            if (sedeIdx > 0) tableHTML += `<tr><td colspan="9" style="height: 14px; background: transparent; border: none;"></td></tr>`;
+            sedeIdx++;
+            
+            const matchesInSede = groupedBySede[sede];
+            const dateObj = new Date(date + 'T00:00:00');
+            const weekday = dateObj.toLocaleDateString('es-AR', { weekday: 'long' });
+            const day = dateObj.getDate();
+            const month = dateObj.toLocaleDateString('es-AR', { month: 'long' });
+            let formattedDate = `${weekday} ${day} de ${month}`;
+            formattedDate = formattedDate.charAt(0).toUpperCase() + formattedDate.slice(1);
+            
+            const headerBgColor = sede.toLowerCase() === 'centro' ? '#222222' : '#fdc100';
+            const headerTextColor = sede.toLowerCase() === 'centro' ? '#ffc000' : '#000000';
+
+            tableHTML += `
+                <tr>
+                    <td colspan="3" style="background-color: ${headerBgColor}; color: ${headerTextColor}; font-weight: 700; text-align: center; vertical-align: middle; padding: 12px 0 8px 0; font-size: 15pt; border-radius: 0; letter-spacing: 1px; border-right: none;">
+                        ${sede.toUpperCase()}
+                    </td>
+                    <td colspan="6" style="background-color: ${headerBgColor}; color: ${headerTextColor}; font-weight: 700; text-align: center; vertical-align: middle; padding: 12px 0 8px 0; font-size: 15pt; border-radius: 0; letter-spacing: 1px; border-left: none;">
+                        ${formattedDate}
+                    </td>
+                </tr>`;
+
+            for (const match of matchesInSede) {
+                const { p1_points, p2_points } = calculatePoints(match);
+                const p1_class = match.player1.id === match.winner_id ? 'winner' : '';
+                const p2_class = match.player2.id === match.winner_id ? 'winner' : '';
+                let hora = match.match_time ? match.match_time.substring(0, 5) : 'HH:MM';
+                const setsDisplay = (match.sets || []).map(s => `${s.p1}/${s.p2}`).join(' ');
+                const p1TeamColor = match.player1.team?.color;
+                const p2TeamColor = match.player2.team?.color;
+                const p1TextColor = isColorLight(p1TeamColor) ? '#222' : '#fff';
+                const p2TextColor = isColorLight(p2TeamColor) ? '#222' : '#fff';
+                const played = !!(match.sets && match.sets.length > 0);
+                let p1NameStyle = played && !p1_class ? 'color:#888;' : '';
+                let p2NameStyle = played && !p2_class ? 'color:#888;' : '';
+                
+                // --- INICIO DE LA LÓGICA MODIFICADA ---
+                let p1CellContent = '';
+                let p2CellContent = '';
+
+                if (played) {
+                    p1CellContent = p1_points;
+                    p2CellContent = p2_points;
+                } else {
+                    if (match.player1.team?.image_url) {
+                        p1CellContent = `<img src="${match.player1.team.image_url}" alt="" style="height: 20px; object-fit: contain; margin: auto; display: block;">`;
+                    }
+                    if (match.player2.team?.image_url) {
+                        p2CellContent = `<img src="${match.player2.team.image_url}" alt="" style="height: 20px; object-fit: contain; margin: auto; display: block;">`;
+                    }
+                }
+                // --- FIN DE LA LÓGICA MODIFICADA ---
+
+                let cancha = 'N/A';
+                if (match.location) {
+                    const parts = match.location.split(' - ');
+                    cancha = parts[1] || parts[0];
+                }
+                const matchNum = cancha.match(/\d+/);
+                if (matchNum) cancha = matchNum[0];
+                const canchaBackgroundColor = sede.toLowerCase() === 'centro' ? '#222222' : '#ffc000';
+                const canchaTextColor = sede.toLowerCase() === 'centro' ? '#ffc000' : '#222';
+
+                tableHTML += `
+                    <tr class="clickable-row data-row" data-match-id="${match.id}">
+                        <td style="background-color: ${canchaBackgroundColor} !important; color: ${canchaTextColor} !important; font-weight: bold;">${cancha}</td>
+                        <td style="background:#000;color:#fff;">${hora}</td>
+                        <td class="player-name player-name-right ${p1_class}" style='background:#000;color:#fff;${p1NameStyle}'>${match.player1.name}</td>
+                        <td class="pts-col" style='background:${p1TeamColor || '#3a3838'};color:${p1TextColor};'>${p1CellContent}</td>
+                        <td class="font-mono" style="background:#000;color:#fff;">${setsDisplay}</td>
+                        <td class="pts-col" style='background:${p2TeamColor || '#3a3838'};color:${p2TextColor};'>${p2CellContent}</td>
+                        <td class="player-name player-name-left ${p2_class}" style='background:#000;color:#fff;${p2NameStyle}'>${match.player2.name}</td>
+                        <td class="cat-col" style="background:#000;color:${match.category?.color || '#b45309'};">${match.category?.name || 'N/A'}</td>
+                        <td class="action-cell" style="background:#000;"><button class="p-1 rounded-full hover:bg-gray-700" data-action="edit" title="Editar / Cargar Resultado"><span class="material-icons text-base" style="color:#fff;">edit</span></button></td>
+                    </tr>`;
+            }
+        }
+    }
+    
+    matchesContainer.innerHTML = `
+        <div class="bg-[#222222] p-6 rounded-xl shadow-lg">
+             <style>
+                .matches-report-style { width: 100%; border-collapse: separate; border-spacing: 0; }
+                .matches-report-style th, .matches-report-style td { padding: 6px 4px; font-size: 9pt; border: 1px solid #4a4a4a; text-align: center; vertical-align: middle; background: #222222; color: #ffffff; }
+                .matches-report-style thead th { font-size: 8pt; color: #a0a0a0; text-transform: uppercase; font-weight: 600; padding-top: 8px; padding-bottom: 8px; }
+                .matches-report-style .winner { font-weight: 700 !important; color: #f4ec05 !important; }
+                .matches-report-style .player-name { font-weight: 700; }
+                .matches-report-style .player-name-right { text-align: right; padding-right: 8px; }
+                .matches-report-style .player-name-left { text-align: left; padding-left: 8px; }
+                .matches-report-style .font-mono { font-family: 'Consolas', 'Menlo', 'Courier New', monospace; font-size: 10pt; }
+                .matches-report-style .pts-col { font-weight: 700; text-align: center; }
+                .matches-report-style .cat-col { font-family: 'Segoe UI Black', 'Arial Black', sans-serif; font-weight: 900; font-size: 10pt; text-align: center; }
+                .matches-report-style .action-cell button { color: #9ca3af; }
+                .matches-report-style .action-cell button:hover { color: #ffffff; }
+            </style>
+            <table class="matches-report-style">
+                <colgroup><col style="width: 5%"><col style="width: 8%"><col style="width: 26%"><col style="width: 5%"><col style="width: 13%"><col style="width: 5%"><col style="width: 26%"><col style="width: 6%"><col style="width: 6%"></colgroup>
+                <thead><tr>
+                    <th>Cancha</th><th>Hora</th><th style="text-align: right; padding-right: 8px;">Jugador 1</th><th>Pts</th><th>Resultado</th><th>Pts</th><th style="text-align: left; padding-left: 8px;">Jugador 2</th><th>Cat.</th><th>Editar</th>
+                </tr></thead>
+                <tbody>${tableHTML}</tbody>
+            </table>
+        </div>`;
+}
+
+// --- Lógica del Modal (sin cambios, pero necesaria) ---
 function openScoreModal(match) {
     const modalContainer = document.getElementById('score-modal-container');
     const sets = match.sets || [];
@@ -149,11 +241,9 @@ function openScoreModal(match) {
     modalContainer.innerHTML = `
         <div id="score-modal-overlay" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
             <div id="score-modal-content" class="bg-white rounded-xl shadow-lg w-full max-w-lg">
-                <div class="p-6 border-b">
-                    <h3 class="text-xl font-bold">Registrar Resultado</h3>
-                </div>
+                <div class="p-6 border-b"><h3 class="text-xl font-bold">Editar Partido / Resultado</h3></div>
                 <form id="score-form" class="p-6 space-y-4">
-                    <div class="grid grid-cols-2 gap-4">
+                     <div class="grid grid-cols-2 gap-4">
                         <div>
                             <label class="block text-sm font-medium text-gray-700">Jugador A</label>
                             <select id="player1-select-modal" class="input-field mt-1" ${isPlayed ? 'disabled' : ''}>
@@ -182,12 +272,8 @@ function openScoreModal(match) {
                 </form>
                 <div class="p-4 bg-gray-50 flex justify-between gap-4 rounded-b-xl">
                     <div class="flex items-center gap-2">
-                        <button id="btn-delete-match" class="btn btn-secondary !p-2" title="Eliminar Partido">
-                            <span class="material-icons !text-red-600">delete_forever</span>
-                        </button>
-                        ${isPlayed ? `<button id="btn-clear-score" class="btn btn-secondary !p-2" title="Limpiar Resultado">
-                            <span class="material-icons !text-yellow-600">cleaning_services</span>
-                        </button>` : ''}
+                        <button id="btn-delete-match" class="btn btn-secondary !p-2" title="Eliminar Partido"><span class="material-icons !text-red-600">delete_forever</span></button>
+                        ${isPlayed ? `<button id="btn-clear-score" class="btn btn-secondary !p-2" title="Limpiar Resultado"><span class="material-icons !text-yellow-600">cleaning_services</span></button>` : ''}
                     </div>
                     <div class="flex gap-4">
                         <button id="btn-cancel-modal" class="btn btn-secondary">Cancelar</button>
@@ -201,12 +287,8 @@ function openScoreModal(match) {
     document.getElementById('btn-save-score').onclick = () => saveScores(match.id);
     document.getElementById('btn-cancel-modal').onclick = closeModal;
     document.getElementById('btn-delete-match').onclick = () => deleteMatch(match.id);
-    if (isPlayed) {
-        document.getElementById('btn-clear-score').onclick = () => clearScore(match.id);
-    }
-    document.getElementById('score-modal-overlay').onclick = (e) => {
-        if (e.target.id === 'score-modal-overlay') closeModal();
-    };
+    if (isPlayed) document.getElementById('btn-clear-score').onclick = () => clearScore(match.id);
+    document.getElementById('score-modal-overlay').onclick = (e) => { if (e.target.id === 'score-modal-overlay') closeModal(); };
 }
 
 function closeModal() {
@@ -220,7 +302,7 @@ async function saveScores(matchId) {
     for (let i = 1; i <= 3; i++) {
         const p1Score = document.getElementById(`p1_set${i}`).value;
         const p2Score = document.getElementById(`p2_set${i}`).value;
-        if (p1Score !== '' && p2Score !== '') {
+        if (p1Score && p2Score && p1Score !== '' && p2Score !== '') {
             const p1 = parseInt(p1Score, 10);
             const p2 = parseInt(p2Score, 10);
             sets.push({ p1, p2 });
@@ -231,76 +313,53 @@ async function saveScores(matchId) {
     
     const p1_id = document.getElementById('player1-select-modal').value;
     const p2_id = document.getElementById('player2-select-modal').value;
-
-    if (p1_id === p2_id) {
-        alert("Los jugadores no pueden ser los mismos.");
-        return;
-    }
+    if (p1_id === p2_id) return alert("Los jugadores no pueden ser los mismos.");
 
     let winner_id = null;
     if (sets.length > 0) {
-        if (sets.length < 2 || (p1SetsWon < 2 && p2SetsWon < 2)) {
-            alert("El resultado no es válido. Un jugador debe ganar al menos 2 sets para definir un ganador.");
-            return;
-        }
+        if (sets.length < 2 || (p1SetsWon < 2 && p2SetsWon < 2)) return alert("El resultado no es válido. Un jugador debe ganar al menos 2 sets.");
         winner_id = p1SetsWon > p2SetsWon ? p1_id : p2_id;
     }
     
-    const { error } = await supabase
-        .from('matches')
-        .update({ 
+    const { error } = await supabase.from('matches').update({ 
             sets: sets.length > 0 ? sets : null, 
-            winner_id: winner_id, 
+            winner_id, 
             player1_id: p1_id,
             player2_id: p2_id,
             bonus_loser: (p1SetsWon === 1 && winner_id == p2_id) || (p2SetsWon === 1 && winner_id == p1_id)
-        })
-        .eq('id', matchId);
+        }).eq('id', matchId);
     
-    if (error) {
-        alert("Error al guardar el resultado: " + error.message);
-    } else {
-        closeModal();
-        await loadDashboardData();
-    }
+    if (error) alert("Error al guardar: " + error.message);
+    else { closeModal(); await loadDashboardData(); }
 }
 
 async function clearScore(matchId) {
-    if (confirm("¿Está seguro de que desea limpiar el resultado de este partido?")) {
-        const { error } = await supabase
-            .from('matches')
-            .update({ sets: null, winner_id: null, bonus_loser: false })
-            .eq('id', matchId);
-
-        if (error) {
-            alert("Error al limpiar el resultado: " + error.message);
-        } else {
-            closeModal();
-            await loadDashboardData();
-        }
+    if (confirm("¿Limpiar el resultado de este partido?")) {
+        const { error } = await supabase.from('matches').update({ sets: null, winner_id: null, bonus_loser: false }).eq('id', matchId);
+        if (error) alert("Error: " + error.message);
+        else { closeModal(); await loadDashboardData(); }
     }
 }
 
 async function deleteMatch(matchId) {
-    if (confirm("¿Está seguro de que desea ELIMINAR este partido permanentemente?")) {
+    if (confirm("¿ELIMINAR este partido permanentemente?")) {
         const { error } = await supabase.from('matches').delete().eq('id', matchId);
-        if (error) {
-            alert("Error al eliminar el partido: " + error.message);
-        } else {
-            closeModal();
-            await loadDashboardData();
-        }
+        if (error) alert("Error: " + error.message);
+        else { closeModal(); await loadDashboardData(); }
     }
 }
-
-import { calculatePoints } from './calculatePoints.js';
 
 // --- Event Listeners ---
 document.getElementById('matches-container').addEventListener('click', (e) => {
     const row = e.target.closest('tr[data-match-id]');
-    if (row) {
-        const matchId = Number(row.dataset.matchId);
-        const matchData = lastMatchesData.find(m => m.id === matchId);
+    if (!row) return;
+
+    const matchId = Number(row.dataset.matchId);
+    const matchData = lastMatchesData.find(m => m.id === matchId);
+
+    if (e.target.closest('button[data-action="edit"]')) {
+        if (matchData) openScoreModal(matchData);
+    } else {
         if (matchData) openScoreModal(matchData);
     }
 });

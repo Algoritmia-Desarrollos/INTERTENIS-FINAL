@@ -339,10 +339,10 @@ const sortedDates = Object.keys(groupedByDate).sort((a, b) => {
                         const headerTextColor = sede.toLowerCase() === 'centro' ? '#ffc000' : '#000000';
                         tableHTML += `
                             <tr>
-                                <td colspan="3" style="background-color: ${headerBgColor}; color: ${headerTextColor}; font-weight: 700; text-align: center; vertical-align: middle; padding: 12px 0 8px 0; font-size: 15pt; border-radius: 8px 0 0 0; letter-spacing: 1px; border-right: none;">
+                                <td colspan="3" style="background-color: ${headerBgColor}; color: ${headerTextColor}; font-weight: 700; text-align: center; vertical-align: middle; padding: 12px 0 8px 0; font-size: 15pt; border-radius: 0; letter-spacing: 1px; border-right: none;">
                                     ${sede.toUpperCase()}
                                 </td>
-                                <td colspan="7" style="background-color: ${headerBgColor}; color: ${headerTextColor}; font-weight: 700; text-align: center; vertical-align: middle; padding: 12px 0 8px 0; font-size: 15pt; border-radius: 0 8px 0 0; letter-spacing: 1px; border-left: none;">
+                                <td colspan="7" style="background-color: ${headerBgColor}; color: ${headerTextColor}; font-weight: 700; text-align: center; vertical-align: middle; padding: 12px 0 8px 0; font-size: 15pt; border-radius: 0; letter-spacing: 1px; border-left: none;">
                                     ${formattedDate}
                                 </td>
                             </tr>`;
@@ -360,8 +360,21 @@ const sortedDates = Object.keys(groupedByDate).sort((a, b) => {
                 const played = !!(match.sets && match.sets.length > 0);
                 let p1NameStyle = played && !p1_class ? 'color:#888;' : '';
                 let p2NameStyle = played && !p2_class ? 'color:#888;' : '';
-                const p1PointsDisplay = played ? p1_points : '';
-                const p2PointsDisplay = played ? p2_points : '';
+                let p1PointsDisplay = '';
+                let p2PointsDisplay = '';
+                if (played) {
+                    p1PointsDisplay = (typeof p1_points !== 'undefined' && p1_points !== null) ? p1_points : '';
+                    if (p1PointsDisplay === 0) p1PointsDisplay = '0';
+                    p2PointsDisplay = (typeof p2_points !== 'undefined' && p2_points !== null) ? p2_points : '';
+                    if (p2PointsDisplay === 0) p2PointsDisplay = '0';
+                } else {
+                    if (match.player1.team?.image_url) {
+                        p1PointsDisplay = `<img src="${match.player1.team.image_url}" alt="" style="height: 20px; object-fit: contain; margin: auto; display: block;">`;
+                    }
+                    if (match.player2.team?.image_url) {
+                        p2PointsDisplay = `<img src="${match.player2.team.image_url}" alt="" style="height: 20px; object-fit: contain; margin: auto; display: block;">`;
+                    }
+                }
                 let cancha = 'N/A';
                 if (match.location) {
                     const parts = match.location.split(' - ');
