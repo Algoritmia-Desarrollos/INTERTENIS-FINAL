@@ -70,6 +70,10 @@ export function setupMassMatchLoader({
       cursor: pointer;
       font-size: 1.2rem;
       padding: 0 5px;
+      color: #fff;
+    }
+    .action-btn:hover {
+      color: #fdc100;
     }
     .editing-input {
       border: none;
@@ -82,11 +86,22 @@ export function setupMassMatchLoader({
       top: 0;
       font-size: inherit;
       font-family: inherit;
-      color: black !important;
-      background: white !important;
+      color: #fff !important;
+      background: #232323 !important;
     }
-    #mass-matches-table td, #mass-matches-table th {
-      color: black !important;
+    #mass-matches-table th, #mass-matches-table td {
+      background: #18191b !important;
+      color: #fff !important;
+      border: 1px solid #333 !important;
+    }
+    #mass-matches-table thead th {
+      background: #111 !important;
+      color: #fff !important;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+    #mass-matches-table td {
+      font-size: 10pt;
     }
   `;
   document.head.appendChild(style);
@@ -290,7 +305,7 @@ export function setupMassMatchLoader({
     const player1Name = allPlayers.find(p => p.id == match.player1_id)?.name || '---';
     const player2Name = allPlayers.find(p => p.id == match.player2_id)?.name || '---';
     
-  const cellStyle = "overflow:hidden; white-space:nowrap; text-overflow:ellipsis; color:black;";
+  const cellStyle = "overflow:hidden; white-space:nowrap; text-overflow:ellipsis; color:#fff; background:#18191b;";
     return `
       <tr data-row-id="${match.clientId}">
         <td class="p-2 border relative" data-field="tournament_id" style="${cellStyle}">${tournamentName}</td>

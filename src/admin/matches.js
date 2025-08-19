@@ -403,14 +403,16 @@ const sortedDates = Object.keys(groupedByDate).sort((a, b) => {
     }
     
     matchesContainer.innerHTML = `
-        <table class="matches-report-style">
-            <colgroup><col style="width: 4%"><col style="width: 5%"><col style="width: 8%"><col style="width: 25%"><col style="width: 5%"><col style="width: 13%"><col style="width: 5%"><col style="width: 25%"><col style="width: 5%"><col style="width: 5%"></colgroup>
+    <div class="bg-[#18191b] p-6 rounded-xl shadow-lg overflow-x-auto">
+    <table class="matches-report-style">
+            <colgroup><col style="width: 4%"><col style="width: 5%"><col style="width: 4%"><col style="width: 25%"><col style="width: 5%"><col style="width: 13%"><col style="width: 5%"><col style="width: 25%"><col style="width: 5%"><col style="width: 5%"></colgroup>
             <thead><tr>
                 <th><input type="checkbox" id="select-all-matches"></th>
                 <th>Cancha</th><th>Hora</th><th style="text-align: right; padding-right: 8px;">Jugador 1</th><th>Pts</th><th>Resultado</th><th>Pts</th><th style="text-align: left; padding-left: 8px;">Jugador 2</th><th>Cat.</th><th>Editar</th>
             </tr></thead>
             <tbody>${tableHTML}</tbody>
-        </table>`;
+    </table>
+    </div>`;
 
     // Seleccionar/Deseleccionar todos los partidos visibles
     const selectAllCheckbox = document.getElementById('select-all-matches');

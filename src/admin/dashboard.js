@@ -56,7 +56,6 @@ async function loadDashboardData() {
     lastMatchesData = lastMatches || [];
     allPlayers = players || [];
 
-    // --- Renderizar Tarjetas de Resumen (Estilo Oscuro) ---
     summaryContainer.innerHTML = `
         <a href="tournaments.html" class="block bg-[#222222] p-6 rounded-xl shadow-lg border border-transparent flex items-center gap-4 transition hover:shadow-md hover:border-yellow-400">
             <span class="material-icons text-4xl text-yellow-500">emoji_events</span>
@@ -88,9 +87,8 @@ async function loadDashboardData() {
         </a>
     `;
 
-    // --- Renderizar Tabla de Últimos Partidos ---
     if (matchesError || lastMatchesData.length === 0) {
-        matchesContainer.innerHTML = '<div class="bg-[#222222] rounded-xl shadow-lg border p-4"><p class="text-center text-gray-400 py-4">No hay partidos registrados.</p></div>';
+        matchesContainer.innerHTML = '<div class="bg-[#222222] rounded-xl shadow-lg p-4"><p class="text-center text-gray-400 py-4">No hay partidos registrados.</p></div>';
         return;
     }
     
@@ -122,28 +120,18 @@ function renderLastMatches(matchesToRender) {
             return acc;
         }, {});
 
-        let sedeIdx = 0;
         for(const sede in groupedBySede) {
-            if (sedeIdx > 0) tableHTML += `<tr><td colspan="9" style="height: 14px; background: #000; border: none;"></td></tr>`;
-            sedeIdx++;
-            
             const matchesInSede = groupedBySede[sede];
             const dateObj = new Date(date + 'T00:00:00');
-            const weekday = dateObj.toLocaleDateString('es-AR', { weekday: 'long' });
-            const day = dateObj.getDate();
-            const month = dateObj.toLocaleDateString('es-AR', { month: 'long' });
-            let formattedDate = `${weekday} ${day} de ${month}`;
-            formattedDate = formattedDate.charAt(0).toUpperCase() + formattedDate.slice(1);
-            
+            const formattedDate = new Intl.DateTimeFormat('es-AR', { weekday: 'long', day: 'numeric', month: 'long' }).format(dateObj);
             const headerBgColor = sede.toLowerCase() === 'centro' ? '#222222' : '#fdc100';
             const headerTextColor = sede.toLowerCase() === 'centro' ? '#ffc000' : '#000000';
-
             tableHTML += `
-                <tr>
-                    <td colspan="3" style="background-color: ${headerBgColor}; color: ${headerTextColor}; font-weight: 700; text-align: center; vertical-align: middle; padding: 12px 0 8px 0; font-size: 15pt; border-radius: 0; letter-spacing: 1px; border-right: none;">
+                <tr class="sede-fecha-row">
+                    <td colspan="3" style="background-color: ${headerBgColor}; color: ${headerTextColor}; font-weight: 700; text-align: center; vertical-align: middle; padding: 12px 0 8px 0; font-size: 15pt; border-radius: 0 !important; letter-spacing: 1px; border-right: none;">
                         ${sede.toUpperCase()}
                     </td>
-                    <td colspan="6" style="background-color: ${headerBgColor}; color: ${headerTextColor}; font-weight: 700; text-align: center; vertical-align: middle; padding: 12px 0 8px 0; font-size: 15pt; border-radius: 0; letter-spacing: 1px; border-left: none;">
+                    <td colspan="6" style="background-color: ${headerBgColor}; color: ${headerTextColor}; font-weight: 700; text-align: center; vertical-align: middle; padding: 12px 0 8px 0; font-size: 15pt; border-radius: 0 !important; letter-spacing: 1px; border-left: none;">
                         ${formattedDate}
                     </td>
                 </tr>`;
@@ -204,14 +192,12 @@ function renderLastMatches(matchesToRender) {
     }
     
     matchesContainer.innerHTML = `
-        <div class="bg-[#222222] p-6 rounded-xl shadow-lg">
+    <div class="bg-[#18191b] p-6 rounded-xl shadow-lg overflow-x-auto rounded-xl">
              <style>
-                .matches-report-style { width: 100%; border-collapse: separate; border-spacing: 0; border-radius: 8px; overflow: hidden; }
-                .matches-report-style th, .matches-report-style td { padding: 6px 4px; font-size: 9pt; border-bottom: 1px solid #4a4a4a; text-align: center; vertical-align: middle; background: #222222; color: #ffffff; }
-                .matches-report-style tr td { border-right: 1px solid #4a4a4a; }
-                .matches-report-style tr td:first-child { border-left: 1px solid #4a4a4a; }
+                .matches-report-style { min-width: 800px; width: 100%; border-collapse: separate; border-spacing: 0; border-radius: 18px; overflow: hidden; }
+                .matches-report-style th, .matches-report-style td { padding: 6px 4px; font-size: 9pt; border-bottom: 1px solid #4a4a4a; text-align: center; vertical-align: middle; background: #222222; color: #ffffff; white-space: nowrap; }
+                .matches-report-style thead th { background: #000; font-size: 8pt; color: #a0a0a0; text-transform: uppercase; font-weight: 600; padding-top: 8px; padding-bottom: 8px; border: none; }
                 .matches-report-style tbody tr:last-child td { border-bottom: none; }
-                .matches-report-style thead th { font-size: 8pt; color: #a0a0a0; text-transform: uppercase; font-weight: 600; padding-top: 8px; padding-bottom: 8px; border: none; background: #000; }
                 .matches-report-style .winner { font-weight: 700 !important; color: #f4ec05 !important; }
                 .matches-report-style .player-name { font-weight: 700; }
                 .matches-report-style .player-name-right { text-align: right; padding-right: 8px; }
@@ -221,6 +207,7 @@ function renderLastMatches(matchesToRender) {
                 .matches-report-style .cat-col { font-family: 'Segoe UI Black', 'Arial Black', sans-serif; font-weight: 900; font-size: 10pt; text-align: center; }
                 .matches-report-style .action-cell button { color: #9ca3af; }
                 .matches-report-style .action-cell button:hover { color: #ffffff; }
+                .matches-report-style .sede-fecha-row td { border-radius: 0 !important; }
             </style>
             <table class="matches-report-style">
                 <colgroup><col style="width: 5%"><col style="width: 8%"><col style="width: 26%"><col style="width: 5%"><col style="width: 13%"><col style="width: 5%"><col style="width: 26%"><col style="width: 6%"><col style="width: 6%"></colgroup>
@@ -232,13 +219,11 @@ function renderLastMatches(matchesToRender) {
         </div>`;
 }
 
-// --- Lógica del Modal (sin cambios, pero necesaria) ---
 function openScoreModal(match) {
     const modalContainer = document.getElementById('score-modal-container');
     const sets = match.sets || [];
     const isPlayed = !!match.winner_id;
     const playersInCategory = allPlayers.filter(p => p.category_id === match.category_id);
-
 
     modalContainer.innerHTML = `
         <div id="score-modal-overlay" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-2 z-50">
@@ -286,13 +271,11 @@ function openScoreModal(match) {
             </div>
         </div>
     `;
-    // ...existing code...
 
     document.getElementById('btn-save-score').onclick = () => saveScores(match.id);
     document.getElementById('btn-cancel-modal').onclick = closeModal;
     document.getElementById('btn-delete-match').onclick = () => deleteMatch(match.id);
-    document.getElementById('btn-suspend-match').onclick = () => suspendMatch(match.id);
-    if (isPlayed) document.getElementById('btn-clear-score').onclick = () => clearScore(match.id);
+    if (match.winner_id) document.getElementById('btn-clear-score').onclick = () => clearScore(match.id);
     document.getElementById('score-modal-overlay').onclick = (e) => { if (e.target.id === 'score-modal-overlay') closeModal(); };
 }
 
@@ -340,7 +323,7 @@ async function saveScores(matchId) {
 
 async function clearScore(matchId) {
     if (confirm("¿Limpiar el resultado de este partido?")) {
-        const { error } = await supabase.from('matches').update({ sets: null, winner_id: null, bonus_loser: false }).eq('id', matchId);
+        const { error } = await supabase.from('matches').update({ sets: null, winner_id: null, bonus_loser: false, status: 'programado' }).eq('id', matchId);
         if (error) alert("Error: " + error.message);
         else { closeModal(); await loadDashboardData(); }
     }
@@ -354,7 +337,15 @@ async function deleteMatch(matchId) {
     }
 }
 
-// --- Event Listeners ---
+async function suspendMatch(matchId) {
+    if (confirm("¿Marcar este partido como suspendido?")) {
+        const { error } = await supabase.from('matches').update({ status: 'suspendido', sets: null, winner_id: null }).eq('id', matchId);
+        if (error) alert("Error: " + error.message);
+        else { closeModal(); await loadDashboardData(); }
+    }
+}
+
+
 document.getElementById('matches-container').addEventListener('click', (e) => {
     const row = e.target.closest('tr[data-match-id]');
     if (!row) return;
