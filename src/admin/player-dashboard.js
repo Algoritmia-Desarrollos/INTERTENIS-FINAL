@@ -111,21 +111,13 @@ function renderDashboard(player, matches, stats, tournaments) {
                                     const gano = m.winner_id === player.id;
                                     const resultado = m.winner_id ? (gano ? 'Victoria' : 'Derrota') : 'Pendiente';
                                     const resultadoClass = m.winner_id ? (gano ? 'text-green-400' : 'text-red-400') : 'text-gray-500';
-                                    // Mostrar sets si el partido está finalizado
-                                    let setsStr = '';
-                                    if (Array.isArray(m.sets) && m.sets.length > 0 && m.winner_id) {
-                                        setsStr = '<span class="text-xs text-gray-400 ml-2">(' + m.sets.map((set, idx) => {
-                                            const p1 = m.player1_id === player.id ? set.p1 : set.p2;
-                                            const p2 = m.player1_id === player.id ? set.p2 : set.p1;
-                                            return `${p1}-${p2}`;
-                                        }).join(', ') + ')</span>';
-                                    }
+
                                     return `
                                     <tr>
                                         <td class="px-4 py-3 whitespace-nowrap text-gray-300">${new Date(m.match_date + 'T00:00:00').toLocaleDateString('es-AR')}</td>
                                         <td class="px-4 py-3 whitespace-nowrap text-gray-300">${m.tournament.name}</td>
                                         <td class="px-4 py-3 whitespace-nowrap text-gray-300">${oponente}</td>
-                                        <td class="px-4 py-3 whitespace-nowrap font-bold ${resultadoClass}">${resultado} ${setsStr}</td>
+                                        <td class="px-4 py-3 whitespace-nowrap font-bold ${resultadoClass}">${resultado}</td>
                                     </tr>
                                     `
                                 }).join('') : '<tr><td colspan="4" class="text-center p-4 text-gray-400">No hay partidos registrados.</td></tr>'}

@@ -49,20 +49,14 @@ async function loadInitialData() {
     allPlayers = players || [];
 
     // Poblar selects del formulario
-    // Ordenar categorías numéricamente por el nombre (1° a 11°)
     categorySelect.innerHTML = '<option value="">Sin categoría</option>';
-    const sortedCategories = [...categories].sort((a, b) => {
-        const numA = parseInt((a.name || '').match(/\d+/)?.[0] || '0', 10);
-        const numB = parseInt((b.name || '').match(/\d+/)?.[0] || '0', 10);
-        return numA - numB;
-    });
-    sortedCategories.forEach(cat => categorySelect.innerHTML += `<option value="${cat.id}">${cat.name}</option>`);
+    categories.forEach(cat => categorySelect.innerHTML += `<option value="${cat.id}">${cat.name}</option>`);
     teamSelect.innerHTML = '<option value="">Sin equipo</option>';
     teams.forEach(team => teamSelect.innerHTML += `<option value="${team.id}">${team.name}</option>`);
     
     // Poblar selects de los filtros
     filterCategorySelect.innerHTML = '<option value="">Todas las Categorías</option>';
-    sortedCategories.forEach(cat => filterCategorySelect.innerHTML += `<option value="${cat.id}">${cat.name}</option>`);
+    categories.forEach(cat => filterCategorySelect.innerHTML += `<option value="${cat.id}">${cat.name}</option>`);
     filterTeamSelect.innerHTML = '<option value="">Todos los Equipos</option>';
     teams.forEach(team => filterTeamSelect.innerHTML += `<option value="${team.id}">${team.name}</option>`);
 

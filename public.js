@@ -1,15 +1,10 @@
 import { supabase } from './src/common/supabase.js';
-import { renderHeader } from './src/common/header.js';
+import { renderPublicHeader } from './public/public-header.js'; // Importación corregida
 
 // --- Elementos del DOM ---
 const header = document.getElementById('header');
 const tournamentFilter = document.getElementById('tournament-filter');
 const rankingsContainer = document.getElementById('rankings-container');
-
-// --- Header Público con buscador de jugador ---
-function renderPublicHeaderWithSearch() {
-    header.innerHTML = renderHeader();
-}
 
 // --- Lógica Principal de Rankings ---
 
@@ -17,7 +12,7 @@ async function populateTournamentFilter() {
     tournamentFilter.innerHTML = '<option value="" disabled selected>Seleccione un torneo...</option>';
     const { data: tournaments } = await supabase.from('tournaments').select('*');
     if (tournaments) {
-        // Sort tournaments numerically by name (e.g., 1°, 2°, ... 11°)
+        // Ordenar torneos numéricamente por nombre (ej: 1°, 2°, ... 11°)
         tournaments.sort((a, b) => {
             const numA = parseInt((a.name || '').match(/\d+/)?.[0] || '0', 10);
             const numB = parseInt((b.name || '').match(/\d+/)?.[0] || '0', 10);
@@ -206,7 +201,7 @@ function generateRankingsHTML(stats, playerToHighlight = null) {
 
 // --- Event Listeners ---
 document.addEventListener('DOMContentLoaded', async () => {
-    renderPublicHeaderWithSearch();
+    header.innerHTML = renderPublicHeader(); // Llamada a la función corregida
     await populateTournamentFilter();
     
     const urlParams = new URLSearchParams(window.location.search);

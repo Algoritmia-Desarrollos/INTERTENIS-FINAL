@@ -60,13 +60,13 @@ async function fetchAndRenderTournaments() {
 function sortAndRenderTournaments() {
     const sortBy = sortSelect.value;
     let sorted = [...allTournaments];
-
-    // Ordenar SIEMPRE numéricamente por nombre (ej: 1°, 2°, 10°)
-    sorted.sort((a, b) => {
-        const numA = parseInt(a.name);
-        const numB = parseInt(b.name);
-        return numA - numB;
-    });
+    
+    switch(sortBy) {
+        case 'created_at_asc': sorted.sort((a, b) => new Date(a.created_at) - new Date(b.created_at)); break;
+        case 'start_date_asc': sorted.sort((a, b) => new Date(a.start_date) - new Date(b.start_date)); break;
+        case 'name_asc': sorted.sort((a, b) => a.name.localeCompare(b.name)); break;
+        case 'created_at_desc': default: sorted.sort((a, b) => new Date(b.created_at) - new Date(a.created_at)); break;
+    }
     renderTournaments(sorted);
 }
 
