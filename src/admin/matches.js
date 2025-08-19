@@ -23,6 +23,7 @@ const modalContainer = document.getElementById('score-modal-container');
 const massLoaderContainer = document.getElementById('mass-match-loader-container');
 const filterDateRangeInput = document.getElementById('filter-date-range');
 let filterDateRange = [null, null];
+let lastDateRangeStr = '';
 
 // Crear botón Limpiar Filtros
 
@@ -115,10 +116,27 @@ async function loadInitialData() {
             onChange: function(selectedDates, dateStr) {
                 if (selectedDates.length === 2) {
                     filterDateRange = [selectedDates[0], selectedDates[1]];
+                    // Mostrar el rango en formato d/M a d/M
+                    const d1 = selectedDates[0];
+                    const d2 = selectedDates[1];
+                    const str = `${d1.getDate()}/${d1.getMonth()+1} a ${d2.getDate()}/${d2.getMonth()+1}`;
+                    filterDateRangeInput.value = str;
+                    filterDateRangeInput.style.color = '#000';
+                    lastDateRangeStr = str;
                 } else {
                     filterDateRange = [null, null];
+                    filterDateRangeInput.value = '';
+                    filterDateRangeInput.style.color = '';
+                    lastDateRangeStr = '';
                 }
                 applyFiltersAndSort();
+            },
+            onOpen: function() {
+                // Si hay un rango, mostrarlo en negro
+                if (filterDateRange[0] && filterDateRange[1]) {
+                    filterDateRangeInput.value = lastDateRangeStr;
+                    filterDateRangeInput.style.color = '#000';
+                }
             }
         });
     }
@@ -195,14 +213,14 @@ function applyFiltersAndSort() {
     updateClearFiltersBtn();
 
 function anyFilterActive() {
-    return filterTournamentSelect.value || filterStatusSelect.value || filterSedeSelect.value || filterCanchaSelect.value || searchInput.value;
+    return filterTournamentSelect.value || filterStatusSelect.value || filterSedeSelect.value || filterCanchaSelect.value || searchInput.value || (filterDateRange && filterDateRange[0] && filterDateRange[1]);
 }
 
 function updateClearFiltersBtn() {
     if (anyFilterActive()) {
-        clearFiltersBtn.style.display = 'block';
+        clearFiltersBtn.classList.remove('hidden');
     } else {
-        clearFiltersBtn.style.display = 'none';
+        clearFiltersBtn.classList.add('hidden');
     }
 }
 
@@ -212,6 +230,10 @@ clearFiltersBtn.onclick = function() {
     filterSedeSelect.value = '';
     filterCanchaSelect.value = '';
     searchInput.value = '';
+    filterDateRange = [null, null];
+    filterDateRangeInput.value = '';
+    filterDateRangeInput.style.color = '';
+    lastDateRangeStr = '';
     applyFiltersAndSort();
 };
 }
