@@ -394,7 +394,7 @@ function renderMatches(matchesToRender) {
                     const p1_class = no_winner ? 'text-gray-800' : p1_winner ? 'text-yellow-600 font-bold' : 'text-gray-500';
                     const p2_class = no_winner ? 'text-gray-800' : p2_winner ? 'text-yellow-600 font-bold' : 'text-gray-500';
                     const sets = match.sets || [];
-                    const result_string = match.status === 'suspendido' ? 'SUSPENDIDO' : (sets.length > 0 ? sets.map(s => `${s.p1}/${s.p2}`).join(', ') : '-');
+                    const result_string = match.status === 'suspendido' ? 'SUSPENDIDO' : (sets.length > 0 ? sets.map(s => `${s.p1}/${s.p2}`).join(' ') : '-');
                     const time_string = match.match_time ? match.match_time.substring(0, 5) : 'HH:MM';
                     const { p1_points, p2_points } = calculatePoints(match);
                     

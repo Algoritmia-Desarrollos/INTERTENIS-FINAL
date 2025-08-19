@@ -78,18 +78,24 @@ document.addEventListener('DOMContentLoaded', async () => {
                 container = createNewPage();
             }
 
+            // Div de separación vacío para mantener el espaciado
             const sectionTitle = document.createElement('div');
-            sectionTitle.className = 'flex items-center gap-4 mb-2 mt-4';
-            sectionTitle.innerHTML = `<h2 class="text-xl font-bold text-black-800 capitalize">${formattedDate}</h2><span class="text-lg font-semibold text-black-600">| Sede: ${sede}</span>`;
+            // Reducir a la mitad el espacio vertical (antes mb-2 mt-4)
+            sectionTitle.className = 'flex items-center gap-4 mb-1 mt-2';
+            sectionTitle.innerHTML = `<span class=\"text-lg font-semibold text-black-600\">&nbsp;</span>`;
             container.appendChild(sectionTitle);
-            currentHeight += SECTION_HEADER_HEIGHT_MM;
+            currentHeight += SECTION_HEADER_HEIGHT_MM / 2;
 
             let table = document.createElement('table');
             table.className = 'report-table';
-            table.innerHTML = `<thead><tr><th style='width:54px;min-width:54px;max-width:54px;text-align:center;'>Cancha</th><th>Hora</th><th class="text-right">Jugador 1</th><th class="text-center pts-col">Pts</th><th class="text-center">Resultado</th><th class="text-center pts-col">Pts</th><th>Jugador 2</th><th class="text-center">Cat.</th></tr></thead><tbody></tbody>`;
+            // Fila superior solo con sede, sin fecha
+            const headerRow = document.createElement('tr');
+            headerRow.innerHTML = `<td colspan="8" style="background:#ffc000;color:#222;font-weight:700;font-size:1.1em;padding:8px 0;text-align:center;border-bottom:2px solid #888;">Sede: ${sede}</td>`;
+            const tbodyEl = document.createElement('tbody');
+            tbodyEl.appendChild(headerRow);
+            table.appendChild(tbodyEl);
             container.appendChild(table);
             let tbody = table.querySelector('tbody');
-            currentHeight += TABLE_HEADER_HEIGHT_MM;
             
             for (const match of matches) {
                 if (currentHeight + ROW_HEIGHT_MM > maxContentHeight) {
@@ -103,10 +109,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                     table = document.createElement('table');
                     table.className = 'report-table';
-                    table.innerHTML = `<thead><tr><th>Cancha</th><th>Hora</th><th class="text-right">Jugador 1</th><th class="text-center">Pts</th><th class="text-center">Resultado</th><th class="text-center">Pts</th><th>Jugador 2</th><th class="text-center">Cat.</th></tr></thead><tbody></tbody>`;
+                    // Fila superior con día y sede también en las tablas continuadas
+                    const headerRow2 = document.createElement('tr');
+                    headerRow2.innerHTML = `<td colspan="8" style="background:#ffc000;color:#222;font-weight:700;font-size:1.1em;padding:8px 0;text-align:center;border-bottom:2px solid #888;">${formattedDate} | Sede: ${sede} (cont.)</td>`;
+                    const tbodyEl2 = document.createElement('tbody');
+                    tbodyEl2.appendChild(headerRow2);
+                    table.appendChild(tbodyEl2);
                     container.appendChild(table);
                     tbody = table.querySelector('tbody');
-                    currentHeight += TABLE_HEADER_HEIGHT_MM;
                 }
 
                 let cancha = match.location ? match.location.split(' - ')[1] : 'N/A';
@@ -123,7 +133,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const row = tbody.insertRow();
                 const catColor = match.category_color || '#b45309';
                     // Reemplazar '-' por '/' en el resultado de sets, sin espacios
-                    const setsDisplay = (match.sets || '').replace(/\s*-\s*/g, '/');
+                    let setsDisplay = (match.sets || '').replace(/\s*-\s*/g, '/');
+                    // Si hay varios sets, separarlos por espacio, no coma, y siempre usar '/'
+                    if (Array.isArray(match.sets)) {
+                        setsDisplay = match.sets.map(s => `${s.p1}/${s.p2}`).join(' ');
+                    } else if (typeof match.sets === 'string') {
+                        // Reemplazar cualquier '-' por '/' y comas por espacio
+                        setsDisplay = match.sets.replace(/\s*-\s*/g, '/').split(',').map(s => s.trim()).join(' ');
+                    }
                     // Colores de equipos desde la base
                     function getTeamColor(name) {
                         if (!name) return '';
