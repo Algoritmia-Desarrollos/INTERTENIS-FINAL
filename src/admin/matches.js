@@ -228,12 +228,23 @@ function applyFiltersAndSort() {
         });
     }
 
-    // Ordenar por fecha (match_date) según sortOrderDesc
+    // Ordenar por fecha (match_date) según sortOrderDesc, soportando ambos formatos
     processedMatches.sort((a, b) => {
-        if (!a.match_date) return 1;
-        if (!b.match_date) return -1;
-        const da = new Date(a.match_date);
-        const db = new Date(b.match_date);
+        function parseFecha(fecha) {
+            if (!fecha) return null;
+            if (fecha.includes('-')) {
+                const [y, m, d] = fecha.split('-');
+                return new Date(Number(y), Number(m) - 1, Number(d));
+            } else if (fecha.includes('/')) {
+                const [d, m, y] = fecha.split('/');
+                return new Date(Number(y), Number(m) - 1, Number(d));
+            }
+            return null;
+        }
+        const da = parseFecha(a.match_date);
+        const db = parseFecha(b.match_date);
+        if (!da) return 1;
+        if (!db) return -1;
         return sortOrderDesc ? db - da : da - db;
     });
     renderMatches(processedMatches);
@@ -264,7 +275,7 @@ clearFiltersBtn.onclick = function() {
     applyFiltersAndSort();
 };
 
-// --- Filtros rápidos por tarjetas resumen ---
+// --- Filtros rápidos por tarjetas resumen y orden ---
 let quickFilterMode = null; // null | 'pendientes' | 'recientes'
 let sortOrderDesc = true; // true: más recientes arriba (default)
 
@@ -291,8 +302,11 @@ function renderMatches(matchesToRender) {
         return acc;
     }, {});
 
-    const sortedDates = Object.keys(groupedByDate).sort((a, b) => new Date(a) - new Date(b));
-    let tableHTML = '';
+const sortedDates = Object.keys(groupedByDate).sort((a, b) => {
+    const dateA = new Date(a);
+    const dateB = new Date(b);
+    return sortOrderDesc ? dateB - dateA : dateA - dateB;
+});    let tableHTML = '';
 
     for (const [dateIdx, date] of sortedDates.entries()) {
     if (dateIdx > 0) tableHTML += `<tr><td colspan="10" style="height: 18px; background: #000; border: none;"></td></tr>`;
