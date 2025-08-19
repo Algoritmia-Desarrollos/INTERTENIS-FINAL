@@ -109,7 +109,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         let bgColor, textColor;
 
         if (sede.toLowerCase().trim() === 'centro') {
-            bgColor = '#111111 !important'; 
+            bgColor = '#111111'; 
             textColor = '#ffc000';
         } else { 
             bgColor = '#fdc100'; 
@@ -206,12 +206,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const p2_class = match.player2.isWinner ? 'winner' : '';
                 let hora = match.time || '';
                 if (hora && hora.length >= 5) hora = hora.substring(0, 5);
-                // Reemplaza guiones por / y elimina la coma dejando solo espacio
-                // Reemplaza guiones por / y separa los sets por espacio (ej: 1/6 1/6)
-                const setsDisplay = (match.sets || '')
-                    .split(/\s*,\s*/)
-                    .map(s => s.replace(/\s*-\s*/g, '/'))
-                    .join(' ');
+                const setsDisplay = (match.sets || '').split(/\s*,\s*/).map(s => s.replace(/\s*-\s*/g, '/')).join(' ');
+                
                 function isColorLight(hex) {
                     if (!hex) return false;
                     let c = hex.replace('#', '');
@@ -219,13 +215,26 @@ document.addEventListener('DOMContentLoaded', async () => {
                     const r = parseInt(c.substr(0,2),16), g = parseInt(c.substr(2,2),16), b = parseInt(c.substr(4,2),16);
                     return (0.299*r + 0.587*g + 0.114*b) > 186;
                 }
+
                 const p1TeamColor = match.player1.teamColor, p2TeamColor = match.player2.teamColor;
                 const p1TextColor = isColorLight(p1TeamColor) ? '#222' : '#fff', p2TextColor = isColorLight(p2TeamColor) ? '#222' : '#fff';
                 const played = !!(match.sets && match.sets.trim() !== '');
                 let p1NameStyle = played && !match.player1.isWinner ? 'color:#6b716f;' : '';
                 let p2NameStyle = played && !match.player2.isWinner ? 'color:#6b716f;' : '';
+
+                // --- AJUSTE DE COLOR PARA LA CELDA DE LA CANCHA ---
+                const canchaBackgroundColor = sede.toLowerCase().trim() === 'centro' ? '#111111' : '#ffc000';
+                const canchaTextColor = sede.toLowerCase().trim() === 'centro' ? '#ffc000' : '#222';
+
                 row.innerHTML = `
-                    <td>${cancha}</td><td class="text-center">${hora}</td><td class="text-right font-bold ${p1_class}" style='${p1NameStyle}'>${match.player1.name}</td><td class="pts-col" style='text-align:center;background:${p1TeamColor || '#3a3838'};color:${p1TextColor};font-weight:700;'>${match.player1.points}</td><td style='text-align:center;' class="font-mono">${setsDisplay}</td><td class="pts-col" style='text-align:center;background:${p2TeamColor || '#3a3838'};color:${p2TextColor};font-weight:700;'>${match.player2.points}</td><td class="font-bold ${p2_class}" style='${p2NameStyle}'>${match.player2.name}</td><td class="cat-col" style="color:${match.category_color || '#b45309'};font-family:'Segoe UI Black',Arial,sans-serif;font-weight:900;">${match.category}</td>
+                    <td style="background-color: ${canchaBackgroundColor} !important; color: ${canchaTextColor} !important; font-weight: bold;">${cancha}</td>
+                    <td class="text-center">${hora}</td>
+                    <td class="text-right font-bold ${p1_class}" style='${p1NameStyle}'>${match.player1.name}</td>
+                    <td class="pts-col" style='text-align:center;background:${p1TeamColor || '#3a3838'};color:${p1TextColor};font-weight:700;'>${match.player1.points}</td>
+                    <td style='text-align:center;' class="font-mono">${setsDisplay}</td>
+                    <td class="pts-col" style='text-align:center;background:${p2TeamColor || '#3a3838'};color:${p2TextColor};font-weight:700;'>${match.player2.points}</td>
+                    <td class="font-bold ${p2_class}" style='${p2NameStyle}'>${match.player2.name}</td>
+                    <td class="cat-col" style="color:${match.category_color || '#b45309'};font-family:'Segoe UI Black',Arial,sans-serif;font-weight:900;">${match.category}</td>
                 `;
                 currentHeight += ROW_HEIGHT_MM;
             }
