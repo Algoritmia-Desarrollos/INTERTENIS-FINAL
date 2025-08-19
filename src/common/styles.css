@@ -162,3 +162,26 @@ td.is-editing {
     color: transparent;
 }
 
+/* --- ESTILOS DE FORMULARIO (añadir al final del archivo) --- */
+
+/* ... (tus estilos existentes .input-field, etc.) ... */
+
+/* ▼▼▼ ESTILOS NUEVOS PARA EL INPUT DE ARCHIVO PERSONALIZADO ▼▼▼ */
+.custom-file-input {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  height: 2.75rem; /* Misma altura que otros inputs */
+  background-color: #374151; /* gray-700 */
+  color: #d1d5db; /* gray-300 */
+  border: 1px solid #4b5563; /* gray-600 */
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: all 150ms ease-in-out;
+  font-size: 0.875rem;
+}
+
+.custom-file-input:hover {
+  border-color: #facc15; /* yellow-400 */
+}
