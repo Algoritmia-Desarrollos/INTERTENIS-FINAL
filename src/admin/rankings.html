@@ -10,21 +10,33 @@
     <link rel="stylesheet" href="../common/styles.css">
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"/>
+    <style>
+      /* Estilos para los filtros en modo oscuro (igual que en matches.html) */
+      .dark-input {
+        background-color: #374151; /* gray-700 */
+        border-color: #4b5563; /* gray-600 */
+        color: #e5e7eb; /* gray-200 */
+      }
+      .dark-input:focus {
+        border-color: #fbbF24; /* amber-400 */
+        box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.3);
+      }
+    </style>
 </head>
-<body class="bg-gray-50 text-gray-800">
+<body class="bg-black text-gray-200">
     <header id="header"></header>
     <main class="flex-1 py-8">
         <div class="content-container max-w-7xl mx-auto space-y-8">
-            <h1 class="text-3xl font-bold text-gray-900">Rankings de Torneos</h1>
+            <h1 class="text-3xl font-bold text-gray-100">Rankings de Torneos</h1>
 
-            <div class="bg-white p-6 rounded-xl shadow-lg">
+            <div class="bg-[#222222] p-6 rounded-xl shadow-lg">
                 <div class="max-w-xs">
-                    <label for="tournament-filter" class="block text-sm font-medium text-gray-700 mb-2">Seleccionar Torneo</label>
-                    <select id="tournament-filter" class="input-field"></select>
+                    <label for="tournament-filter" class="block text-sm font-medium text-gray-300 mb-2">Seleccionar Torneo</label>
+                    <select id="tournament-filter" class="input-field dark-input"></select>
                 </div>
             </div>
 
-            <div id="rankings-container" class="space-y-6">
+            <div id="rankings-container" class="space-y-8">
                 </div>
         </div>
     </main>

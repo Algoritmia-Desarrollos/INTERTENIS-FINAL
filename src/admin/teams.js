@@ -1,7 +1,5 @@
-
 import { renderHeader } from '../common/header.js';
 import { requireRole } from '../common/router.js';
-import { login } from '../common/auth.js'; // <-- RUTA CORREGIDA
 import { supabase } from '../common/supabase.js';
 import { uploadTeamLogo } from './upload-team-logo.js';
 
@@ -20,9 +18,8 @@ const teamsList = document.getElementById('teams-list');
 const teamColorInput = document.getElementById('team-color');
 
 // --- Funciones de Renderizado ---
-
 async function renderTeams() {
-    teamsList.innerHTML = '<p>Cargando equipos...</p>';
+    teamsList.innerHTML = '<p class="text-gray-400">Cargando equipos...</p>';
     
     const { data, error } = await supabase
         .from('teams')
@@ -31,22 +28,22 @@ async function renderTeams() {
 
     if (error) {
         console.error("Error al cargar equipos:", error);
-        teamsList.innerHTML = '<p class="text-red-500">No se pudieron cargar los equipos.</p>';
+        teamsList.innerHTML = '<p class="text-red-400">No se pudieron cargar los equipos.</p>';
         return;
     }
 
     if (data.length === 0) {
-        teamsList.innerHTML = '<p class="text-center text-gray-500 py-4">No hay equipos registrados.</p>';
+        teamsList.innerHTML = '<p class="text-center text-gray-400 py-4">No hay equipos registrados.</p>';
         return;
     }
 
-    // Asignar color por defecto si el equipo es uno de los conocidos
     const defaultColors = {
         lakemo: '#ffcc06',
         melabanko: '#c25b19',
         muro: '#312533',
         nunkafuera: '#33511b'
     };
+
     teamsList.innerHTML = data.map(team => {
         let color = team.color;
         const name = team.name ? team.name.toLowerCase() : '';
@@ -55,23 +52,23 @@ async function renderTeams() {
             else if (name.includes('melabanko')) color = defaultColors.melabanko;
             else if (name.includes('muro')) color = defaultColors.muro;
             else if (name.includes('nunkafuera')) color = defaultColors.nunkafuera;
-            else color = '#cccccc';
+            else color = '#4b5563'; // gray-600
         }
         return `
-        <div class="flex justify-between items-center p-3 rounded-lg hover:bg-gray-50">
+        <div class="flex justify-between items-center p-3 rounded-lg hover:bg-black">
             <div class="flex items-center gap-4">
-                <span class="inline-block w-10 h-10 rounded-full border-2 border-gray-300 flex items-center justify-center" style="background:${color}">
-                    <img src="${team.image_url || 'https://via.placeholder.com/40'}" alt="Logo" class="h-8 w-8 rounded-full object-cover bg-gray-200">
+                <span class="inline-block w-10 h-10 rounded-full border-2 border-gray-700 flex items-center justify-center" style="background:${color}">
+                    <img src="${team.image_url || 'https://via.placeholder.com/40'}" alt="Logo" class="h-8 w-8 rounded-full object-cover bg-gray-700">
                 </span>
                 <div>
-                    <p class="font-semibold text-gray-800">${team.name}</p>
+                    <p class="font-semibold text-gray-100">${team.name}</p>
                 </div>
             </div>
             <div class="flex items-center gap-2">
-                <button data-action="edit" data-team='${JSON.stringify(team)}' class="text-blue-600 hover:text-blue-800 p-1">
+                <button data-action="edit" data-team='${JSON.stringify(team)}' class="text-blue-400 hover:text-blue-300 p-1">
                     <span class="material-icons text-base">edit</span>
                 </button>
-                <button data-action="delete" data-id="${team.id}" class="text-red-600 hover:text-red-800 p-1">
+                <button data-action="delete" data-id="${team.id}" class="text-red-400 hover:text-red-300 p-1">
                     <span class="material-icons text-base">delete</span>
                 </button>
             </div>
@@ -81,7 +78,6 @@ async function renderTeams() {
 }
 
 // --- Lógica de Formulario ---
-
 function resetForm() {
     form.reset();
     teamIdInput.value = '';
@@ -92,24 +88,31 @@ function resetForm() {
 
 async function handleFormSubmit(e) {
     e.preventDefault();
+    btnSave.disabled = true;
+    btnSave.textContent = 'Guardando...';
+
     const id = teamIdInput.value;
     const name = teamNameInput.value.trim();
     const color = teamColorInput.value;
     const file = teamImageInput.files[0];
+    
     let image_url = null;
-    if (!name) {
-        alert("El nombre del equipo es obligatorio.");
-        return;
-    }
     if (file) {
         try {
             image_url = await uploadTeamLogo(file);
         } catch (err) {
             alert("Error al subir la imagen: " + err);
+            btnSave.disabled = false;
+            btnSave.textContent = id ? 'Actualizar Equipo' : 'Guardar Equipo';
             return;
         }
     }
-    const teamData = { name, color, image_url };
+    
+    const teamData = { name, color };
+    if (image_url) {
+        teamData.image_url = image_url;
+    }
+
     let error;
     if (id) {
         const { error: updateError } = await supabase.from('teams').update(teamData).eq('id', id);
@@ -118,16 +121,19 @@ async function handleFormSubmit(e) {
         const { error: insertError } = await supabase.from('teams').insert([teamData]);
         error = insertError;
     }
+
     if (error) {
         alert(`Error al guardar el equipo: ${error.message}`);
     } else {
         resetForm();
         await renderTeams();
     }
+
+    btnSave.disabled = false;
+    btnSave.textContent = id ? 'Actualizar Equipo' : 'Guardar Equipo';
 }
 
 // --- Event Listeners ---
-
 document.addEventListener('DOMContentLoaded', async () => {
     header.innerHTML = renderHeader();
     await renderTeams();

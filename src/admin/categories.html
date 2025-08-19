@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF--8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Club de Tenis - Gestión de Categorías</title>
   <link rel="icon" href="/logo_2021_02.png" type="image/png">
@@ -11,23 +11,35 @@
   <link rel="stylesheet" href="../common/styles.css" />
   <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
   <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"/>
+  <style>
+    /* Estilos para los inputs en modo oscuro */
+    .dark-input {
+      background-color: #374151; /* gray-700 */
+      border-color: #4b5563; /* gray-600 */
+      color: #e5e7eb; /* gray-200 */
+    }
+    .dark-input:focus {
+      border-color: #fbbF24; /* amber-400 */
+      box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.3);
+    }
+  </style>
 </head>
-<body class="bg-gray-50 text-gray-800">
+<body class="bg-black text-gray-200">
   <header id="header"></header>
   <main class="flex-1 py-8">
     <div class="content-container max-w-4xl mx-auto space-y-8">
-      <h1 class="text-3xl font-bold text-gray-900">Gestión de Categorías</h1>
+      <h1 class="text-3xl font-bold text-gray-100">Gestión de Categorías</h1>
       
-      <div class="bg-white p-6 rounded-xl shadow-lg">
-        <h2 id="form-title" class="text-xl font-semibold mb-4">Añadir Nueva Categoría</h2>
+      <div class="bg-[#222222] p-6 rounded-xl shadow-lg">
+        <h2 id="form-title" class="text-xl font-semibold mb-4 text-gray-100">Añadir Nueva Categoría</h2>
         <form id="form-category" class="space-y-4">
           <input type="hidden" id="category-id">
           <div>
-            <label for="category-name" class="block text-sm font-medium text-gray-700">Nombre de la Categoría</label>
-            <input type="text" id="category-name" class="input-field mt-1 block w-full" required>
+            <label for="category-name" class="block text-sm font-medium text-gray-300">Nombre de la Categoría</label>
+            <input type="text" id="category-name" class="input-field dark-input mt-1 block w-full" required>
           </div>
           <div>
-            <label for="category-color" class="block text-sm font-medium text-gray-700">Color de la Categoría</label>
+            <label for="category-color" class="block text-sm font-medium text-gray-300">Color de la Categoría</label>
             <input type="color" id="category-color" class="mt-1 block w-16 h-8 p-0 border-0 bg-transparent cursor-pointer" value="#e5e7eb">
           </div>
           <div class="flex justify-end gap-4 pt-2">
@@ -37,8 +49,8 @@
         </form>
       </div>
 
-      <div class="bg-white p-6 rounded-xl shadow-lg">
-        <h2 class="text-xl font-semibold mb-4">Categorías Existentes</h2>
+      <div class="bg-[#222222] p-6 rounded-xl shadow-lg">
+        <h2 class="text-xl font-semibold mb-4 text-gray-100">Categorías Existentes</h2>
         <div id="categories-list" class="space-y-2">
           </div>
       </div>

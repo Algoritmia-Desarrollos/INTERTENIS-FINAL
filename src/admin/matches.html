@@ -19,60 +19,61 @@
   <style>
     .matches-report-style {
         width: 100%;
-        border-collapse: collapse;
-        table-layout: fixed; /* Importante para que los anchos se respeten */
+        border-collapse: separate;
+        border-spacing: 0;
+        border-radius: 8px;
+        overflow: hidden;
     }
     .matches-report-style th,
     .matches-report-style td {
         padding: 6px 4px;
         font-size: 9pt;
-        border: 1px solid #4a4a4a; /* Borde gris oscuro para separar celdas */
+        border-bottom: 1px solid #4a4a4a;
         text-align: center;
         vertical-align: middle;
-        background: #222222; /* Fondo oscuro por defecto */
-        color: #ffffff; /* Texto blanco por defecto */
+        background: #222222;
+        color: #ffffff;
+    }
+    .matches-report-style tr td {
+      border-right: 1px solid #4a4a4a;
+    }
+    .matches-report-style tr td:first-child {
+       border-left: 1px solid #4a4a4a;
+    }
+    .matches-report-style tbody tr:last-child td {
+      border-bottom: none;
     }
     .matches-report-style thead th {
         font-size: 8pt;
-        color: #a0a0a0; /* Color más tenue para los encabezados */
+        color: #a0a0a0;
         text-transform: uppercase;
         font-weight: 600;
         padding-top: 8px;
         padding-bottom: 8px;
+        border: none;
+        background: #000;
     }
     .matches-report-style .winner {
         font-weight: 700 !important;
-        color: #f4ec05 !important; /* Amarillo brillante para el ganador */
+        color: #f4ec05 !important;
     }
-    .matches-report-style .player-name {
-        font-weight: 700;
-    }
+    .matches-report-style .player-name { font-weight: 700; }
     .matches-report-style .player-name-right { text-align: right; padding-right: 8px;}
     .matches-report-style .player-name-left { text-align: left; padding-left: 8px;}
-
     .matches-report-style .font-mono { 
         font-family: 'Consolas', 'Menlo', 'Courier New', monospace;
         font-size: 10pt;
     }
-    .matches-report-style .pts-col {
-        font-weight: 700;
-        text-align: center;
-    }
+    .matches-report-style .pts-col { font-weight: 700; text-align: center; }
     .matches-report-style .cat-col {
         font-family: 'Segoe UI Black', 'Arial Black', sans-serif;
         font-weight: 900;
         font-size: 10pt;
         text-align: center;
     }
-    .matches-report-style .action-cell {
-        background-color: #1a1a1a; /* Un poco más oscuro para diferenciar */
-    }
-    .matches-report-style .action-cell button {
-        color: #9ca3af; /* gris claro */
-    }
-    .matches-report-style .action-cell button:hover {
-        color: #ffffff; /* blanco al pasar el mouse */
-    }
+    .matches-report-style .action-cell button { color: #9ca3af; }
+    .matches-report-style .action-cell button:hover { color: #ffffff; }
+
     /* Estilos para los filtros en modo oscuro */
     .dark-input {
       background-color: #374151; /* gray-700 */
@@ -85,26 +86,26 @@
     }
   </style>
   </head>
-<body class="bg-gray-50 text-gray-800">
+<body class="bg-black text-gray-200">
   <header id="header"></header>
   <main class="flex-1 py-8">
   <div class="content-container max-w-7xl mx-auto space-y-8">
       <div class="flex flex-wrap justify-between items-center gap-4">
-        <h1 class="text-3xl font-bold text-gray-900">Gestión de Partidos</h1>
+        <h1 class="text-3xl font-bold text-gray-100">Gestión de Partidos</h1>
       </div>
       <div id="match-summary-cards" class="flex flex-wrap gap-6 my-4">
-        <div id="card-pendientes" class="flex-1 min-w-[220px] cursor-pointer bg-white border border-yellow-200 rounded-xl shadow-sm p-5 flex items-center gap-4 hover:shadow-md hover:border-yellow-400 transition">
+        <div id="card-pendientes" class="flex-1 min-w-[220px] cursor-pointer bg-[#222222] border border-transparent rounded-xl shadow-lg p-5 flex items-center gap-4 hover:shadow-md hover:border-yellow-400 transition">
           <span class="material-icons text-yellow-500 text-3xl">schedule</span>
           <div>
-            <div class="text-xs text-gray-500 font-semibold">Partidos por Jugar</div>
-            <div id="count-pendientes" class="text-2xl font-bold text-gray-900">0</div>
+            <div class="text-xs text-gray-400 font-semibold">Partidos por Jugar</div>
+            <div id="count-pendientes" class="text-2xl font-bold text-gray-100">0</div>
           </div>
         </div>
-        <div id="card-recientes" class="flex-1 min-w-[220px] cursor-pointer bg-white border border-green-200 rounded-xl shadow-sm p-5 flex items-center gap-4 hover:shadow-md hover:border-green-400 transition">
-          <span class="material-icons text-green-600 text-3xl">check_circle</span>
+        <div id="card-recientes" class="flex-1 min-w-[220px] cursor-pointer bg-[#222222] border border-transparent rounded-xl shadow-lg p-5 flex items-center gap-4 hover:shadow-md hover:border-green-400 transition">
+          <span class="material-icons text-green-500 text-3xl">check_circle</span>
           <div>
-            <div class="text-xs text-gray-500 font-semibold">Partidos jugados los últimos 7 días</div>
-            <div id="count-recientes" class="text-2xl font-bold text-gray-900">0</div>
+            <div class="text-xs text-gray-400 font-semibold">Partidos jugados los últimos 7 días</div>
+            <div id="count-recientes" class="text-2xl font-bold text-gray-100">0</div>
           </div>
         </div>
       </div>
@@ -119,30 +120,15 @@
         </button>
       </div>
       
-      <div id="form-container" class="hidden bg-white p-6 rounded-xl shadow-lg transition-all">
-        <h2 class="text-xl font-semibold mb-4">Añadir Nuevo Partido</h2>
-        <form id="form-match" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-4">
-          <div><label for="tournament-select-form" class="block text-sm font-medium text-gray-700">1. Seleccionar Torneo</label><select id="tournament-select-form" class="input-field mt-1 block w-full" required></select></div>
-          <div><label class="block text-sm font-medium text-gray-700">Categoría</label><div id="category-display" class="input-field mt-1 bg-gray-100 flex items-center text-gray-500">Seleccione un torneo...</div></div>
-          <div><label for="match-date-form" class="block text-sm font-medium text-gray-700">Fecha del Partido</label><input type="date" id="match-date-form" class="input-field mt-1 block w-full" required></div>
-          <div><label for="player1-select-form" class="block text-sm font-medium text-gray-700">2. Seleccionar Jugador 1</label><select id="player1-select-form" class="input-field mt-1 block w-full" required></select></div>
-          <div><label for="player2-select-form" class="block text-sm font-medium text-gray-700">3. Seleccionar Jugador 2</label><select id="player2-select-form" class="input-field mt-1 block w-full" required></select></div>
-          <div><label for="match-time-form" class="block text-sm font-medium text-gray-700">Hora del Partido</label><input type="time" id="match-time-form" class="input-field mt-1 block w-full"></div>
-          <div><label for="sede-select-form" class="block text-sm font-medium text-gray-700">Sede</label><select id="sede-select-form" class="input-field mt-1 block w-full"><option value="Funes">Funes</option><option value="Centro">Centro</option></select></div>
-          <div><label for="cancha-select-form" class="block text-sm font-medium text-gray-700">Cancha</label><select id="cancha-select-form" class="input-field mt-1 block w-full"><option value="Cancha 1">Cancha 1</option><option value="Cancha 2">Cancha 2</option><option value="Cancha 3">Cancha 3</option><option value="Cancha 4">Cancha 4</option><option value="Cancha 5">Cancha 5</option><option value="Cancha 6">Cancha 6</option></select></div>
-          <div class="lg:col-span-3 flex justify-end gap-4 pt-2"><button type="button" id="btn-cancel-form" class="btn btn-secondary">Ocultar</button><button type="submit" id="btn-save-form" class="btn btn-primary">Guardar Partido</button></div>
-        </form>
-      </div>
-
-      <div id="mass-match-loader-container" class="hidden bg-white p-6 rounded-xl shadow-lg transition-all"></div>
+      <div id="mass-match-loader-container" class="hidden bg-[#222222] p-6 rounded-xl shadow-lg transition-all"></div>
 
       <div class="bg-[#222222] p-6 rounded-xl shadow-lg max-w-7xl mx-auto">
         <div class="flex flex-wrap gap-4 items-center justify-between mb-4 pb-4 border-b border-gray-700">
-            <div class="flex flex-wrap gap-4 items-center w-full max-w-7xl mx-auto">
-              <select id="filter-tournament" class="input-field dark-input flex-1"><option value="">Todos los Torneos</option></select>
-              <select id="filter-status" class="input-field dark-input flex-1"><option value="">Todos los Estados</option><option value="pendiente">Pendientes</option><option value="completado">Completados</option><option value="suspendido">Suspendidos</option></select>
-              <select id="filter-sede" class="input-field dark-input flex-1"><option value="">Todas las Sedes</option><option value="Funes">Funes</option><option value="Centro">Centro</option></select>
-              <select id="filter-cancha" class="input-field dark-input flex-1"><option value="">Todas las Canchas</option><option value="Cancha 1">Cancha 1</option><option value="Cancha 2">Cancha 2</option><option value="Cancha 3">Cancha 3</option><option value="Cancha 4">Cancha 4</option><option value="Cancha 5">Cancha 5</option><option value="Cancha 6">Cancha 6</option></select>
+            <div class="flex flex-wrap gap-2 sm:gap-4 items-center w-full max-w-7xl mx-auto">
+              <select id="filter-tournament" class="input-field dark-input flex-1 min-w-[60px] max-w-[120px] sm:max-w-xs"><option value="">Todos los Torneos</option></select>
+              <select id="filter-status" class="input-field dark-input flex-1 min-w-[60px] max-w-[120px] sm:max-w-xs"><option value="">Todos los Estados</option><option value="pendiente">Pendientes</option><option value="completado">Completados</option><option value="suspendido">Suspendidos</option></select>
+              <select id="filter-sede" class="input-field dark-input flex-1 min-w-[60px] max-w-[120px] sm:max-w-xs"><option value="">Todas las Sedes</option><option value="Funes">Funes</option><option value="Centro">Centro</option></select>
+              <select id="filter-cancha" class="input-field dark-input flex-1 min-w-[60px] max-w-[120px] sm:max-w-xs"><option value="">Todas las Canchas</option><option value="Cancha 1">Cancha 1</option><option value="Cancha 2">Cancha 2</option><option value="Cancha 3">Cancha 3</option><option value="Cancha 4">Cancha 4</option><option value="Cancha 5">Cancha 5</option><option value="Cancha 6">Cancha 6</option></select>
               <div class="flex items-center flex-1">
                 <div class="relative w-full">
                   <span class="material-icons text-gray-400 absolute left-2 top-1/2 -translate-y-1/2 pointer-events-none">event</span>

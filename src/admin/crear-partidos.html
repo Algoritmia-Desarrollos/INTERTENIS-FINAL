@@ -3,28 +3,40 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Club de Tenis - Gestión de Partidos</title>
+  <title>Club de Tenis - Crear y Gestionar Partidos</title>
   <link rel="icon" href="/logo_2021_02.png" type="image/png">
-  <meta property="og:image" content="/logo_2021_02.png" />
-  <meta name="twitter:image" content="/logo_2021_02.png" />
-
   <link rel="stylesheet" href="../common/styles.css" />
   <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
   <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"/>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css" />
-  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <style>
+    /* Estilos para los inputs y la tabla en modo oscuro */
+    .dark-input {
+      background-color: #374151; /* gray-700 */
+      border-color: #4b5563; /* gray-600 */
+      color: #e5e7eb; /* gray-200 */
+    }
+    .dark-input:focus {
+      border-color: #fbbF24; /* amber-400 */
+      box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.3);
+    }
+    .matches-table { width: 100%; border-collapse: separate; border-spacing: 0; }
+    .matches-table th, .matches-table td { padding: 8px 10px; vertical-align: middle; }
+    .matches-table thead th { font-size: 0.75rem; color: #a0a0a0; text-transform: uppercase; font-weight: 600; background-color: #000; }
+    .matches-table tbody tr { border-bottom: 1px solid #4a4a4a; }
+    .matches-table tbody tr:last-child { border-bottom: none; }
+    .matches-table tbody tr:hover { background-color: #1f2937; }
+  </style>
 </head>
-<body class="bg-gray-50 text-gray-800">
+<body class="bg-black text-gray-200">
   <header id="header"></header>
   <main class="flex-1 py-8">
     <div class="content-container max-w-7xl mx-auto space-y-8">
       <div class="flex flex-wrap justify-between items-center gap-4">
-        <h1 class="text-3xl font-bold text-gray-900">Gestión de Partidos</h1>
+        <h1 class="text-3xl font-bold text-gray-100">Crear y Gestionar Partidos</h1>
         <div class="flex items-center gap-2">
             <button id="btn-import-excel" class="btn btn-secondary">
                 <span class="material-icons">upload_file</span>
-                Importar desde Excel
+                Importar Excel
             </button>
             <button id="btn-show-mass-loader" class="btn btn-primary">
                 <span class="material-icons">add</span>
@@ -33,46 +45,34 @@
         </div>
       </div>
       
-      <div id="mass-loader-section" class="hidden bg-white p-6 rounded-xl shadow-lg transition-all">
-          <div id="mass-loader-container" class="bg-[#f8f9fa] border border-[#e3e6ec] rounded-xl shadow p-4 flex flex-col gap-4">
-              <div class="flex justify-between items-center">
-                <h2 class="text-xl font-bold">Carga Rápida de Partidos</h2>
-                <div class="flex gap-2">
-                  <button id="btn-add-row" class="bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded px-4 py-2 flex items-center gap-2">
-                    <span class="material-icons">add</span> Añadir Fila
-                  </button>
-                  <button id="btn-save-all" class="bg-[#556b1e] hover:bg-[#405312] text-white font-semibold rounded px-6 py-2 flex items-center gap-2" disabled>
-                    💾 Guardar 0 Partidos
-                  </button>
-                </div>
-              </div>
-              <div id="table-wrapper">
-                </div>
+      <section id="mass-loader-section" class="hidden bg-[#222222] p-6 rounded-xl shadow-lg transition-all">
+        <h2 class="text-xl font-semibold mb-4 text-gray-100">Cargador Masivo de Partidos</h2>
+        <div id="table-wrapper" class="overflow-x-auto">
             </div>
-      </div>
+        <div class="flex justify-between items-center mt-4 pt-4 border-t border-gray-700">
+            <button id="btn-add-row" class="btn btn-secondary">
+                <span class="material-icons">add</span>
+                Añadir Fila
+            </button>
+            <button id="btn-save-all" class="btn btn-primary">
+                <span class="material-icons">save</span>
+                Guardar Todos los Partidos
+            </button>
+        </div>
+      </section>
 
-      <div class="bg-white p-6 rounded-xl shadow-lg">
-        <div class="flex flex-wrap gap-4 items-center justify-between mb-4 pb-4 border-b">
+      <div class="bg-[#222222] p-6 rounded-xl shadow-lg">
+        <div class="flex flex-wrap gap-4 items-center justify-between mb-4 pb-4 border-b border-gray-700">
+            <h2 class="text-xl font-semibold text-gray-100">Partidos Existentes</h2>
             <div class="flex flex-wrap gap-4 items-center">
-                <select id="filter-tournament" class="input-field !w-auto">
-                    <option value="">Todos los Torneos</option>
-                </select>
-                <select id="filter-status" class="input-field !w-auto">
-                    <option value="">Todos los Estados</option>
-                    <option value="pendiente">Pendientes</option>
-                    <option value="completado">Completados</option>
-                    <option value="suspendido">Suspendidos</option>
-                </select>
-            </div>
-            <div class="relative">
-                <span class="material-icons absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">search</span>
-                <input type="text" id="search-player" class="input-field !pl-10" placeholder="Buscar por jugador...">
+              <select id="filter-tournament" class="input-field dark-input !w-auto"><option value="">Todos los Torneos</option></select>
+              <select id="filter-status" class="input-field dark-input !w-auto"><option value="">Todos</option><option value="pendiente">Pendientes</option><option value="completado">Completados</option><option value="suspendido">Suspendidos</option></select>
+              <input type="text" id="search-player" class="input-field dark-input !w-auto" placeholder="Buscar por jugador...">
             </div>
         </div>
-        <div id="matches-container" class="overflow-x-auto">
-          </div>
+        <div id="matches-container">
+            </div>
       </div>
-
     </div>
   </main>
 
@@ -85,6 +85,6 @@
     <button id="bulk-delete" class="flex items-center gap-2 text-sm hover:text-red-400"><span class="material-icons">delete</span>Eliminar</button>
   </div>
 
-  <script type="module" src="matches.js"></script>
+  <script type="module" src="crear-partidos.js"></script>
 </body>
 </html>

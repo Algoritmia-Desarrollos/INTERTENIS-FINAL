@@ -390,11 +390,11 @@ const sortedDates = Object.keys(groupedByDate).sort((a, b) => {
                         <td style="padding: 4px; background-color: #1a1a1a;"><input type="checkbox" class="match-checkbox" data-id="${match.id}" ${selectedMatches.has(match.id) ? 'checked' : ''} style="transform: scale(1.2);"></td>
                         <td style="background-color: ${canchaBackgroundColor} !important; color: ${canchaTextColor} !important; font-weight: bold;">${cancha}</td>
                         <td style="background:#000;color:#fff;">${hora}</td>
-                        <td class="player-name player-name-right ${p1_class}" style='background:#000;color:#fff;${p1NameStyle}'>${match.player1.name}</td>
+                        <td class="player-name player-name-right ${p1_class}" style='background:#000;color:#fff;${p1NameStyle};font-size:12pt;'>${match.player1.name}</td>
                         <td class="pts-col" style='background:${p1TeamColor || '#3a3838'};color:${p1TextColor};'>${p1PointsDisplay}</td>
                         <td class="font-mono" style="background:#000;color:#fff;">${setsDisplay}</td>
                         <td class="pts-col" style='background:${p2TeamColor || '#3a3838'};color:${p2TextColor};'>${p2PointsDisplay}</td>
-                        <td class="player-name player-name-left ${p2_class}" style='background:#000;color:#fff;${p2NameStyle}'>${match.player2.name}</td>
+                        <td class="player-name player-name-left ${p2_class}" style='background:#000;color:#fff;${p2NameStyle};font-size:12pt;'>${match.player2.name}</td>
                         <td class="cat-col" style="background:#000;color:${match.category?.color || '#b45309'};">${match.category?.name || 'N/A'}</td>
                         <td class="action-cell" style="background:#000;"><button class="p-1 rounded-full hover:bg-gray-700" data-action="edit" title="Editar / Cargar Resultado"><span class="material-icons text-base" style="color:#fff;">edit</span></button></td>
                     </tr>`;
@@ -444,29 +444,41 @@ function openScoreModal(match) {
         playersInTournament = allPlayers.filter(p => p.category_id === match.category_id);
     }
     modalContainer.innerHTML = `
-        <div id="modal-overlay" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"><div id="modal-content" class="bg-white rounded-xl shadow-lg w-full max-w-lg">
-            <div class="p-6 border-b"><h3 class="text-xl font-bold">Editar Partido / Resultado</h3></div>
-            <form id="modal-form" class="p-6 space-y-4">
-                <div class="grid grid-cols-2 gap-4">
-                    <div><label class="block text-sm font-medium text-gray-700">Jugador A</label><select id="player1-select-modal" class="input-field mt-1" ${isPlayed ? 'disabled' : ''}>${playersInTournament.map(p => `<option value="${p.id}" ${p.id === match.player1_id ? 'selected' : ''}>${p.name}</option>`).join('')}</select></div>
-                    <div><label class="block text-sm font-medium text-gray-700">Jugador B</label><select id="player2-select-modal" class="input-field mt-1" ${isPlayed ? 'disabled' : ''}>${playersInTournament.map(p => `<option value="${p.id}" ${p.id === match.player2_id ? 'selected' : ''}>${p.name}</option>`).join('')}</select></div>
-                </div>
-                <div class="grid grid-cols-2 gap-4">
-                    <div><label class="block text-sm font-medium text-gray-700">Fecha</label><input type="text" id="match-date-modal" class="input-field mt-1" value="${match.match_date || ''}" autocomplete="off"></div>
-                    <div><label class="block text-sm font-medium text-gray-700">Hora</label><input type="time" id="match-time-modal" class="input-field mt-1" value="${match.match_time || ''}"></div>
-                </div>
-                <div class="grid grid-cols-2 gap-4">
-                    <div><label class="block text-sm font-medium text-gray-700">Sede</label><select id="match-sede-modal" class="input-field mt-1"><option value="Funes" ${match.location?.startsWith('Funes') ? 'selected' : ''}>Funes</option><option value="Centro" ${match.location?.startsWith('Centro') ? 'selected' : ''}>Centro</option></select></div>
-                    <div><label class="block text-sm font-medium text-gray-700">Cancha</label><select id="match-cancha-modal" class="input-field mt-1">${[1,2,3,4,5,6].map(n => `<option value="Cancha ${n}" ${match.location?.includes(`Cancha ${n}`) ? 'selected' : ''}>Cancha ${n}</option>`).join('')}</select></div>
-                </div>
-                <div class="grid grid-cols-3 gap-4 items-center pt-4"><span class="font-semibold">SET</span><span class="font-semibold text-center">${match.player1.name}</span><span class="font-semibold text-center">${match.player2.name}</span></div>
-                ${[1, 2, 3].map(i => `<div class="grid grid-cols-3 gap-4 items-center"><span>Set ${i}</span><input type="number" id="p1_set${i}" class="input-field text-center" value="${sets[i-1]?.p1 ?? ''}" min="0" max="9"><input type="number" id="p2_set${i}" class="input-field text-center" value="${sets[i-1]?.p2 ?? ''}" min="0" max="9"></div>`).join('')}
-            </form>
-            <div class="p-4 bg-gray-50 flex justify-between gap-4 rounded-b-xl">
-                <div class="flex items-center gap-2"><button id="btn-delete-match" class="btn btn-secondary !p-2" title="Eliminar Partido"><span class="material-icons !text-red-600">delete_forever</span></button>${isPlayed ? `<button id="btn-clear-score" class="btn btn-secondary !p-2" title="Limpiar Resultado"><span class="material-icons !text-yellow-600">cleaning_services</span></button>` : ''}<button id="btn-suspend-match" class="btn btn-secondary !p-2" title="Marcar como Suspendido"><span class="material-icons !text-red-500">cancel</span></button></div>
-                <div class="flex gap-4"><button id="btn-cancel-modal" class="btn btn-secondary">Cancelar</button><button id="btn-save-score" class="btn btn-primary">Guardar</button></div>
-            </div>
-        </div></div>`;
+                        <div id="modal-overlay" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-2 z-50">
+                            <div id="modal-content" class="bg-[#232323] rounded-xl shadow-lg w-full max-w-lg border border-[#444] mx-2 sm:mx-0">
+                        <div class="p-6 border-b border-[#333]"><h3 class="text-xl font-bold text-yellow-400">Editar Partido / Resultado</h3></div>
+                        <form id="modal-form" class="p-6 space-y-4">
+                            <div class="grid grid-cols-2 gap-4">
+                                <div><label class="block text-sm font-medium text-gray-300">Jugador A</label><select id="player1-select-modal" class="input-field mt-1 bg-[#181818] text-gray-100 border-[#444]" ${isPlayed ? 'disabled' : ''}>${playersInTournament.map(p => `<option value="${p.id}" ${p.id === match.player1_id ? 'selected' : ''}>${p.name}</option>`).join('')}</select></div>
+                                <div><label class="block text-sm font-medium text-gray-300">Jugador B</label><select id="player2-select-modal" class="input-field mt-1 bg-[#181818] text-gray-100 border-[#444]" ${isPlayed ? 'disabled' : ''}>${playersInTournament.map(p => `<option value="${p.id}" ${p.id === match.player2_id ? 'selected' : ''}>${p.name}</option>`).join('')}</select></div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div><label class="block text-sm font-medium text-gray-300">Fecha</label><input type="text" id="match-date-modal" class="input-field mt-1 bg-[#181818] text-gray-100 border-[#444]" value="${match.match_date || ''}" autocomplete="off"></div>
+                                <div><label class="block text-sm font-medium text-gray-300">Hora</label><input type="time" id="match-time-modal" class="input-field mt-1 bg-[#181818] text-gray-100 border-[#444]" value="${match.match_time || ''}"></div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div><label class="block text-sm font-medium text-gray-300">Sede</label><select id="match-sede-modal" class="input-field mt-1 bg-[#181818] text-gray-100 border-[#444]">
+                                    <option value="Funes" ${match.location?.startsWith('Funes') ? 'selected' : ''}>Funes</option>
+                                    <option value="Centro" ${match.location?.startsWith('Centro') ? 'selected' : ''}>Centro</option>
+                                </select></div>
+                                <div><label class="block text-sm font-medium text-gray-300">Cancha</label><select id="match-cancha-modal" class="input-field mt-1 bg-[#181818] text-gray-100 border-[#444]">${[1,2,3,4,5,6].map(n => `<option value="Cancha ${n}" ${match.location?.includes(`Cancha ${n}`) ? 'selected' : ''}>Cancha ${n}</option>`).join('')}</select></div>
+                            </div>
+                            <div class="grid grid-cols-3 gap-4 items-center pt-4"><span class="font-semibold text-gray-200">SET</span><span class="font-semibold text-center text-gray-200" style="font-size:14px;">${match.player1.name}</span><span class="font-semibold text-center text-gray-200" style="font-size:14px;">${match.player2.name}</span></div>
+                            ${[1, 2, 3].map(i => `<div class="grid grid-cols-3 gap-4 items-center"><span class="text-gray-300">Set ${i}</span><input type="number" id="p1_set${i}" class="input-field text-center bg-[#181818] text-gray-100 border-[#444]" value="${sets[i-1]?.p1 ?? ''}" min="0" max="9"><input type="number" id="p2_set${i}" class="input-field text-center bg-[#181818] text-gray-100 border-[#444]" value="${sets[i-1]?.p2 ?? ''}" min="0" max="9"></div>`).join('')}
+                        </form>
+                                    <div class="p-4 bg-[#181818] flex flex-col sm:flex-row justify-between gap-3 sm:gap-4 rounded-b-xl border-t border-[#333]">
+                                        <div class="flex flex-row flex-wrap items-center gap-2 justify-center sm:justify-start mb-2 sm:mb-0">
+                                            <button id="btn-delete-match" class="btn btn-secondary !p-2" title="Eliminar Partido"><span class="material-icons !text-red-600">delete_forever</span></button>
+                                            ${isPlayed ? `<button id="btn-clear-score" class="btn btn-secondary !p-2" title="Limpiar Resultado"><span class="material-icons !text-yellow-600">cleaning_services</span></button>` : ''}
+                                            <button id="btn-suspend-match" class="btn btn-secondary !p-2" title="Marcar como Suspendido"><span class="material-icons !text-red-500">cancel</span></button>
+                                        </div>
+                                        <div class="flex flex-row flex-wrap gap-2 justify-center sm:justify-end">
+                                            <button id="btn-cancel-modal" class="btn btn-secondary w-full sm:w-auto">Cancelar</button>
+                                            <button id="btn-save-score" class="btn btn-primary w-full sm:w-auto">Guardar</button>
+                                        </div>
+                                    </div>
+                    </div>
+                </div>`;
     flatpickr('#match-date-modal', {dateFormat: 'Y-m-d', allowInput: true});
     document.getElementById('btn-save-score').onclick = () => saveMatch(match.id);
     document.getElementById('btn-cancel-modal').onclick = closeModal;

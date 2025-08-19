@@ -1,6 +1,6 @@
 import { renderHeader } from '../common/header.js';
 import { requireRole } from '../common/router.js';
-import { supabase } from '../common/supabase.js'; // <-- ¡RUTA CORREGIDA!
+import { supabase } from '../common/supabase.js';
 
 requireRole('admin');
 
@@ -18,7 +18,7 @@ const categoryColorInput = document.getElementById('category-color');
 // --- Funciones de Renderizado ---
 
 async function renderCategories() {
-    categoriesList.innerHTML = '<p>Cargando categorías...</p>';
+    categoriesList.innerHTML = '<p class="text-gray-400">Cargando categorías...</p>';
     
     const { data, error } = await supabase
         .from('categories')
@@ -32,21 +32,21 @@ async function renderCategories() {
     }
 
     if (data.length === 0) {
-        categoriesList.innerHTML = '<p class="text-center text-gray-500 py-4">No hay categorías registradas.</p>';
+        categoriesList.innerHTML = '<p class="text-center text-gray-400 py-4">No hay categorías registradas.</p>';
         return;
     }
 
     categoriesList.innerHTML = data.map(category => `
-        <div class="flex justify-between items-center p-3 rounded-lg hover:bg-gray-50">
-            <div class="flex items-center gap-2">
-                <span class="inline-block w-5 h-5 rounded-full border border-gray-300" style="background:${category.color || '#e5e7eb'}"></span>
-                <p class="font-semibold text-gray-800">${category.name}</p>
+        <div class="flex justify-between items-center p-3 rounded-lg hover:bg-black">
+            <div class="flex items-center gap-3">
+                <span class="inline-block w-5 h-5 rounded-full border border-gray-600" style="background:${category.color || '#e5e7eb'}"></span>
+                <p class="font-semibold text-gray-100">${category.name}</p>
             </div>
             <div class="flex items-center gap-2">
-                <button data-action="edit" data-category='${JSON.stringify(category)}' class="text-blue-600 hover:text-blue-800 p-1">
+                <button data-action="edit" data-category='${JSON.stringify(category)}' class="text-blue-400 hover:text-blue-300 p-1">
                     <span class="material-icons text-base">edit</span>
                 </button>
-                <button data-action="delete" data-id="${category.id}" class="text-red-600 hover:text-red-800 p-1">
+                <button data-action="delete" data-id="${category.id}" class="text-red-400 hover:text-red-300 p-1">
                     <span class="material-icons text-base">delete</span>
                 </button>
             </div>

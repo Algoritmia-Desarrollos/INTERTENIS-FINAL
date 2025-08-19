@@ -11,24 +11,15 @@
   <link rel="stylesheet" href="src/common/styles.css" />
   <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
   <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"/>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css" />
-  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-  <style>
-    :root {
-      --primary-color: #415c19; /* Verde Oscuro del Logo */
-      --primary-dark: #3a5015;  /* Verde más oscuro para hover */
-      --background-color: #f8fafc;
-    }
-  </style>
 </head>
-<body class="bg-gray-50 text-gray-800">
+<body class="bg-black text-gray-200">
   
-  <header class="flex items-center justify-between border-b bg-white px-4 sm:px-6 py-3 shadow-sm sticky top-0 z-50">
+  <header class="flex items-center justify-between border-b border-gray-700 bg-[#222222] px-4 sm:px-6 py-3 sticky top-0 z-50">
     <div class="flex items-center gap-4">
-  <img src="/logo_2021_02.png" alt="Logo" class="h-10">
-      <h1 class="text-lg font-bold text-gray-800 hidden sm:block">Torneos del Club</h1>
+        <img src="/logo_2021_02.png" alt="Logo" class="h-10">
+        <h1 class="text-lg font-bold text-gray-100 hidden sm:block">Torneos del Club</h1>
     </div>
-    <a href="/src/admin/login.html" class="text-sm font-medium text-gray-600 hover:text-green-800 flex items-center gap-2">
+    <a href="/src/admin/login.html" class="text-sm font-medium text-gray-300 hover:text-yellow-400 flex items-center gap-2">
       <span class="hidden sm:inline">Admin Login</span>
       <span class="material-icons">login</span>
     </a>
@@ -36,7 +27,7 @@
 
   <main class="flex-1 py-8">
     <div class="content-container max-w-6xl mx-auto space-y-8">
-      <h1 class="text-3xl font-bold text-gray-900">Torneos Abiertos</h1>
+      <h1 class="text-3xl font-bold text-gray-100">Torneos Abiertos</h1>
       <div id="tournaments-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         </div>
     </div>

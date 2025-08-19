@@ -4,17 +4,19 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Reportes Históricos</title>
+    <link rel="icon" href="/logo_2021_02.png" type="image/png">
     <link rel="stylesheet" href="../common/styles.css">
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"/>
 </head>
-<body class="bg-gray-50 text-gray-800">
-    <header class="p-4 bg-white shadow flex items-center justify-between">
-        <h1 class="text-2xl font-bold">Reportes Históricos</h1>
-        <a href="reportes.html" class="btn btn-primary">Nuevo Reporte</a>
-    </header>
-    <main class="max-w-3xl mx-auto py-8">
-        <div id="reportes-list" class="space-y-4"></div>
+<body class="bg-black text-gray-200">
+    <header id="header"></header>
+    <main class="flex-1 py-8">
+        <div class="content-container max-w-3xl mx-auto space-y-4">
+            <h1 class="text-3xl font-bold text-gray-100 mb-6">Reportes Guardados</h1>
+            <div id="reportes-list" class="space-y-3">
+                </div>
+        </div>
     </main>
     <script type="module" src="reportes-historicos.js"></script>
 </body>

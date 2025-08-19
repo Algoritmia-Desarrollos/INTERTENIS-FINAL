@@ -1,29 +1,36 @@
+import { renderHeader } from '../common/header.js';
 import { supabase } from '../common/supabase.js';
 
 async function cargarReportes() {
+  const cont = document.getElementById('reportes-list');
+  cont.innerHTML = '<p class="text-gray-400">Cargando reportes...</p>';
+
   const { data, error } = await supabase
     .from('reports')
     .select('id, title, created_at')
     .order('created_at', { ascending: false });
 
-  const cont = document.getElementById('reportes-list');
   if (error) {
-    cont.innerHTML = `<div class="text-red-600">Error al cargar reportes</div>`;
+    cont.innerHTML = `<div class="bg-[#222222] p-4 rounded-lg text-red-400">Error al cargar reportes.</div>`;
     return;
   }
   if (!data || data.length === 0) {
-    cont.innerHTML = `<div class="text-gray-500">No hay reportes guardados.</div>`;
+    cont.innerHTML = `<div class="bg-[#222222] p-6 rounded-lg text-center text-gray-400">No hay reportes guardados.</div>`;
     return;
   }
+  
   cont.innerHTML = data.map(r => `
-    <div class="bg-white rounded shadow p-4 flex items-center justify-between">
+    <div class="bg-[#222222] rounded-lg shadow-lg p-4 flex items-center justify-between hover:bg-gray-800 transition-colors">
       <div>
-        <div class="font-semibold">${r.title}</div>
-        <div class="text-xs text-gray-500">${new Date(r.created_at).toLocaleString()}</div>
+        <div class="font-semibold text-gray-100">${r.title}</div>
+        <div class="text-xs text-gray-400">${new Date(r.created_at).toLocaleString('es-AR')}</div>
       </div>
-      <a href="ver-reporte.html?id=${r.id}" class="btn btn-secondary">Ver</a>
+      <a href="reportes.html?id=${r.id}" class="btn btn-secondary">Ver Reporte</a>
     </div>
   `).join('');
 }
 
-cargarReportes();
+document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('header').innerHTML = renderHeader();
+    cargarReportes();
+});

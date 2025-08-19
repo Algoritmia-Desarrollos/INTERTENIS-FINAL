@@ -11,31 +11,31 @@
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"/>
     <style>
-        body { background-color: #e0e0e0; }
+        body { background-color: #000; } /* Fondo negro principal */
         main { max-width: 210mm; margin: 20px auto; }
-        .page { background: white; width: 210mm; min-height: 297mm; padding: 15mm; box-shadow: 0 0 10px rgba(0,0,0,0.1); box-sizing: border-box; display: flex; flex-direction: column; }
-        .page-header { border-bottom: 2px solid #ccc; padding-bottom: 10px; margin-bottom: 15px; flex-shrink: 0; }
+        .page { background: white; width: 210mm; min-height: 297mm; padding: 15mm; box-shadow: 0 0 15px rgba(0,0,0,0.5); box-sizing: border-box; display: flex; flex-direction: column; margin-bottom: 20px; }
+        .page-header { border-bottom: 2px solid #ccc; padding-bottom: 10px; margin-bottom: 15px; flex-shrink: 0; color: #333; }
         .page-content { flex-grow: 1; }
         .report-table { width: 100%; border-collapse: collapse; }
         .report-table th, .report-table td { padding: 6px 4px; font-size: 9pt; border: 1px solid #888888; text-align: center; vertical-align: middle; background: #111; color: #fff; }
         .report-table tr.data-row td:first-child { background: #ffc000 !important; color: #222 !important; font-weight: bold; }
         .winner { font-weight: 700; color: #f4ec05 !important; }
+        
         @media print {
             body { background: none; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
             main { margin: 0; width: 100%; }
             .no-print { display: none !important; }
             .page { box-shadow: none; margin: 0; width: 100%; height: auto !important; min-height: 297mm; padding: 15mm; background: #fff !important; }
-                .page:last-child { margin-bottom: 0; }
-
+            .page:last-child { margin-bottom: 0; }
         }
     </style>
 </head>
-<body class="bg-gray-200">
+<body class="bg-black">
     <header id="header" class="no-print"></header>
     <main id="report-main-container">
-        <div class="no-print content-container max-w-[210mm] mx-auto p-4 bg-white mb-4 rounded-b-xl shadow-lg">
+        <div class="no-print content-container max-w-[210mm] mx-auto p-4 bg-[#222222] mb-4 rounded-b-xl shadow-lg">
             <div class="flex flex-wrap justify-between items-center gap-4">
-                <h1 class="text-3xl font-bold text-gray-900">Reporte de Partidos</h1>
+                <h1 class="text-3xl font-bold text-gray-100">Reporte de Partidos</h1>
                 <div class="flex gap-2">
                      <a href="matches.html" class="btn btn-secondary">
                         <span class="material-icons">arrow_back</span>

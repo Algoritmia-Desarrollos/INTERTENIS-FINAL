@@ -2,7 +2,7 @@ import { renderHeader } from '../common/header.js';
 import { requireRole } from '../common/router.js';
 import { supabase } from '../common/supabase.js';
 import { importMatchesFromFile } from '../common/excel-importer.js';
-import { setupMassMatchLoader } from './mass-match-loader.js'; // <-- ¡IMPORTANTE!
+import { setupMassMatchLoader } from './mass-match-loader.js';
 
 requireRole('admin');
 
@@ -28,7 +28,7 @@ let isMassLoaderInitialized = false;
 
 // --- Carga de Datos ---
 async function loadInitialData() {
-    matchesContainer.innerHTML = '<p class="text-center p-8">Cargando datos...</p>';
+    matchesContainer.innerHTML = '<p class="text-center p-8 text-gray-400">Cargando datos...</p>';
     const [
         { data: playersData },
         { data: tournamentsData },
@@ -64,9 +64,8 @@ function populateFilterSelects() {
     allTournaments.forEach(t => filterTournamentSelect.innerHTML += `<option value="${t.id}">${t.name}</option>`);
 }
 
-// --- Renderizado, Filtros y Ordenamiento (sin cambios) ---
+// --- Renderizado, Filtros y Ordenamiento ---
 function applyFiltersAndSort() {
-    // ... (Esta función no necesita cambios, la mantenemos como está en tu archivo original)
     let processedMatches = [...allMatches];
     const tournamentFilter = filterTournamentSelect.value;
     const statusFilter = filterStatusSelect.value;
@@ -78,9 +77,7 @@ function applyFiltersAndSort() {
             (m.player2 && m.player2.name.toLowerCase().includes(searchTerm))
         );
     }
-    if (tournamentFilter) {
-        processedMatches = processedMatches.filter(m => m.tournament_id == tournamentFilter);
-    }
+    if (tournamentFilter) processedMatches = processedMatches.filter(m => m.tournament_id == tournamentFilter);
     if (statusFilter) {
         if (statusFilter === 'pendiente') processedMatches = processedMatches.filter(m => !m.winner_id && m.status !== 'suspendido');
         else if (statusFilter === 'completado') processedMatches = processedMatches.filter(m => !!m.winner_id);
@@ -92,50 +89,49 @@ function applyFiltersAndSort() {
 }
 
 function renderMatches(matchesToRender) {
-    // ... (Esta función no necesita cambios, la mantenemos como está en tu archivo original)
     if (matchesToRender.length === 0) {
-        matchesContainer.innerHTML = '<p class="text-center text-gray-500 py-8">No hay partidos que coincidan con los filtros.</p>';
+        matchesContainer.innerHTML = '<p class="text-center text-gray-400 py-8">No hay partidos que coincidan con los filtros.</p>';
         return;
     }
 
     matchesContainer.innerHTML = `
-        <table class="min-w-full">
-            <thead class="bg-gray-50">
+        <table class="min-w-full matches-table">
+            <thead>
                 <tr>
-                    <th class="p-4 text-left"><input type="checkbox" id="select-all-matches"></th>
-                    <th class="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Fecha y Hora</th>
-                    <th class="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Encuentro</th>
-                    <th class="px-4 py-2 text-center text-xs font-semibold text-gray-500 uppercase">Resultado</th>
-                    <th class="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Torneo</th>
-                    <th class="px-4 py-2 text-center text-xs font-semibold text-gray-500 uppercase">Acciones</th>
+                    <th class="p-4"><input type="checkbox" id="select-all-matches"></th>
+                    <th>Fecha y Hora</th>
+                    <th>Encuentro</th>
+                    <th class="text-center">Resultado</th>
+                    <th>Torneo</th>
+                    <th class="text-center">Acciones</th>
                 </tr>
             </thead>
-            <tbody class="divide-y divide-gray-200">
+            <tbody>
                 ${matchesToRender.map(match => {
                     const p1_winner = match.winner_id === match.player1_id;
                     const p2_winner = match.winner_id === match.player2_id;
                     const no_winner = !match.winner_id;
-                    const p1_class = no_winner ? 'text-gray-800' : p1_winner ? 'text-yellow-600 font-bold' : 'text-gray-500';
-                    const p2_class = no_winner ? 'text-gray-800' : p2_winner ? 'text-yellow-600 font-bold' : 'text-gray-500';
+                    const p1_class = no_winner ? 'text-gray-100' : p1_winner ? 'text-yellow-400 font-bold' : 'text-gray-500';
+                    const p2_class = no_winner ? 'text-gray-100' : p2_winner ? 'text-yellow-400 font-bold' : 'text-gray-500';
                     const sets = match.sets || [];
-                    const result_string = match.status === 'suspendido' ? 'SUSP' : (sets.length > 0 ? sets.map(s => `${s.p1}-${s.p2}`).join(',') : '-');
+                    const result_string = match.status === 'suspendido' ? 'SUSP' : (sets.length > 0 ? sets.map(s => `${s.p1}-${s.p2}`).join(' ') : '-');
                     const time_string = match.match_time ? match.match_time.substring(0, 5) : 'HH:MM';
                     
                     return `
-                    <tr class="clickable-row ${selectedMatches.has(match.id) ? 'bg-yellow-50' : 'bg-white'} hover:bg-gray-100 ${match.status === 'suspendido' ? '!bg-red-50' : ''}" data-match-id="${match.id}">
+                    <tr class="clickable-row ${selectedMatches.has(match.id) ? 'bg-yellow-900/50' : ''} ${match.status === 'suspendido' ? '!bg-red-900/50' : ''}" data-match-id="${match.id}">
                         <td class="p-4"><input type="checkbox" class="match-checkbox" data-id="${match.id}" ${selectedMatches.has(match.id) ? 'checked' : ''}></td>
-                        <td class="px-4 py-3 whitespace-nowrap text-sm">
-                            ${new Date(match.match_date).toLocaleDateString('es-AR')}
+                        <td class="whitespace-nowrap text-sm">
+                            ${new Date(match.match_date + 'T00:00:00').toLocaleDateString('es-AR')}
                             <span class="block text-xs text-gray-400">${time_string} hs - ${match.location || 'A definir'}</span>
                         </td>
-                        <td class="px-4 py-3 whitespace-nowrap text-sm">
+                        <td class="whitespace-nowrap text-sm">
                             <div class="${p1_class}">${match.player1.name}</div>
                             <div class="${p2_class}">${match.player2.name}</div>
                         </td>
-                        <td class="px-4 py-3 whitespace-nowrap text-sm text-center font-mono font-semibold">${result_string}</td>
-                        <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">${match.category.name}</td>
-                        <td class="px-4 py-3 text-center">
-                            <button class="p-1 rounded-full hover:bg-gray-200" data-action="edit" title="Editar / Cargar Resultado">
+                        <td class="whitespace-nowrap text-sm text-center font-mono font-semibold">${result_string}</td>
+                        <td class="whitespace-nowrap text-sm text-gray-400">${match.category.name}</td>
+                        <td class="text-center">
+                            <button class="p-1 rounded-full hover:bg-gray-700 text-gray-400 hover:text-white" data-action="edit" title="Editar / Cargar Resultado">
                                 <span class="material-icons text-base">edit</span>
                             </button>
                         </td>
@@ -147,26 +143,61 @@ function renderMatches(matchesToRender) {
     `;
 }
 
-
-// --- Lógica del Modal para editar (sin cambios) ---
+// --- Lógica del Modal para editar (Estilo Oscuro) ---
 function openScoreModal(match) {
-    // ... (Esta función no necesita cambios)
-}
-async function saveMatch(matchId) {
-    // ... (Esta función no necesita cambios)
+    const sets = match.sets || [];
+    const isPlayed = !!match.winner_id;
+    const playersInTournament = tournamentPlayersMap.has(match.tournament_id)
+        ? allPlayers.filter(p => tournamentPlayersMap.get(match.tournament_id).has(p.id))
+        : allPlayers.filter(p => p.category_id === match.category_id);
+
+    modalContainer.innerHTML = `
+        <div id="modal-overlay" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50">
+            <div id="modal-content" class="bg-gray-800 text-gray-200 rounded-xl shadow-lg w-full max-w-lg">
+                <div class="p-6 border-b border-gray-700"><h3 class="text-xl font-bold text-gray-100">Editar Partido / Resultado</h3></div>
+                <form id="modal-form" class="p-6 space-y-4">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div><label class="block text-sm font-medium text-gray-300">Jugador A</label><select id="player1-select-modal" class="input-field dark-input mt-1" ${isPlayed ? 'disabled' : ''}>${playersInTournament.map(p => `<option value="${p.id}" ${p.id === match.player1_id ? 'selected' : ''}>${p.name}</option>`).join('')}</select></div>
+                        <div><label class="block text-sm font-medium text-gray-300">Jugador B</label><select id="player2-select-modal" class="input-field dark-input mt-1" ${isPlayed ? 'disabled' : ''}>${playersInTournament.map(p => `<option value="${p.id}" ${p.id === match.player2_id ? 'selected' : ''}>${p.name}</option>`).join('')}</select></div>
+                    </div>
+                    <div class="grid grid-cols-3 gap-4 items-center pt-4"><span class="font-semibold">SET</span><span class="font-semibold text-center">${match.player1.name}</span><span class="font-semibold text-center">${match.player2.name}</span></div>
+                    ${[1, 2, 3].map(i => `<div class="grid grid-cols-3 gap-4 items-center"><span>Set ${i}</span><input type="number" id="p1_set${i}" class="input-field dark-input text-center" value="${sets[i-1]?.p1 ?? ''}" min="0" max="9"><input type="number" id="p2_set${i}" class="input-field dark-input text-center" value="${sets[i-1]?.p2 ?? ''}" min="0" max="9"></div>`).join('')}
+                </form>
+                <div class="p-4 bg-black flex justify-end gap-4 rounded-b-xl">
+                    <button id="btn-cancel-modal" class="btn btn-secondary">Cancelar</button>
+                    <button id="btn-save-score" class="btn btn-primary">Guardar</button>
+                </div>
+            </div>
+        </div>`;
+    
+    document.getElementById('btn-save-score').onclick = () => saveMatch(match.id);
+    document.getElementById('btn-cancel-modal').onclick = () => modalContainer.innerHTML = '';
+    document.getElementById('modal-overlay').onclick = (e) => { if (e.target.id === 'modal-overlay') modalContainer.innerHTML = ''; };
 }
 
-// --- Lógica de Acciones Masivas (sin cambios) ---
+async function saveMatch(matchId) {
+    // Lógica de guardado (sin cambios)
+}
+
+
+// --- Lógica de Acciones Masivas ---
 function updateBulkActionBar() {
     selectedCountSpan.textContent = selectedMatches.size;
-    if (selectedMatches.size > 0) {
-        bulkActionBar.classList.remove('translate-y-24', 'opacity-0');
-    } else {
-        bulkActionBar.classList.add('translate-y-24', 'opacity-0');
-    }
+    bulkActionBar.classList.toggle('translate-y-24', selectedMatches.size === 0);
+    bulkActionBar.classList.toggle('opacity-0', selectedMatches.size === 0);
 }
 async function handleBulkDelete() {
-    // ... (Esta función no necesita cambios)
+    if (confirm(`¿Eliminar ${selectedMatches.size} partidos?`)) {
+        await supabase.from('matches').delete().in('id', Array.from(selectedMatches));
+        selectedMatches.clear();
+        await loadInitialData();
+    }
+}
+
+// --- FUNCIÓN UNIFICADA DE CREATE-MATCH.JS ---
+export function handleExcelMatchFormSubmit(e) {
+    e.preventDefault();
+    alert('Funcionalidad de guardado masivo en desarrollo.');
 }
 
 
@@ -182,7 +213,6 @@ btnShowMassLoader.addEventListener('click', () => {
         ? '<span class="material-icons">add</span> Crear Partidos'
         : '<span class="material-icons">close</span> Cancelar';
     
-    // Inicializar el cargador masivo SOLO la primera vez que se muestra
     if (!isHidden && !isMassLoaderInitialized) {
         setupMassMatchLoader({
             container: document.getElementById('table-wrapper'),
@@ -191,14 +221,13 @@ btnShowMassLoader.addEventListener('click', () => {
             allTournaments,
             allPlayers,
             tournamentPlayersMap,
-            loadInitialData // Pasamos la función para que el módulo pueda recargar la lista
+            loadInitialData
         });
         isMassLoaderInitialized = true;
     }
 });
 
 
-// ... (Mantener los listeners para filtros, clicks en la tabla y acciones masivas de tu archivo original)
 [filterTournamentSelect, filterStatusSelect, searchInput].forEach(el => {
     if(el) el.addEventListener('input', applyFiltersAndSort);
 });
@@ -206,10 +235,8 @@ btnShowMassLoader.addEventListener('click', () => {
 matchesContainer.addEventListener('click', (e) => {
     const row = e.target.closest('tr[data-match-id]');
     if (!row) return;
-
     const matchId = Number(row.dataset.matchId);
     
-    // Si se hizo clic en el botón de editar
     if (e.target.closest('button[data-action="edit"]')) {
         const matchData = allMatches.find(m => m.id === matchId);
         if (matchData) openScoreModal(matchData);
@@ -219,37 +246,26 @@ matchesContainer.addEventListener('click', (e) => {
     const checkbox = e.target.closest('.match-checkbox');
     if (checkbox) {
         e.stopPropagation();
-        checkbox.checked ? selectedMatches.add(matchId) : selectedMatches.delete(matchId);
-        row.classList.toggle('bg-yellow-50', checkbox.checked);
-        updateBulkActionBar();
-        return;
     }
     
-    if (!e.target.closest('button[data-action="edit"]') && !e.target.closest('.match-checkbox')) {
-        const checkboxInRow = row.querySelector('.match-checkbox');
-        checkboxInRow.checked = !checkboxInRow.checked;
-        checkboxInRow.checked ? selectedMatches.add(matchId) : selectedMatches.delete(matchId);
-        row.classList.toggle('bg-yellow-50', checkboxInRow.checked);
-        updateBulkActionBar();
+    const checkboxInRow = row.querySelector('.match-checkbox');
+    if (!e.target.closest('button')) {
+      checkboxInRow.checked = !checkboxInRow.checked;
     }
+    
+    checkboxInRow.checked ? selectedMatches.add(matchId) : selectedMatches.delete(matchId);
+    row.classList.toggle('bg-yellow-900/50', checkboxInRow.checked);
+    updateBulkActionBar();
 });
 
 document.getElementById('bulk-delete').addEventListener('click', handleBulkDelete);
 document.getElementById('btn-import-excel').addEventListener('click', () => {
-    const allCategories = Array.from(new Set(allTournaments.map(t => t.category?.name))).map(name => {
-        const t = allTournaments.find(tt => tt.category?.name === name);
-        return t ? t.category : null;
-    }).filter(Boolean);
+    const allCategories = [...new Map(allTournaments.map(t => [t.category?.id, t.category])).values()].filter(Boolean);
     importMatchesFromFile(allPlayers, allTournaments, allCategories).then(success => {
         if (success) loadInitialData();
     });
 });
 document.getElementById('bulk-deselect').addEventListener('click', () => {
     selectedMatches.clear();
-    document.querySelectorAll('.match-checkbox').forEach(cb => {
-        cb.checked = false;
-        const row = cb.closest('tr[data-match-id]');
-        if (row) row.classList.remove('bg-yellow-50');
-    });
-    updateBulkActionBar();
+    applyFiltersAndSort();
 });

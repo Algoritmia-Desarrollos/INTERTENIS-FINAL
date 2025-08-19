@@ -23,7 +23,7 @@ const sortSelect = document.getElementById('sort-tournaments');
 let allPlayers = [];
 let allCategories = [];
 let allTournaments = [];
-let expandedTournaments = new Set(); // Para recordar qué torneos están expandidos
+let expandedTournaments = new Set();
 
 // --- Carga de Datos ---
 async function loadInitialData() {
@@ -42,14 +42,14 @@ async function loadInitialData() {
 }
 
 async function fetchAndRenderTournaments() {
-    tournamentsList.innerHTML = '<p>Cargando torneos...</p>';
+    tournamentsList.innerHTML = '<p class="text-gray-400">Cargando torneos...</p>';
     const { data, error } = await supabase
         .from('tournaments')
         .select(`*, category:category_id(name), players:tournament_players(player:players(*, team:team_id(image_url)))`)
         .order('created_at', { ascending: false });
     if (error) {
         console.error("Error al cargar torneos:", error);
-        tournamentsList.innerHTML = '<p class="text-red-500">No se pudieron cargar los torneos.</p>';
+        tournamentsList.innerHTML = '<p class="text-red-400">No se pudieron cargar los torneos.</p>';
         return;
     }
     allTournaments = data;
@@ -72,45 +72,45 @@ function sortAndRenderTournaments() {
 
 function tournamentCardTemplate(t) {
     const startDate = t.start_date ? new Date(t.start_date + 'T00:00:00').toLocaleDateString('es-AR') : 'N/A';
-    const enrolledPlayers = t.players.map(p => p.player);
+    const enrolledPlayers = t.players.map(p => p.player).filter(Boolean); // Filtrar nulos si los hubiera
     const isExpanded = expandedTournaments.has(t.id);
-    const playersOfCategory = allPlayers.filter(p => p.category_id === t.category_id && !enrolledPlayers.some(ep => ep && ep.id === p.id));
+    const playersOfCategory = allPlayers.filter(p => p.category_id === t.category_id && !enrolledPlayers.some(ep => ep.id === p.id));
 
     return `
-    <div class="border rounded-lg overflow-hidden bg-white shadow-sm" data-tournament-card-id="${t.id}">
+    <div class="border border-gray-700 rounded-lg overflow-hidden bg-[#222222]" data-tournament-card-id="${t.id}">
         <div class="flex justify-between items-center p-4">
             <div>
-                <p class="font-bold text-lg text-gray-800">${t.name}</p>
-                <p class="text-sm text-gray-500">${t.category.name} | Inicia: ${startDate}</p>
+                <p class="font-bold text-lg text-gray-100">${t.name}</p>
+                <p class="text-sm text-gray-400">${t.category.name} | Inicia: ${startDate}</p>
             </div>
             <div class="flex items-center gap-2">
                 <a href="matches.html?tournamentId=${t.id}" class="btn btn-secondary !text-xs !py-1 !px-2"><span class="material-icons !text-sm">sports_tennis</span>Ver Partidos</a>
                 <a href="rankings.html?tournamentId=${t.id}" class="btn btn-secondary !text-xs !py-1 !px-2"><span class="material-icons !text-sm">leaderboard</span>Ver Ranking</a>
-                <div class="border-l h-6 mx-2"></div>
-                <button data-action="toggle" data-tournament-id="${t.id}" class="p-2 rounded-full hover:bg-gray-100">
+                <div class="border-l border-gray-600 h-6 mx-2"></div>
+                <button data-action="toggle" data-tournament-id="${t.id}" class="p-2 rounded-full hover:bg-gray-800">
                     <span class="material-icons transition-transform ${isExpanded ? 'rotate-180' : ''}">expand_more</span>
                 </button>
             </div>
         </div>
-        <div id="details-${t.id}" class="${isExpanded ? '' : 'hidden'} p-4 bg-gray-50 border-t">
+        <div id="details-${t.id}" class="${isExpanded ? '' : 'hidden'} p-4 bg-black border-t border-gray-700">
             <div class="flex items-center gap-2 mb-4">
                 <button data-action="edit" data-tournament='${JSON.stringify(t)}' class="btn btn-secondary !text-xs !py-1 !px-2"><span class="material-icons !text-sm">edit</span>Editar Torneo</button>
-                <button data-action="delete" data-id="${t.id}" class="btn btn-secondary !text-xs !py-1 !px-2 !text-red-600"><span class="material-icons !text-sm">delete</span>Eliminar</button>
+                <button data-action="delete" data-id="${t.id}" class="btn btn-secondary !text-xs !py-1 !px-2 !text-red-400"><span class="material-icons !text-sm">delete</span>Eliminar</button>
             </div>
-            <h4 class="font-semibold text-sm mb-2">Jugadores Inscritos (${enrolledPlayers.length})</h4>
+            <h4 class="font-semibold text-sm mb-2 text-gray-100">Jugadores Inscritos (${enrolledPlayers.length})</h4>
             <div class="space-y-2 mb-3">
-                ${enrolledPlayers.length > 0 ? enrolledPlayers.map(p => p ? `
-                    <div class="flex justify-between items-center text-sm bg-white p-2 rounded shadow-sm">
+                ${enrolledPlayers.length > 0 ? enrolledPlayers.map(p => `
+                    <div class="flex justify-between items-center text-sm bg-gray-800 p-2 rounded-md">
                         <div class="flex items-center gap-3">
                             <img src="${p.team?.image_url || 'https://via.placeholder.com/40'}" alt="Logo" class="h-8 w-8 rounded-full object-cover">
-                            <span>${p.name}</span>
+                            <span class="text-gray-200">${p.name}</span>
                         </div>
-                        <button data-action="unenroll" data-player-id="${p.id}" data-tournament-id="${t.id}" class="text-gray-400 hover:text-red-600 p-1"><span class="material-icons text-sm">close</span></button>
+                        <button data-action="unenroll" data-player-id="${p.id}" data-tournament-id="${t.id}" class="text-gray-500 hover:text-red-400 p-1"><span class="material-icons text-sm">close</span></button>
                     </div>
-                ` : '').join('') : '<p class="text-xs text-gray-400">Aún no hay jugadores inscritos.</p>'}
+                `).join('') : '<p class="text-xs text-gray-400">Aún no hay jugadores inscritos.</p>'}
             </div>
             <form class="flex gap-2" data-action="enroll-player" data-tournament-id="${t.id}">
-                <select class="input-field !h-10 flex-grow">
+                <select class="input-field dark-input !h-10 flex-grow">
                     <option value="">Inscribir jugador de "${t.category.name}"...</option>
                     ${playersOfCategory.map(p => `<option value="${p.id}">${p.name}</option>`).join('')}
                 </select>
@@ -123,7 +123,7 @@ function tournamentCardTemplate(t) {
 
 function renderTournaments(tournamentsToRender) {
     if (tournamentsToRender.length === 0) {
-        tournamentsList.innerHTML = '<p class="text-center text-gray-500 py-4">No hay torneos registrados.</p>';
+        tournamentsList.innerHTML = '<p class="text-center text-gray-400 py-4">No hay torneos registrados.</p>';
         return;
     }
     tournamentsList.innerHTML = tournamentsToRender.map(t => tournamentCardTemplate(t)).join('');
@@ -240,7 +240,7 @@ tournamentsList.addEventListener('click', async (e) => {
             form.scrollIntoView({ behavior: 'smooth' });
         } else if (action === 'delete') {
             const id = button.dataset.id;
-            if (confirm('¿Está seguro de que desea eliminar este torneo?')) {
+            if (confirm('¿Está seguro de que desea eliminar este torneo? Esto también eliminará todos los partidos asociados.')) {
                 await supabase.from('tournament_players').delete().eq('tournament_id', id);
                 await supabase.from('matches').delete().eq('tournament_id', id);
                 await supabase.from('tournaments').delete().eq('id', id);
@@ -266,9 +266,7 @@ tournamentsList.addEventListener('submit', async (e) => {
     const select = form.querySelector('select');
     const playerId = select.value;
 
-    if (!playerId) {
-        return; 
-    }
+    if (!playerId) return; 
 
     const { error } = await supabase.from('tournament_players').insert([{ tournament_id: tournamentId, player_id: playerId }]);
     if (error) {

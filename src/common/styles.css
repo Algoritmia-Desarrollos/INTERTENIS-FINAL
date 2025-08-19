@@ -1,17 +1,21 @@
+/* --- Paleta de Colores y Estilos Base (TEMA OSCURO) --- */
 :root {
-  --primary-color: #415c19; /* Verde Oscuro del Logo */
-  --primary-dark: #3a5015;  /* Verde más oscuro para hover */
-  --secondary-color: #fad735; /* Amarillo del Logo como acento */
-  --text-primary: #1f2937;
-  --text-secondary: #4b5563;
-  --border-color: #e5e7eb;
-  --background-color: #f9fafb;
+  --primary-color: #facc15;      /* Amarillo Principal (yellow-400) */
+  --primary-dark: #eab308;       /* Amarillo más oscuro para hover (yellow-500) */
+  --secondary-color: #374151;    /* Gris oscuro para botones secundarios (gray-700) */
+  --text-primary: #f3f4f6;       /* Texto principal casi blanco (gray-100) */
+  --text-secondary: #9ca3af;     /* Texto secundario gris (gray-400) */
+  --border-color: #4b5563;       /* Bordes de color gris medio (gray-600) */
+  --background-color: #000000;   /* Fondo principal negro */
+  --container-bg: #222222;      /* Fondo de contenedores y tarjetas */
 }
+
 body {
-  font-family: 'Inter', sans-serif;
+  font-family: 'Inter', sans-serif, system-ui;
   background-color: var(--background-color);
   color: var(--text-primary);
 }
+
 .content-container {
   width: 100%;
   max-width: 80rem;
@@ -28,48 +32,54 @@ body {
   transition-duration: 200ms;
   border-radius: 0.5rem;
   padding: 0.625rem 1.25rem;
-  font-size: 1rem;
+  font-size: 0.9rem;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  border: 1px solid transparent;
 }
 .btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
-.btn:hover {
-  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-}
 .btn-primary {
-  color: #fff;
-  background-color: #1e7e34;
+  color: #000000;
+  background-color: var(--primary-color);
+  border-color: var(--primary-color);
 }
 .btn-primary:hover {
-  background-color: #145c25;
+  background-color: var(--primary-dark);
+  border-color: var(--primary-dark);
 }
 .btn-secondary {
-  background-color: #e5e7eb;
-  color: #374151;
+  background-color: var(--secondary-color);
+  color: var(--text-primary);
+  border-color: var(--border-color);
 }
 .btn-secondary:hover {
-  background-color: #d1d5db;
+  background-color: #4b5563; /* gray-600 */
 }
 
 /* --- ESTILOS DE FORMULARIO --- */
 .input-field {
   width: 100%;
   border-radius: 0.5rem;
-  border: 1px solid #d1d5db;
-  background-color: #ffffff;
+  border: 1px solid var(--border-color);
+  background-color: #374151; /* gray-700 */
+  color: var(--text-primary);
   height: 2.75rem;
   padding: 0 1rem;
   font-size: 0.875rem;
+  transition: all 150ms ease-in-out;
 }
 .input-field:focus {
     border-color: var(--primary-color);
-    box-shadow: 0 0 0 3px rgba(65, 92, 25, 0.2); /* Sombra de foco verde */
+    box-shadow: 0 0 0 3px rgba(250, 204, 21, 0.3);
+    outline: none;
+}
+.input-field::placeholder {
+    color: #9ca3af; /* gray-400 */
 }
 
 select.input-field {
@@ -77,7 +87,7 @@ select.input-field {
     -moz-appearance: none;
     appearance: none;
     padding-right: 2.5rem;
-    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%239ca3af' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
     background-position: right 0.5rem center;
     background-repeat: no-repeat;
     background-size: 1.5em 1.5em;
@@ -88,7 +98,7 @@ select.input-field {
     cursor: pointer;
 }
 
-/* Spinner para cargas */
+/* --- SPINNER PARA CARGAS --- */
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
@@ -96,79 +106,24 @@ select.input-field {
   display: inline-block;
   width: 20px;
   height: 20px;
-  border: 2px solid rgba(0,0,0,.1);
+  border: 2px solid rgba(255,255,255,.2);
   border-radius: 50%;
-  border-top-color: #4b5563;
+  border-top-color: var(--text-primary);
   animation: spin 0.8s ease-in-out infinite;
 }
 
-
-/* Estilos para los botones de acción en cada fila */
-.action-btn {
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-size: 1.2rem;
-  padding: 0 4px;
-  opacity: 0.6;
-  transition: opacity 0.2s;
-}
-
-.action-btn:hover {
-  opacity: 1;
-}
-
-/* Feedback visual al arrastrar una celda */
+/* --- ESTILOS PARA LA TABLA DE CARGA MASIVA --- */
 td[draggable="true"] {
   cursor: grab;
 }
 td[draggable="true"]:active {
   cursor: grabbing;
 }
-
-/* Clase para la celda sobre la que se puede soltar */
-.bg-green-100 {
-  background-color: #d1fae5; /* Tailwind's green-100 */
-}
-
-/* --- Estilos para la tabla de carga masiva --- */
-
-/* Celda seleccionada con un borde azul */
 .cell-selected {
-  outline: 2px solid #3b82f6; /* Tailwind's blue-500 */
+  outline: 2px solid #60a5fa; /* blue-400 */
   outline-offset: -2px;
-  background-color: #eff6ff; /* Tailwind's blue-50 */
+  background-color: #374151; /* gray-700 */
 }
-
-/* Input que aparece al editar para que no descuadre la tabla */
-.editing-input {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  border: none;
-  padding: 0.5rem; /* Ajusta al padding de tus celdas (p-2) */
-  box-sizing: border-box;
-  font-size: inherit;
-  font-family: inherit;
-  background-color: white; /* Para que tape el contenido original */
-}
-
-.editing-input:focus {
-  outline: 2px solid #3b82f6;
-  outline-offset: -1px;
-}
-
-/* --- Estilos para la tabla de carga masiva --- */
-
-/* Celda seleccionada (opcional, si quieres mantenerla) */
-.cell-selected {
-  outline: 2px solid #3b82f6; /* Tailwind's blue-500 */
-  outline-offset: -2px;
-}
-
-/* Input que aparece al editar para que no descuadre la tabla */
 .editing-input {
   position: absolute;
   top: 0;
@@ -180,15 +135,13 @@ td[draggable="true"]:active {
   box-sizing: border-box;
   font-size: inherit;
   font-family: inherit;
-  background-color: white;
+  background-color: #4b5563; /* gray-600 */
+  color: var(--text-primary);
 }
-
 .editing-input:focus {
-  outline: 2px solid #3b82f6;
+  outline: 2px solid #60a5fa;
   outline-offset: -1px;
 }
-
-/* Evita que el texto de la celda se vea debajo del input de edición */
 td.is-editing {
     color: transparent;
 }

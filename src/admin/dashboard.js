@@ -8,7 +8,7 @@ requireRole('admin');
 let lastMatchesData = []; // Guardar los datos de los partidos para el modal
 let allPlayers = []; // Guardar todos los jugadores para los selects del modal
 
-// --- Funciones Auxiliares (copiadas de matches.js para consistencia visual) ---
+// --- Funciones Auxiliares ---
 function isColorLight(hex) {
     if (!hex) return false;
     let c = hex.replace('#', '');
@@ -29,8 +29,8 @@ async function loadDashboardData() {
     const summaryContainer = document.getElementById('dashboard-summary');
     const matchesContainer = document.getElementById('matches-container');
 
-    summaryContainer.innerHTML = '<p>Cargando estadísticas...</p>';
-    matchesContainer.innerHTML = '<p>Cargando partidos...</p>';
+    summaryContainer.innerHTML = '<p class="text-gray-400">Cargando estadísticas...</p>';
+    matchesContainer.innerHTML = '<p class="text-gray-400">Cargando partidos...</p>';
 
     const [
         { count: tournamentCount },
@@ -56,41 +56,41 @@ async function loadDashboardData() {
     lastMatchesData = lastMatches || [];
     allPlayers = players || [];
 
-    // --- Renderizar Tarjetas de Resumen ---
+    // --- Renderizar Tarjetas de Resumen (Estilo Oscuro) ---
     summaryContainer.innerHTML = `
-        <a href="tournaments.html" class="block bg-white p-6 rounded-xl shadow-sm border flex items-center gap-4 transition hover:shadow-md hover:border-yellow-300">
+        <a href="tournaments.html" class="block bg-[#222222] p-6 rounded-xl shadow-lg border border-transparent flex items-center gap-4 transition hover:shadow-md hover:border-yellow-400">
             <span class="material-icons text-4xl text-yellow-500">emoji_events</span>
             <div>
-                <p class="text-gray-500">Torneos Activos</p>
-                <p class="text-2xl font-bold">${tournamentCount ?? 0}</p>
+                <p class="text-gray-400">Torneos Activos</p>
+                <p class="text-2xl font-bold text-gray-100">${tournamentCount ?? 0}</p>
             </div>
         </a>
-        <a href="players.html" class="block bg-white p-6 rounded-xl shadow-sm border flex items-center gap-4 transition hover:shadow-md hover:border-yellow-300">
+        <a href="players.html" class="block bg-[#222222] p-6 rounded-xl shadow-lg border border-transparent flex items-center gap-4 transition hover:shadow-md hover:border-yellow-400">
             <span class="material-icons text-4xl text-yellow-500">groups</span>
             <div>
-                <p class="text-gray-500">Jugadores Registrados</p>
-                <p class="text-2xl font-bold">${playerCount ?? 0}</p>
+                <p class="text-gray-400">Jugadores Registrados</p>
+                <p class="text-2xl font-bold text-gray-100">${playerCount ?? 0}</p>
             </div>
         </a>
-        <a href="matches.html" class="block bg-white p-6 rounded-xl shadow-sm border flex items-center gap-4 transition hover:shadow-md hover:border-yellow-300">
+        <a href="matches.html" class="block bg-[#222222] p-6 rounded-xl shadow-lg border border-transparent flex items-center gap-4 transition hover:shadow-md hover:border-yellow-400">
             <span class="material-icons text-4xl text-yellow-500">sports_tennis</span>
             <div>
-                <p class="text-gray-500">Partidos Jugados</p>
-                <p class="text-2xl font-bold">${matchCount ?? 0}</p>
+                <p class="text-gray-400">Partidos Jugados</p>
+                <p class="text-2xl font-bold text-gray-100">${matchCount ?? 0}</p>
             </div>
         </a>
-         <a href="rankings.html" class="block bg-white p-6 rounded-xl shadow-sm border flex items-center gap-4 transition hover:shadow-md hover:border-yellow-300">
+         <a href="rankings.html" class="block bg-[#222222] p-6 rounded-xl shadow-lg border border-transparent flex items-center gap-4 transition hover:shadow-md hover:border-yellow-400">
             <span class="material-icons text-4xl text-yellow-500">leaderboard</span>
             <div>
-                <p class="text-gray-500">Rankings</p>
-                <p class="text-2xl font-bold">Ver</p>
+                <p class="text-gray-400">Rankings</p>
+                <p class="text-2xl font-bold text-gray-100">Ver</p>
             </div>
         </a>
     `;
 
     // --- Renderizar Tabla de Últimos Partidos ---
     if (matchesError || lastMatchesData.length === 0) {
-        matchesContainer.innerHTML = '<div class="bg-white rounded-xl shadow-sm border p-4"><p class="text-center text-gray-500 py-4">No hay partidos registrados.</p></div>';
+        matchesContainer.innerHTML = '<div class="bg-[#222222] rounded-xl shadow-lg border p-4"><p class="text-center text-gray-400 py-4">No hay partidos registrados.</p></div>';
         return;
     }
     
@@ -113,7 +113,7 @@ function renderLastMatches(matchesToRender) {
     let tableHTML = '';
 
     for (const [dateIdx, date] of sortedDates.entries()) {
-        if (dateIdx > 0) tableHTML += `<tr><td colspan="9" style="height: 18px; background: transparent; border: none;"></td></tr>`;
+        if (dateIdx > 0) tableHTML += `<tr><td colspan="9" style="height: 18px; background: #000; border: none;"></td></tr>`;
         
         const groupedBySede = groupedByDate[date].reduce((acc, match) => {
             const sede = (match.location ? match.location.split(' - ')[0] : 'Sede no definida').trim();
@@ -124,7 +124,7 @@ function renderLastMatches(matchesToRender) {
 
         let sedeIdx = 0;
         for(const sede in groupedBySede) {
-            if (sedeIdx > 0) tableHTML += `<tr><td colspan="9" style="height: 14px; background: transparent; border: none;"></td></tr>`;
+            if (sedeIdx > 0) tableHTML += `<tr><td colspan="9" style="height: 14px; background: #000; border: none;"></td></tr>`;
             sedeIdx++;
             
             const matchesInSede = groupedBySede[sede];
@@ -162,7 +162,6 @@ function renderLastMatches(matchesToRender) {
                 let p1NameStyle = played && !p1_class ? 'color:#888;' : '';
                 let p2NameStyle = played && !p2_class ? 'color:#888;' : '';
                 
-                // --- INICIO DE LA LÓGICA MODIFICADA ---
                 let p1CellContent = '';
                 let p2CellContent = '';
 
@@ -177,7 +176,6 @@ function renderLastMatches(matchesToRender) {
                         p2CellContent = `<img src="${match.player2.team.image_url}" alt="" style="height: 20px; object-fit: contain; margin: auto; display: block;">`;
                     }
                 }
-                // --- FIN DE LA LÓGICA MODIFICADA ---
 
                 let cancha = 'N/A';
                 if (match.location) {
@@ -193,11 +191,11 @@ function renderLastMatches(matchesToRender) {
                     <tr class="clickable-row data-row" data-match-id="${match.id}">
                         <td style="background-color: ${canchaBackgroundColor} !important; color: ${canchaTextColor} !important; font-weight: bold;">${cancha}</td>
                         <td style="background:#000;color:#fff;">${hora}</td>
-                        <td class="player-name player-name-right ${p1_class}" style='background:#000;color:#fff;${p1NameStyle}'>${match.player1.name}</td>
+                        <td class="player-name player-name-right ${p1_class}" style='background:#000;color:#fff;${p1NameStyle};font-size:12pt;'>${match.player1.name}</td>
                         <td class="pts-col" style='background:${p1TeamColor || '#3a3838'};color:${p1TextColor};'>${p1CellContent}</td>
                         <td class="font-mono" style="background:#000;color:#fff;">${setsDisplay}</td>
                         <td class="pts-col" style='background:${p2TeamColor || '#3a3838'};color:${p2TextColor};'>${p2CellContent}</td>
-                        <td class="player-name player-name-left ${p2_class}" style='background:#000;color:#fff;${p2NameStyle}'>${match.player2.name}</td>
+                        <td class="player-name player-name-left ${p2_class}" style='background:#000;color:#fff;${p2NameStyle};font-size:12pt;'>${match.player2.name}</td>
                         <td class="cat-col" style="background:#000;color:${match.category?.color || '#b45309'};">${match.category?.name || 'N/A'}</td>
                         <td class="action-cell" style="background:#000;"><button class="p-1 rounded-full hover:bg-gray-700" data-action="edit" title="Editar / Cargar Resultado"><span class="material-icons text-base" style="color:#fff;">edit</span></button></td>
                     </tr>`;
@@ -208,9 +206,12 @@ function renderLastMatches(matchesToRender) {
     matchesContainer.innerHTML = `
         <div class="bg-[#222222] p-6 rounded-xl shadow-lg">
              <style>
-                .matches-report-style { width: 100%; border-collapse: separate; border-spacing: 0; }
-                .matches-report-style th, .matches-report-style td { padding: 6px 4px; font-size: 9pt; border: 1px solid #4a4a4a; text-align: center; vertical-align: middle; background: #222222; color: #ffffff; }
-                .matches-report-style thead th { font-size: 8pt; color: #a0a0a0; text-transform: uppercase; font-weight: 600; padding-top: 8px; padding-bottom: 8px; }
+                .matches-report-style { width: 100%; border-collapse: separate; border-spacing: 0; border-radius: 8px; overflow: hidden; }
+                .matches-report-style th, .matches-report-style td { padding: 6px 4px; font-size: 9pt; border-bottom: 1px solid #4a4a4a; text-align: center; vertical-align: middle; background: #222222; color: #ffffff; }
+                .matches-report-style tr td { border-right: 1px solid #4a4a4a; }
+                .matches-report-style tr td:first-child { border-left: 1px solid #4a4a4a; }
+                .matches-report-style tbody tr:last-child td { border-bottom: none; }
+                .matches-report-style thead th { font-size: 8pt; color: #a0a0a0; text-transform: uppercase; font-weight: 600; padding-top: 8px; padding-bottom: 8px; border: none; background: #000; }
                 .matches-report-style .winner { font-weight: 700 !important; color: #f4ec05 !important; }
                 .matches-report-style .player-name { font-weight: 700; }
                 .matches-report-style .player-name-right { text-align: right; padding-right: 8px; }
@@ -238,55 +239,59 @@ function openScoreModal(match) {
     const isPlayed = !!match.winner_id;
     const playersInCategory = allPlayers.filter(p => p.category_id === match.category_id);
 
+
     modalContainer.innerHTML = `
-        <div id="score-modal-overlay" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-            <div id="score-modal-content" class="bg-white rounded-xl shadow-lg w-full max-w-lg">
-                <div class="p-6 border-b"><h3 class="text-xl font-bold">Editar Partido / Resultado</h3></div>
+        <div id="score-modal-overlay" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-2 z-50">
+            <div id="score-modal-content" class="bg-[#232323] rounded-xl shadow-lg w-full max-w-lg border border-[#444] mx-2 sm:mx-0">
+                <div class="p-6 border-b border-[#333]"><h3 class="text-xl font-bold text-yellow-400">Editar Partido / Resultado</h3></div>
                 <form id="score-form" class="p-6 space-y-4">
-                     <div class="grid grid-cols-2 gap-4">
+                    <div class="grid grid-cols-2 gap-4">
                         <div>
-                            <label class="block text-sm font-medium text-gray-700">Jugador A</label>
-                            <select id="player1-select-modal" class="input-field mt-1" ${isPlayed ? 'disabled' : ''}>
+                            <label class="block text-sm font-medium text-gray-300">Jugador A</label>
+                            <select id="player1-select-modal" class="input-field mt-1 bg-[#181818] text-gray-100 border-[#444]" ${isPlayed ? 'disabled' : ''}>
                                 ${playersInCategory.map(p => `<option value="${p.id}" ${p.id === match.player1_id ? 'selected' : ''}>${p.name}</option>`).join('')}
                             </select>
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-700">Jugador B</label>
-                            <select id="player2-select-modal" class="input-field mt-1" ${isPlayed ? 'disabled' : ''}>
+                            <label class="block text-sm font-medium text-gray-300">Jugador B</label>
+                            <select id="player2-select-modal" class="input-field mt-1 bg-[#181818] text-gray-100 border-[#444]" ${isPlayed ? 'disabled' : ''}>
                                 ${playersInCategory.map(p => `<option value="${p.id}" ${p.id === match.player2_id ? 'selected' : ''}>${p.name}</option>`).join('')}
                             </select>
                         </div>
                     </div>
                     <div class="grid grid-cols-3 gap-4 items-center pt-4">
-                        <span class="font-semibold">SET</span>
-                        <span class="font-semibold text-center">${match.player1.name}</span>
-                        <span class="font-semibold text-center">${match.player2.name}</span>
+                        <span class="font-semibold text-gray-200">SET</span>
+                        <span class="font-semibold text-center text-gray-200" style="font-size:14px;">${match.player1.name}</span>
+                        <span class="font-semibold text-center text-gray-200" style="font-size:14px;">${match.player2.name}</span>
                     </div>
                     ${[1, 2, 3].map(i => `
-                    <div class="grid grid-cols-3 gap-4 items-center">
-                        <span class="text-gray-500">Set ${i}</span>
-                        <input type="number" id="p1_set${i}" class="input-field text-center" value="${sets[i-1]?.p1 ?? ''}" min="0" max="9">
-                        <input type="number" id="p2_set${i}" class="input-field text-center" value="${sets[i-1]?.p2 ?? ''}" min="0" max="9">
-                    </div>
+                        <div class="grid grid-cols-3 gap-4 items-center">
+                            <span class="text-gray-300">Set ${i}</span>
+                            <input type="number" id="p1_set${i}" class="input-field text-center bg-[#181818] text-gray-100 border-[#444]" value="${sets[i-1]?.p1 ?? ''}" min="0" max="9">
+                            <input type="number" id="p2_set${i}" class="input-field text-center bg-[#181818] text-gray-100 border-[#444]" value="${sets[i-1]?.p2 ?? ''}" min="0" max="9">
+                        </div>
                     `).join('')}
                 </form>
-                <div class="p-4 bg-gray-50 flex justify-between gap-4 rounded-b-xl">
-                    <div class="flex items-center gap-2">
+                <div class="p-4 bg-[#181818] flex flex-col sm:flex-row justify-between gap-3 sm:gap-4 rounded-b-xl border-t border-[#333]">
+                    <div class="flex flex-row flex-wrap items-center gap-2 justify-center sm:justify-start mb-2 sm:mb-0">
                         <button id="btn-delete-match" class="btn btn-secondary !p-2" title="Eliminar Partido"><span class="material-icons !text-red-600">delete_forever</span></button>
                         ${isPlayed ? `<button id="btn-clear-score" class="btn btn-secondary !p-2" title="Limpiar Resultado"><span class="material-icons !text-yellow-600">cleaning_services</span></button>` : ''}
+                        <button id="btn-suspend-match" class="btn btn-secondary !p-2" title="Marcar como Suspendido"><span class="material-icons !text-red-500">cancel</span></button>
                     </div>
-                    <div class="flex gap-4">
-                        <button id="btn-cancel-modal" class="btn btn-secondary">Cancelar</button>
-                        <button id="btn-save-score" class="btn btn-primary">Guardar</button>
+                    <div class="flex flex-row flex-wrap gap-2 justify-center sm:justify-end">
+                        <button id="btn-cancel-modal" class="btn btn-secondary w-full sm:w-auto">Cancelar</button>
+                        <button id="btn-save-score" class="btn btn-primary w-full sm:w-auto">Guardar</button>
                     </div>
                 </div>
             </div>
         </div>
     `;
+    // ...existing code...
 
     document.getElementById('btn-save-score').onclick = () => saveScores(match.id);
     document.getElementById('btn-cancel-modal').onclick = closeModal;
     document.getElementById('btn-delete-match').onclick = () => deleteMatch(match.id);
+    document.getElementById('btn-suspend-match').onclick = () => suspendMatch(match.id);
     if (isPlayed) document.getElementById('btn-clear-score').onclick = () => clearScore(match.id);
     document.getElementById('score-modal-overlay').onclick = (e) => { if (e.target.id === 'score-modal-overlay') closeModal(); };
 }

@@ -11,28 +11,40 @@
   <link rel="stylesheet" href="../common/styles.css" />
   <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
   <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"/>
+  <style>
+    /* Estilos para los inputs en modo oscuro */
+    .dark-input {
+      background-color: #374151; /* gray-700 */
+      border-color: #4b5563; /* gray-600 */
+      color: #e5e7eb; /* gray-200 */
+    }
+    .dark-input:focus {
+      border-color: #fbbF24; /* amber-400 */
+      box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.3);
+    }
+  </style>
 </head>
-<body class="bg-gray-50 text-gray-800">
+<body class="bg-black text-gray-200">
   <header id="header"></header>
   <main class="flex-1 py-8">
     <div class="content-container max-w-4xl mx-auto space-y-8">
-      <h1 class="text-3xl font-bold text-gray-900">Gestión de Equipos</h1>
+      <h1 class="text-3xl font-bold text-gray-100">Gestión de Equipos</h1>
       
-      <div class="bg-white p-6 rounded-xl shadow-lg">
-        <h2 id="form-title" class="text-xl font-semibold mb-4">Añadir Nuevo Equipo</h2>
+      <div class="bg-[#222222] p-6 rounded-xl shadow-lg">
+        <h2 id="form-title" class="text-xl font-semibold mb-4 text-gray-100">Añadir Nuevo Equipo</h2>
         <form id="form-team" class="space-y-4">
           <input type="hidden" id="team-id">
           <div>
-            <label for="team-name" class="block text-sm font-medium text-gray-700">Nombre del Equipo</label>
-            <input type="text" id="team-name" class="input-field mt-1 block w-full" required>
+            <label for="team-name" class="block text-sm font-medium text-gray-300">Nombre del Equipo</label>
+            <input type="text" id="team-name" class="input-field dark-input mt-1 block w-full" required>
           </div>
           <div>
-            <label for="team-color" class="block text-sm font-medium text-gray-700">Color del Equipo</label>
+            <label for="team-color" class="block text-sm font-medium text-gray-300">Color del Equipo</label>
             <input type="color" id="team-color" class="mt-1 block w-16 h-8 p-0 border-0 bg-transparent cursor-pointer" value="#ffcc06">
           </div>
           <div>
-            <label for="team-image" class="block text-sm font-medium text-gray-700">Imagen del Logo</label>
-            <input type="file" id="team-image" class="input-field mt-1 block w-full" accept="image/*">
+            <label for="team-image" class="block text-sm font-medium text-gray-300">Imagen del Logo</label>
+            <input type="file" id="team-image" class="input-field dark-input mt-1 block w-full" accept="image/*">
           </div>
           <div class="flex justify-end gap-4 pt-2">
             <button type="button" id="btn-cancel" class="btn btn-secondary hidden">Cancelar</button>
@@ -41,8 +53,8 @@
         </form>
       </div>
 
-      <div class="bg-white p-6 rounded-xl shadow-lg">
-        <h2 class="text-xl font-semibold mb-4">Equipos Registrados</h2>
+      <div class="bg-[#222222] p-6 rounded-xl shadow-lg">
+        <h2 class="text-xl font-semibold mb-4 text-gray-100">Equipos Registrados</h2>
         <div id="teams-list" class="space-y-2">
           </div>
       </div>

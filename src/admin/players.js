@@ -28,6 +28,7 @@ let allTeams = [];
 
 // --- Función Auxiliar para Búsqueda sin Acentos ---
 function normalizeText(text) {
+    if (!text) return '';
     return text.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 }
 
@@ -95,20 +96,20 @@ function applyFiltersAndSort() {
 
 function renderPlayers(playersToRender) {
     if (playersToRender.length === 0) {
-        playersList.innerHTML = '<p class="text-center text-gray-500 py-8">No hay jugadores que coincidan con la búsqueda o los filtros.</p>';
+        playersList.innerHTML = '<p class="text-center text-gray-400 py-8">No hay jugadores que coincidan con la búsqueda o los filtros.</p>';
         return;
     }
 
     playersList.innerHTML = playersToRender.map(player => `
-        <div class="player-row grid grid-cols-[auto,1fr,auto] items-center gap-4 px-3 py-2 rounded-lg hover:bg-gray-100 border-b last:border-b-0 transition-colors duration-200 cursor-pointer" data-player-id="${player.id}">
-            <img src="${player.team?.image_url || 'https://via.placeholder.com/40'}" alt="Logo" class="h-8 w-8 rounded-full object-cover bg-gray-200">
+        <div class="player-row grid grid-cols-[auto,1fr,auto] items-center gap-4 px-3 py-2 rounded-lg hover:bg-black border-b border-gray-800 last:border-b-0 transition-colors duration-200 cursor-pointer" data-player-id="${player.id}">
+            <img src="${player.team?.image_url || 'https://via.placeholder.com/40'}" alt="Logo" class="h-8 w-8 rounded-full object-cover bg-gray-700">
             <div>
-                <p class="font-bold text-sm text-gray-800">${player.name}</p>
-                <p class="text-xs text-gray-500">${player.category?.name || 'N/A'} | ${player.team?.name || 'Sin equipo'}</p>
+                <p class="font-bold text-sm text-gray-100">${player.name}</p>
+                <p class="text-xs text-gray-400">${player.category?.name || 'N/A'} | ${player.team?.name || 'Sin equipo'}</p>
             </div>
             <div class="flex items-center gap-1" data-no-navigate="true">
-                 <button data-action="edit" data-player='${JSON.stringify(player)}' class="text-blue-600 hover:text-blue-800 p-1 rounded-full hover:bg-blue-100"><span class="material-icons text-base">edit</span></button>
-                 <button data-action="delete" data-id="${player.id}" class="text-red-600 hover:text-red-800 p-1 rounded-full hover:bg-red-100"><span class="material-icons text-base">delete</span></button>
+                 <button data-action="edit" data-player='${JSON.stringify(player)}' class="text-blue-400 hover:text-blue-300 p-1 rounded-full hover:bg-gray-800"><span class="material-icons text-base">edit</span></button>
+                 <button data-action="delete" data-id="${player.id}" class="text-red-400 hover:text-red-300 p-1 rounded-full hover:bg-gray-800"><span class="material-icons text-base">delete</span></button>
             </div>
         </div>
     `).join('');
@@ -203,9 +204,16 @@ playersList.addEventListener('click', async (e) => {
         } else if (action === 'delete') {
             const id = button.dataset.id;
             if (confirm('¿Está seguro de que desea eliminar este jugador?')) {
+                // Primero eliminar referencias en tournament_players
                 await supabase.from('tournament_players').delete().eq('player_id', id);
-                await supabase.from('players').delete().eq('id', id);
-                await loadInitialData();
+                // Luego eliminar al jugador
+                const { error } = await supabase.from('players').delete().eq('id', id);
+
+                if (error) {
+                    alert('Error al eliminar el jugador: ' + error.message);
+                } else {
+                    await loadInitialData();
+                }
             }
         }
     } else {
