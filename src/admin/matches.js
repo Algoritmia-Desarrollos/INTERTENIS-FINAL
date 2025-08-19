@@ -32,16 +32,9 @@ let lastDateRangeStr = '';
 const clearFiltersBtn = document.getElementById('btn-clear-all-filters');
 
 function anyFilterActive() {
-    return filterTournamentSelect.value || filterStatusSelect.value || filterSedeSelect.value || filterCanchaSelect.value || searchInput.value;
+    return filterTournamentSelect.value || filterStatusSelect.value || filterSedeSelect.value || filterCanchaSelect.value || searchInput.value || (filterDateRange && filterDateRange[0] && filterDateRange[1]) || quickFilterMode;
 }
 
-function updateClearFiltersBtn() {
-    if (anyFilterActive()) {
-        clearFiltersBtn.classList.remove('hidden');
-    } else {
-        clearFiltersBtn.classList.add('hidden');
-    }
-}
 
 clearFiltersBtn.onclick = function() {
     filterTournamentSelect.value = '';
@@ -49,6 +42,11 @@ clearFiltersBtn.onclick = function() {
     filterSedeSelect.value = '';
     filterCanchaSelect.value = '';
     searchInput.value = '';
+    filterDateRange = [null, null];
+    filterDateRangeInput.value = '';
+    filterDateRangeInput.style.color = '';
+    lastDateRangeStr = '';
+    quickFilterMode = null;
     applyFiltersAndSort();
 };
 
@@ -208,13 +206,41 @@ function applyFiltersAndSort() {
             return matchDateObj >= filterDateRange[0] && matchDateObj <= filterDateRange[1];
         });
     }
+
+    // Filtros rápidos por tarjetas
+    if (quickFilterMode === 'pendientes') {
+        processedMatches = processedMatches.filter(m => !m.winner_id && m.status !== 'suspendido');
+    } else if (quickFilterMode === 'recientes') {
+        const now = new Date();
+        const sieteDiasAtras = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7, 0, 0, 0, 0);
+        const finDelDia = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+        processedMatches = processedMatches.filter(m => {
+            if (!m.winner_id || !m.match_date) return false;
+            let matchDate;
+            if (m.match_date.includes('-')) {
+                const [y, mth, d] = m.match_date.split('-');
+                matchDate = new Date(Number(y), Number(mth) - 1, Number(d));
+            } else if (m.match_date.includes('/')) {
+                const [d, mth, y] = m.match_date.split('/');
+                matchDate = new Date(Number(y), Number(mth) - 1, Number(d));
+            } else { return false; }
+            return matchDate >= sieteDiasAtras && matchDate <= finDelDia;
+        });
+    }
+
+    // Ordenar por fecha (match_date) según sortOrderDesc
+    processedMatches.sort((a, b) => {
+        if (!a.match_date) return 1;
+        if (!b.match_date) return -1;
+        const da = new Date(a.match_date);
+        const db = new Date(b.match_date);
+        return sortOrderDesc ? db - da : da - db;
+    });
     renderMatches(processedMatches);
     updateBulkActionBar();
     updateClearFiltersBtn();
-
-function anyFilterActive() {
-    return filterTournamentSelect.value || filterStatusSelect.value || filterSedeSelect.value || filterCanchaSelect.value || searchInput.value || (filterDateRange && filterDateRange[0] && filterDateRange[1]);
 }
+
 
 function updateClearFiltersBtn() {
     if (anyFilterActive()) {
@@ -234,8 +260,22 @@ clearFiltersBtn.onclick = function() {
     filterDateRangeInput.value = '';
     filterDateRangeInput.style.color = '';
     lastDateRangeStr = '';
+    quickFilterMode = null;
     applyFiltersAndSort();
 };
+
+// --- Filtros rápidos por tarjetas resumen ---
+let quickFilterMode = null; // null | 'pendientes' | 'recientes'
+let sortOrderDesc = true; // true: más recientes arriba (default)
+
+function clearQuickFilter() {
+    quickFilterMode = null;
+    applyFiltersAndSort();
+}
+
+function applyQuickFilter(mode) {
+    quickFilterMode = mode;
+    applyFiltersAndSort();
 }
 
 function renderMatches(matchesToRender) {
@@ -475,6 +515,27 @@ function handleBulkReport() {
 document.addEventListener('DOMContentLoaded', async () => {
     header.innerHTML = renderHeader();
     await loadInitialData();
+    // Eventos para tarjetas resumen
+    const cardPendientes = document.getElementById('card-pendientes');
+    const cardRecientes = document.getElementById('card-recientes');
+    if (cardPendientes) {
+        cardPendientes.style.cursor = 'pointer';
+        cardPendientes.onclick = () => applyQuickFilter('pendientes');
+    }
+    if (cardRecientes) {
+        cardRecientes.style.cursor = 'pointer';
+        cardRecientes.onclick = () => applyQuickFilter('recientes');
+    }
+    // Botón de orden
+    const btnSortOrder = document.getElementById('btn-sort-order');
+    if (btnSortOrder) {
+        btnSortOrder.innerHTML = `<span class="material-icons mr-1" style="font-size:18px;">swap_vert</span> ${sortOrderDesc ? 'Más recientes arriba' : 'Más antiguos arriba'}`;
+        btnSortOrder.onclick = () => {
+            sortOrderDesc = !sortOrderDesc;
+            btnSortOrder.innerHTML = `<span class=\"material-icons mr-1\" style=\"font-size:18px;\">swap_vert</span> ${sortOrderDesc ? 'Más recientes arriba' : 'Más antiguos arriba'}`;
+            applyFiltersAndSort();
+        };
+    }
 });
 
 btnShowForm.addEventListener('click', () => {
@@ -501,7 +562,7 @@ btnShowForm.addEventListener('click', () => {
 
 // Click para seleccionar, doble clic para editar
 let lastClickTime = 0;
-const DOUBLE_CLICK_INTERVAL = 150; // ms, mucho más rápido
+const DOUBLE_CLICK_INTERVAL = 200; // ms, mucho más rápido
 matchesContainer.addEventListener('click', (e) => {
     const row = e.target.closest('tr[data-match-id]');
     if (!row) return;
