@@ -109,7 +109,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         let bgColor, textColor;
 
         if (sede.toLowerCase().trim() === 'centro') {
-            bgColor = '#111111'; 
+            bgColor = '#111111 !important'; 
             textColor = '#ffc000';
         } else { 
             bgColor = '#fdc100'; 
