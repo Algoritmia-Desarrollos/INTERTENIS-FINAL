@@ -66,8 +66,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     let container = createNewPage();
 
     for (const date of sortedDates) {
-        const sedes = groupedMatches[date];
-        const formattedDate = new Date(date + 'T00:00:00').toLocaleDateString('es-AR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    const sedes = groupedMatches[date];
+    // Formatear fecha: inicial del día en mayúscula, sin año y sin coma
+    const dateObj = new Date(date + 'T00:00:00');
+    let formattedDate = dateObj.toLocaleDateString('es-AR', { weekday: 'long', month: 'long', day: 'numeric' });
+    // Eliminar la coma si existe
+    formattedDate = formattedDate.replace(',', '');
+    // Capitalizar la inicial del día
+    formattedDate = formattedDate.charAt(0).toUpperCase() + formattedDate.slice(1);
         
         for (const sede in sedes) {
             const matches = sedes[sede];
@@ -88,9 +94,24 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             let table = document.createElement('table');
             table.className = 'report-table';
-            // Fila superior solo con sede, sin fecha
+            // Fila superior: sede en las dos primeras columnas, fecha en las columnas 3-6, resto vacío
+            const isCentro = sede.trim().toLowerCase() === 'centro';
+            const bgColor = isCentro ? '#2d3d4b' : '#ffc000';
+            const textColor = isCentro ? '#fff' : '#222';
             const headerRow = document.createElement('tr');
-            headerRow.innerHTML = `<td colspan="8" style="background:#ffc000;color:#222;font-weight:700;font-size:1.1em;padding:8px 0;text-align:center;border-bottom:2px solid #888;">Sede: ${sede}</td>`;
+            if (isCentro) {
+                headerRow.innerHTML = `
+                    <td colspan="2" style="background:#161616;color:#ffc000;font-weight:700;font-size:1.1em;padding:8px 0;text-align:center;border-bottom:2px solid #888;">${sede}</td>
+                    <td colspan="4" style="background:#161616;color:#ffc000;font-weight:700;font-size:1.1em;padding:8px 0;text-align:center;border-bottom:2px solid #888;">${formattedDate}</td>
+                    <td colspan="2" style="background:#161616;border-bottom:2px solid #888;"></td>
+                `;
+            } else {
+                headerRow.innerHTML = `
+                    <td colspan="2" style="background:#ffc000;color:#222;font-weight:700;font-size:1.1em;padding:8px 0;text-align:center;border-bottom:2px solid #888;">${sede}</td>
+                    <td colspan="4" style="background:#ffc000;color:#222;font-weight:700;font-size:1.1em;padding:8px 0;text-align:center;border-bottom:2px solid #888;">${formattedDate}</td>
+                    <td colspan="2" style="background:#ffc000;border-bottom:2px solid #888;"></td>
+                `;
+            }
             const tbodyEl = document.createElement('tbody');
             tbodyEl.appendChild(headerRow);
             table.appendChild(tbodyEl);
@@ -109,9 +130,22 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                     table = document.createElement('table');
                     table.className = 'report-table';
-                    // Fila superior con día y sede también en las tablas continuadas
+                    // Fila superior: sede en las dos primeras columnas, fecha en las columnas 3-6, resto vacío (continuación)
+                    const isCentro2 = sede.trim().toLowerCase() === 'centro';
                     const headerRow2 = document.createElement('tr');
-                    headerRow2.innerHTML = `<td colspan="8" style="background:#ffc000;color:#222;font-weight:700;font-size:1.1em;padding:8px 0;text-align:center;border-bottom:2px solid #888;">${formattedDate} | Sede: ${sede} (cont.)</td>`;
+                    if (isCentro2) {
+                        headerRow2.innerHTML = `
+                            <td colspan="2" style="background:#161616;color:#ffc000;font-weight:700;font-size:1.1em;padding:8px 0;text-align:center;border-bottom:2px solid #888;">${sede}</td>
+                            <td colspan="4" style="background:#161616;color:#ffc000;font-weight:700;font-size:1.1em;padding:8px 0;text-align:center;border-bottom:2px solid #888;">${formattedDate}</td>
+                            <td colspan="2" style="background:#161616;border-bottom:2px solid #888;"></td>
+                        `;
+                    } else {
+                        headerRow2.innerHTML = `
+                            <td colspan="2" style="background:#ffc000;color:#222;font-weight:700;font-size:1.1em;padding:8px 0;text-align:center;border-bottom:2px solid #888;">${sede}</td>
+                            <td colspan="4" style="background:#ffc000;color:#222;font-weight:700;font-size:1.1em;padding:8px 0;text-align:center;border-bottom:2px solid #888;">${formattedDate}</td>
+                            <td colspan="2" style="background:#ffc000;border-bottom:2px solid #888;"></td>
+                        `;
+                    }
                     const tbodyEl2 = document.createElement('tbody');
                     tbodyEl2.appendChild(headerRow2);
                     table.appendChild(tbodyEl2);
@@ -132,45 +166,50 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 const row = tbody.insertRow();
                 const catColor = match.category_color || '#b45309';
-                    // Reemplazar '-' por '/' en el resultado de sets, sin espacios
-                    let setsDisplay = (match.sets || '').replace(/\s*-\s*/g, '/');
-                    // Si hay varios sets, separarlos por espacio, no coma, y siempre usar '/'
-                    if (Array.isArray(match.sets)) {
-                        setsDisplay = match.sets.map(s => `${s.p1}/${s.p2}`).join(' ');
-                    } else if (typeof match.sets === 'string') {
-                        // Reemplazar cualquier '-' por '/' y comas por espacio
-                        setsDisplay = match.sets.replace(/\s*-\s*/g, '/').split(',').map(s => s.trim()).join(' ');
-                    }
-                    // Colores de equipos desde la base
-                    function getTeamColor(name) {
-                        if (!name) return '';
-                        const n = name.trim().toLowerCase();
-                        return teamColorMap[n] || '';
-                    }
-                    function isColorLight(hex) {
-                        if (!hex) return false;
-                        let c = hex.replace('#', '');
-                        if (c.length === 3) c = c.split('').map(x => x + x).join('');
-                        const r = parseInt(c.substr(0,2),16);
-                        const g = parseInt(c.substr(2,2),16);
-                        const b = parseInt(c.substr(4,2),16);
-                        // Percepción de luminosidad
-                        return (0.299*r + 0.587*g + 0.114*b) > 186;
-                    }
-                    const p1TeamColor = match.player1.teamColor;
-                    const p2TeamColor = match.player2.teamColor;
-                    const p1TextColor = isColorLight(p1TeamColor) ? '#222' : '#fff';
-                    const p2TextColor = isColorLight(p2TeamColor) ? '#222' : '#fff';
-                    // Determinar si el partido se jugó (hay sets cargados)
-                    const played = !!(match.sets && match.sets.trim() !== '');
-                    let p1NameStyle = '';
-                    let p2NameStyle = '';
-                    if (played) {
-                        if (!match.player1.isWinner) p1NameStyle = 'color:#6b716f;';
-                        if (!match.player2.isWinner) p2NameStyle = 'color:#6b716f;';
-                    }
-                    row.innerHTML = `<td style='width:54px;min-width:54px;max-width:54px;text-align:center;'>${cancha}</td><td class="text-center">${hora}</td><td class="text-right font-bold ${p1_class}" style='${p1NameStyle}'>${match.player1.name}</td><td class="pts-col" style='text-align:center;background:${p1TeamColor || '#3a3838'};color:#f2bb03;font-weight:bold;'>${match.player1.points}</td><td style='text-align:center;' class="font-mono">${setsDisplay}</td><td class="pts-col" style='text-align:center;background:${p2TeamColor || '#3a3838'};color:#f2bb03;font-weight:bold;'>${match.player2.points}</td><td class="font-bold ${p2_class}" style='${p2NameStyle}'>${match.player2.name}</td><td class="cat-col" style="text-align:center;margin:auto;color:${catColor};font-family:'Segoe UI Black','Arial Black',Arial,sans-serif;font-weight:900;letter-spacing:0.5px;">${match.category}</td>`;
-row.innerHTML = `<td style='width:54px;min-width:54px;max-width:54px;text-align:center;'>${cancha}</td><td class="text-center">${hora}</td><td class="text-right font-bold ${p1_class}" style='${p1NameStyle}'>${match.player1.name}</td><td class="pts-col" style='text-align:center;background:${p1TeamColor};color:${p1TextColor};font-weight:700;'>${match.player1.points}</td><td style='text-align:center;' class="font-mono">${setsDisplay}</td><td class="pts-col" style='text-align:center;background:${p2TeamColor};color:${p2TextColor};font-weight:700;'>${match.player2.points}</td><td class="font-bold ${p2_class}" style='${p2NameStyle}'>${match.player2.name}</td><td class="cat-col" style="text-align:center;margin:auto;color:${catColor};font-family:'Segoe UI Black','Arial Black',Arial,sans-serif;font-weight:900;letter-spacing:0.5px;">${match.category}</td>`;
+                // Reemplazar '-' por '/' en el resultado de sets, sin espacios
+                let setsDisplay = (match.sets || '').replace(/\s*-\s*/g, '/');
+                // Si hay varios sets, separarlos por espacio, no coma, y siempre usar '/'
+                if (Array.isArray(match.sets)) {
+                    setsDisplay = match.sets.map(s => `${s.p1}/${s.p2}`).join(' ');
+                } else if (typeof match.sets === 'string') {
+                    // Reemplazar cualquier '-' por '/' y comas por espacio
+                    setsDisplay = match.sets.replace(/\s*-\s*/g, '/').split(',').map(s => s.trim()).join(' ');
+                }
+                // Colores de equipos desde la base
+                function getTeamColor(name) {
+                    if (!name) return '';
+                    const n = name.trim().toLowerCase();
+                    return teamColorMap[n] || '';
+                }
+                function isColorLight(hex) {
+                    if (!hex) return false;
+                    let c = hex.replace('#', '');
+                    if (c.length === 3) c = c.split('').map(x => x + x).join('');
+                    const r = parseInt(c.substr(0,2),16);
+                    const g = parseInt(c.substr(2,2),16);
+                    const b = parseInt(c.substr(4,2),16);
+                    // Percepción de luminosidad
+                    return (0.299*r + 0.587*g + 0.114*b) > 186;
+                }
+                const p1TeamColor = match.player1.teamColor;
+                const p2TeamColor = match.player2.teamColor;
+                const p1TextColor = isColorLight(p1TeamColor) ? '#222' : '#fff';
+                const p2TextColor = isColorLight(p2TeamColor) ? '#222' : '#fff';
+                // Determinar si el partido se jugó (hay sets cargados)
+                const played = !!(match.sets && match.sets.trim() !== '');
+                let p1NameStyle = '';
+                let p2NameStyle = '';
+                if (played) {
+                    if (!match.player1.isWinner) p1NameStyle = 'color:#6b716f;';
+                    if (!match.player2.isWinner) p2NameStyle = 'color:#6b716f;';
+                }
+                // Colorear la celda de la columna 1 si la sede es Centro
+                let canchaCellStyle = "width:54px;min-width:54px;max-width:54px;text-align:center;";
+                if (sede.trim().toLowerCase() === 'centro') {
+                    canchaCellStyle += "background:#161616;color:#ffc000;font-weight:700;";
+                }
+                row.innerHTML = `<td style='${canchaCellStyle}'>${cancha}</td><td class="text-center">${hora}</td><td class="text-right font-bold ${p1_class}" style='${p1NameStyle}'>${match.player1.name}</td><td class="pts-col" style='text-align:center;background:${p1TeamColor || '#3a3838'};color:#f2bb03;font-weight:bold;'>${match.player1.points}</td><td style='text-align:center;' class="font-mono">${setsDisplay}</td><td class="pts-col" style='text-align:center;background:${p2TeamColor || '#3a3838'};color:#f2bb03;font-weight:bold;'>${match.player2.points}</td><td class="font-bold ${p2_class}" style='${p2NameStyle}'>${match.player2.name}</td><td class="cat-col" style="text-align:center;margin:auto;color:${catColor};font-family:'Segoe UI Black','Arial Black',Arial,sans-serif;font-weight:900;letter-spacing:0.5px;">${match.category}</td>`;
+                row.innerHTML = `<td style='${canchaCellStyle}'>${cancha}</td><td class="text-center">${hora}</td><td class="text-right font-bold ${p1_class}" style='${p1NameStyle}'>${match.player1.name}</td><td class="pts-col" style='text-align:center;background:${p1TeamColor};color:${p1TextColor};font-weight:700;'>${match.player1.points}</td><td style='text-align:center;' class="font-mono">${setsDisplay}</td><td class="pts-col" style='text-align:center;background:${p2TeamColor};color:${p2TextColor};font-weight:700;'>${match.player2.points}</td><td class="font-bold ${p2_class}" style='${p2NameStyle}'>${match.player2.name}</td><td class="cat-col" style="text-align:center;margin:auto;color:${catColor};font-family:'Segoe UI Black','Arial Black',Arial,sans-serif;font-weight:900;letter-spacing:0.5px;">${match.category}</td>`;
                 currentHeight += ROW_HEIGHT_MM;
             }
         }
