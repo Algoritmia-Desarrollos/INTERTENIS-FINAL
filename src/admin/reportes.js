@@ -154,110 +154,136 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     let container = createNewPage();
 
-// Pega este bloque completo en reportes.js
-for (const date of sortedDates) {
-    
-    // Define las variables necesarias para esta fecha específica
-    const sedes = groupedMatches[date];
-    const dateObj = new Date(date + 'T00:00:00');
-    const weekday = dateObj.toLocaleDateString('es-AR', { weekday: 'long' });
-    const day = dateObj.getDate();
-    const month = dateObj.toLocaleDateString('es-AR', { month: 'long' });
-    let formattedDate = `${weekday} ${day} de ${month}`;
-    formattedDate = formattedDate.charAt(0).toUpperCase() + formattedDate.slice(1);
+    // Reemplazo del bucle para iterar correctamente por fechas y sedes
+    for (const date of sortedDates) {
+        const sedes = groupedMatches[date];
+        const formattedDate = new Date(date).toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' });
+        for (const sede in sedes) {
+            const matches = sedes[sede];
 
-    // Bucle interno que recorre las sedes DENTRO de la fecha actual
-    for (const sede in sedes) {
-        const matches = sedes[sede];
+            // --- NUEVA LÓGICA DE PAGINACIÓN ---
+            // 1. Calcular la altura total que necesitará esta tabla completa.
+            const tableHeight = HEADER_ROW_HEIGHT_MM + (matches.length * ROW_HEIGHT_MM);
+            // Se necesita un espaciador si no es el primer elemento de la página.
+            const spacerHeight = (currentHeight > 0) ? SPACER_HEIGHT_MM : 0;
 
-        // --- LÓGICA DE PAGINACIÓN ---
-        const tableHeight = HEADER_ROW_HEIGHT_MM + (matches.length * ROW_HEIGHT_MM);
-        const spacerHeight = (currentHeight > 0) ? SPACER_HEIGHT_MM : 0;
-
-        if (currentHeight + spacerHeight + tableHeight > maxContentHeight) {
-            pageCount++;
-            container = createNewPage();
-            currentHeight = 0;
-        }
-        // --- FIN DE LÓGICA DE PAGINACIÓN ---
-
-        if (currentHeight > 0) {
-            const spacer = document.createElement('div');
-            spacer.style.height = `${SPACER_HEIGHT_MM}mm`;
-            container.appendChild(spacer);
-            currentHeight += SPACER_HEIGHT_MM;
-        }
-
-        const table = createTable(container);
-        let tbody = table.createTBody();
-
-        createHeaderRow(tbody, sede, date, formattedDate);
-        currentHeight += HEADER_ROW_HEIGHT_MM;
-
-        for (const match of matches) {
-            const row = tbody.insertRow();
-            row.className = 'data-row';
-            let cancha = match.location ? match.location.split(' - ')[1] : 'N/A';
-            if (typeof cancha === 'string') {
-                const matchNum = cancha.match(/\d+/);
-                if (matchNum) cancha = matchNum[0];
+            // 2. Comprobar si la tabla completa (con su espaciador) cabe en el espacio restante.
+            if (currentHeight + spacerHeight + tableHeight > maxContentHeight) {
+                // Si no cabe, crear una nueva página y reiniciar la altura.
+                pageCount++;
+                container = createNewPage();
+                currentHeight = 0; // La altura se reinicia para la nueva página.
             }
-            const p1_class = match.player1.isWinner ? 'winner' : '';
-            const p2_class = match.player2.isWinner ? 'winner' : '';
-            let hora = match.time || '';
-            if (hora && hora.length >= 5) hora = hora.substring(0, 5);
-            const setsDisplay = (match.sets || '').split(/\s*,\s*/).map(s => s.replace(/\s*-\s*/g, '/')).join(' ');
+            // --- FIN DE LA NUEVA LÓGICA ---
 
-            function isColorLight(hex) {
-                if (!hex) return false;
-                let c = hex.replace('#', '');
-                if (c.length === 3) c = c.split('').map(x => x + x).join('');
-                const r = parseInt(c.substr(0,2),16), g = parseInt(c.substr(2,2),16), b = parseInt(c.substr(4,2),16);
-                return (0.299*r + 0.587*g + 0.114*b) > 186;
+            // Añadir un espaciador solo si es necesario (si no estamos al inicio de una página).
+            if (currentHeight > 0) {
+                const spacer = document.createElement('div');
+                spacer.style.height = `${SPACER_HEIGHT_MM}mm`;
+                container.appendChild(spacer);
+                currentHeight += SPACER_HEIGHT_MM;
             }
 
-            const p1TeamColor = match.player1.teamColor, p2TeamColor = match.player2.teamColor;
-            const p1TextColor = isColorLight(p1TeamColor) ? '#222' : '#fff', p2TextColor = isColorLight(p2TeamColor) ? '#222' : '#fff';
-            const played = !!(match.sets && match.sets.trim() !== '');
-            let p1NameStyle = played && !match.player1.isWinner ? 'color:#6b716f;' : '';
-            let p2NameStyle = played && !match.player2.isWinner ? 'color:#6b716f;' : '';
-            
+            // Ahora que sabemos que la tabla cabe, la creamos.
+            const table = createTable(container);
+            let tbody = table.createTBody();
 
-            let p1CellContent = '';
-            if (played) {
-                p1CellContent = (typeof match.player1.points !== 'undefined' && match.player1.points !== null) ? match.player1.points : '';
-                if (p1CellContent === '') p1CellContent = '';
-                if (p1CellContent === 0) p1CellContent = '0';
-            }
-            if (!played && match.player1.teamImage) {
-                p1CellContent = `<img src="${match.player1.teamImage}" alt="" style="height: 20px; object-fit: contain; margin: auto; display: block;">`;
-            }
+            // Crear el encabezado SIN "(cont.)" porque la tabla nunca se corta.
+            createHeaderRow(tbody, sede, date, formattedDate);
+            currentHeight += HEADER_ROW_HEIGHT_MM;
 
-            let p2CellContent = '';
-            if (played) {
-                p2CellContent = (typeof match.player2.points !== 'undefined' && match.player2.points !== null) ? match.player2.points : '';
-                if (p2CellContent === '') p2CellContent = '';
-                if (p2CellContent === 0) p2CellContent = '0';
-            }
-            if (!played && match.player2.teamImage) {
-                p2CellContent = `<img src="${match.player2.teamImage}" alt="" style="height: 20px; object-fit: contain; margin: auto; display: block;">`;
-            }
-            
-            const canchaBackgroundColor = sede.toLowerCase().trim() === 'centro' ? '#222222' : '#ffc000';
-            const canchaTextColor = sede.toLowerCase().trim() === 'centro' ? '#ffc000' : '#222';
+            // Bucle para añadir todas las filas de partidos.
+            // YA NO SE NECESITA la comprobación de página aquí dentro.
+            for (const match of matches) {
+                const row = tbody.insertRow();
+                row.className = 'data-row';
+                let cancha = match.location ? match.location.split(' - ')[1] : 'N/A';
+                if (typeof cancha === 'string') {
+                    const matchNum = cancha.match(/\d+/);
+                    if (matchNum) cancha = matchNum[0];
+                }
+                const p1_class = match.player1.isWinner ? 'winner' : '';
+                const p2_class = match.player2.isWinner ? 'winner' : '';
+                let hora = match.time || '';
+                if (hora && hora.length >= 5) hora = hora.substring(0, 5);
+                const setsDisplay = (match.sets || '').split(/\s*,\s*/).map(s => s.replace(/\s*-\s*/g, '/')).join(' ');
 
-            row.innerHTML = `
-                <td style="background-color: ${canchaBackgroundColor} !important; color: ${canchaTextColor} !important; font-weight: bold;">${cancha}</td>
-                <td class="text-center">${hora}</td>
-                <td class="text-right font-bold ${p1_class}" style='${p1NameStyle}'>${match.player1.name}</td>
-                <td class="pts-col" style='text-align:center;background:${p1TeamColor || '#3a3838'};color:${p1TextColor};font-weight:700;'>${p1CellContent}</td>
-                <td style='text-align:center;' class="font-mono">${setsDisplay}</td>
-                <td class="pts-col" style='text-align:center;background:${p2TeamColor || '#3a3838'};color:${p2TextColor};font-weight:700;'>${p2CellContent}</td>
-                <td class="font-bold ${p2_class}" style='${p2NameStyle}'>${match.player2.name}</td>
-                <td class="cat-col" style="color:${match.category_color || '#b45309'};font-family:'Segoe UI Black',Arial,sans-serif;font-weight:900;">${match.category}</td>
-            `;
-            currentHeight += ROW_HEIGHT_MM;
+                function isColorLight(hex) {
+                    if (!hex) return false;
+                    let c = hex.replace('#', '');
+                    if (c.length === 3) c = c.split('').map(x => x + x).join('');
+                    const r = parseInt(c.substr(0,2),16), g = parseInt(c.substr(2,2),16), b = parseInt(c.substr(4,2),16);
+                    return (0.299*r + 0.587*g + 0.114*b) > 186;
+                }
+
+                const p1TeamColor = match.player1.teamColor, p2TeamColor = match.player2.teamColor;
+                const p1TextColor = isColorLight(p1TeamColor) ? '#222' : '#fff', p2TextColor = isColorLight(p2TeamColor) ? '#222' : '#fff';
+                const played = !!(match.sets && match.sets.trim() !== '');
+                let p1NameStyle = played && !match.player1.isWinner ? 'color:#6b716f;' : '';
+                let p2NameStyle = played && !match.player2.isWinner ? 'color:#6b716f;' : '';
+
+                let p1PointsDisplay = '';
+                let p2PointsDisplay = '';
+                if (played) {
+                    p1PointsDisplay = (typeof match.player1.points !== 'undefined' && match.player1.points !== null) ? match.player1.points : '';
+                    if (p1PointsDisplay === 0) p1PointsDisplay = '0';
+                    p2PointsDisplay = (typeof match.player2.points !== 'undefined' && match.player2.points !== null) ? match.player2.points : '';
+                    if (p2PointsDisplay === 0) p2PointsDisplay = '0';
+                } else {
+                    if (match.player1.teamImage) {
+                        p1PointsDisplay = `<img src="${match.player1.teamImage}" alt="" style="height: 20px; object-fit: contain; margin: auto; display: block;">`;
+                    }
+                    if (match.player2.teamImage) {
+                        p2PointsDisplay = `<img src="${match.player2.teamImage}" alt="" style="height: 20px; object-fit: contain; margin: auto; display: block;">`;
+                    }
+                }
+
+                const canchaBackgroundColor = sede.toLowerCase().trim() === 'centro' ? '#222222' : '#ffc000';
+                const canchaTextColor = sede.toLowerCase().trim() === 'centro' ? '#ffc000' : '#222';
+
+                row.innerHTML = `
+                    <td style="background-color: ${canchaBackgroundColor} !important; color: ${canchaTextColor} !important; font-weight: bold;">${cancha}</td>
+                    <td class="text-center">${hora}</td>
+                    <td class="text-right font-bold ${p1_class}" style='${p1NameStyle}'>${match.player1.name}</td>
+                    <td class="pts-col" style='text-align:center;background:${p1TeamColor || '#3a3838'};color:${p1TextColor};font-weight:700;'>${p1PointsDisplay}</td>
+                    <td style='text-align:center;' class="font-mono">${setsDisplay}</td>
+                    <td class="pts-col" style='text-align:center;background:${p2TeamColor || '#3a3838'};color:${p2TextColor};font-weight:700;'>${p2PointsDisplay}</td>
+                    <td class="font-bold ${p2_class}" style='${p2NameStyle}'>${match.player2.name}</td>
+                    <td class="cat-col" style="color:${match.category_color || '#b45309'};font-family:'Segoe UI Black',Arial,sans-serif;font-weight:900;">${match.category}</td>
+                `;
+                currentHeight += ROW_HEIGHT_MM;
+            }
         }
     }
-}
+
+    // 5. Lógica para los botones de acción
+    document.getElementById('btn-save-pdf').addEventListener('click', () => {
+        const element = document.getElementById('report-pages-container');
+        html2pdf()
+            .set({
+                margin: 0,
+                filename: `reporte_partidos.pdf`,
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 2, useCORS: true },
+                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            })
+            .from(element)
+            .toPdf()
+            .get('pdf')
+            .then(function (pdf) {
+                const totalPages = pdf.internal.getNumberOfPages();
+                if (totalPages > 1) {
+                    pdf.deletePage(totalPages); // Elimina la última página
+                }
+            })
+            .save();
+    });
+    document.getElementById('btn-save-report').addEventListener('click', async () => {
+        if (!reportData || reportData.length === 0) return alert('No hay datos de reporte para guardar.');
+        const title = prompt('Ingresa un título para guardar este reporte:', 'Reporte de Partidos ' + new Date().toLocaleDateString('es-AR'));
+        if (!title) return;
+        const { error } = await supabase.from('reports').insert({ title: title, report_data: reportData });
+        if (error) alert('Error al guardar el reporte: ' + error.message);
+        else { alert('Reporte guardado con éxito.'); window.location.href = 'reportes-historicos.html'; }
+    });
 });
