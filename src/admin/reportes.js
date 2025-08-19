@@ -146,7 +146,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         headerCell.innerHTML = `
             <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
                 <span style="text-align: left;">${sede.toUpperCase()}</span>
-                <span style="text-align: center; flex-grow: 1;">${formattedDate}</span>
+                <span style="text-align: center; flex-grow: 1; display: inline-block; padding-top:2px; padding-bottom:2px; font-size: 13pt;">${formattedDate}</span>
                 <span style="text-align: right;">${weatherHTML}</span>
             </div>
         `;
