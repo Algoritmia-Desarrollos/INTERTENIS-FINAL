@@ -222,6 +222,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 let p1NameStyle = played && !match.player1.isWinner ? 'color:#6b716f;' : '';
                 let p2NameStyle = played && !match.player2.isWinner ? 'color:#6b716f;' : '';
 
+                // Si el partido no se jugó, dejar la celda de puntos vacía
+                const p1PointsDisplay = played ? match.player1.points : '';
+                const p2PointsDisplay = played ? match.player2.points : '';
+
                 // --- AJUSTE DE COLOR PARA LA CELDA DE LA CANCHA ---
                 // Cambiar color de la primera columna para 'centro' a gris oscuro
                 const canchaBackgroundColor = sede.toLowerCase().trim() === 'centro' ? '#222222' : '#ffc000';
@@ -231,9 +235,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <td style="background-color: ${canchaBackgroundColor} !important; color: ${canchaTextColor} !important; font-weight: bold;">${cancha}</td>
                     <td class="text-center">${hora}</td>
                     <td class="text-right font-bold ${p1_class}" style='${p1NameStyle}'>${match.player1.name}</td>
-                    <td class="pts-col" style='text-align:center;background:${p1TeamColor || '#3a3838'};color:${p1TextColor};font-weight:700;'>${match.player1.points}</td>
+                    <td class="pts-col" style='text-align:center;background:${p1TeamColor || '#3a3838'};color:${p1TextColor};font-weight:700;'>${p1PointsDisplay}</td>
                     <td style='text-align:center;' class="font-mono">${setsDisplay}</td>
-                    <td class="pts-col" style='text-align:center;background:${p2TeamColor || '#3a3838'};color:${p2TextColor};font-weight:700;'>${match.player2.points}</td>
+                    <td class="pts-col" style='text-align:center;background:${p2TeamColor || '#3a3838'};color:${p2TextColor};font-weight:700;'>${p2PointsDisplay}</td>
                     <td class="font-bold ${p2_class}" style='${p2NameStyle}'>${match.player2.name}</td>
                     <td class="cat-col" style="color:${match.category_color || '#b45309'};font-family:'Segoe UI Black',Arial,sans-serif;font-weight:900;">${match.category}</td>
                 `;
