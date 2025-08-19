@@ -21,20 +21,14 @@ const bulkActionBar = document.getElementById('bulk-action-bar');
 const selectedCountSpan = document.getElementById('selected-count');
 const modalContainer = document.getElementById('score-modal-container');
 const massLoaderContainer = document.getElementById('mass-match-loader-container');
+const filterDateRangeInput = document.getElementById('filter-date-range');
+let filterDateRange = [null, null];
 
 // Crear botón Limpiar Filtros
 
 // --- Limpiar Filtros ---
-let clearFiltersBtn = document.createElement('button');
-clearFiltersBtn.textContent = 'Limpiar Filtros';
-clearFiltersBtn.id = 'clear-filters-btn';
-clearFiltersBtn.style.display = 'none';
-clearFiltersBtn.style.position = 'absolute';
-clearFiltersBtn.style.top = '10px';
-clearFiltersBtn.style.right = '30px';
-clearFiltersBtn.style.zIndex = '10';
-clearFiltersBtn.className = 'btn btn-secondary';
-document.body.appendChild(clearFiltersBtn);
+// Usar el botón existente en el HTML
+const clearFiltersBtn = document.getElementById('btn-clear-all-filters');
 
 function anyFilterActive() {
     return filterTournamentSelect.value || filterStatusSelect.value || filterSedeSelect.value || filterCanchaSelect.value || searchInput.value;
@@ -42,9 +36,9 @@ function anyFilterActive() {
 
 function updateClearFiltersBtn() {
     if (anyFilterActive()) {
-        clearFiltersBtn.style.display = 'block';
+        clearFiltersBtn.classList.remove('hidden');
     } else {
-        clearFiltersBtn.style.display = 'none';
+        clearFiltersBtn.classList.add('hidden');
     }
 }
 
@@ -112,6 +106,22 @@ async function loadInitialData() {
 
     updateSummaryCards();
     populateFilterSelects();
+    // Inicializar flatpickr para el filtro de fechas si no está ya hecho
+    if (filterDateRangeInput && !filterDateRangeInput._flatpickr) {
+        flatpickr(filterDateRangeInput, {
+            mode: 'range',
+            dateFormat: 'Y-m-d',
+            allowInput: true,
+            onChange: function(selectedDates, dateStr) {
+                if (selectedDates.length === 2) {
+                    filterDateRange = [selectedDates[0], selectedDates[1]];
+                } else {
+                    filterDateRange = [null, null];
+                }
+                applyFiltersAndSort();
+            }
+        });
+    }
     applyFiltersAndSort();
 }
 
@@ -164,7 +174,22 @@ function applyFiltersAndSort() {
         else if (statusFilter === 'completado') processedMatches = processedMatches.filter(m => !!m.winner_id);
         else if (statusFilter === 'suspendido') processedMatches = processedMatches.filter(m => m.status === 'suspendido');
     }
-    
+    // Filtro por rango de fechas
+    if (filterDateRange && filterDateRange[0] && filterDateRange[1]) {
+        processedMatches = processedMatches.filter(m => {
+            if (!m.match_date) return false;
+            let matchDateObj = null;
+            if (m.match_date.includes('-')) {
+                const [y, mth, d] = m.match_date.split('-');
+                matchDateObj = new Date(Number(y), Number(mth) - 1, Number(d));
+            } else if (m.match_date.includes('/')) {
+                const [d, mth, y] = m.match_date.split('/');
+                matchDateObj = new Date(Number(y), Number(mth) - 1, Number(d));
+            }
+            if (!matchDateObj) return false;
+            return matchDateObj >= filterDateRange[0] && matchDateObj <= filterDateRange[1];
+        });
+    }
     renderMatches(processedMatches);
     updateBulkActionBar();
     updateClearFiltersBtn();
