@@ -207,11 +207,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 let hora = match.time || '';
                 if (hora && hora.length >= 5) hora = hora.substring(0, 5);
                 // Reemplaza guiones por / y elimina la coma dejando solo espacio
-                // Reemplaza guiones por / y separa los sets por espacio
+                // Reemplaza guiones por / y separa los sets por espacio (ej: 1/6 1/6)
                 const setsDisplay = (match.sets || '')
-                    .split(',')
-                    .map(s => s.trim().replace(/\s*-\s*/g, '/'))
-                    .filter(Boolean)
+                    .split(/\s*,\s*/)
+                    .map(s => s.replace(/\s*-\s*/g, '/'))
                     .join(' ');
                 function isColorLight(hex) {
                     if (!hex) return false;
