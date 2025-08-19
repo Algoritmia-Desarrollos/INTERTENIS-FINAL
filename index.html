@@ -3,36 +3,35 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Club de Tenis - Torneos</title>
+  <title>InterTenis - Torneos y Jugadores</title>
   <link rel="icon" href="/logo_2021_02.png" type="image/png">
-  <meta property="og:image" content="/logo_2021_02.png" />
-  <meta name="twitter:image" content="/logo_2021_02.png" />
-
-  <link rel="stylesheet" href="src/common/styles.css" />
+  <link rel="stylesheet" href="/src/common/styles.css" />
   <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
   <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"/>
 </head>
 <body class="bg-black text-gray-200">
   
-  <header class="flex items-center justify-between border-b border-gray-700 bg-[#222222] px-4 sm:px-6 py-3 sticky top-0 z-50">
-    <div class="flex items-center gap-4">
-        <img src="/logo_2021_02.png" alt="Logo" class="h-10">
-        <h1 class="text-lg font-bold text-gray-100 hidden sm:block">Torneos del Club</h1>
-    </div>
-    <a href="/src/admin/login.html" class="text-sm font-medium text-gray-300 hover:text-yellow-400 flex items-center gap-2">
-      <span class="hidden sm:inline">Admin Login</span>
-      <span class="material-icons">login</span>
-    </a>
-  </header>
+  <div id="header-container"></div>
 
   <main class="flex-1 py-8">
     <div class="content-container max-w-6xl mx-auto space-y-8">
-      <h1 class="text-3xl font-bold text-gray-100">Torneos Abiertos</h1>
-      <div id="tournaments-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        </div>
+      
+
+
+      <div>
+        <h1 class="text-3xl font-bold text-gray-100 mb-6">Torneos Abiertos</h1>
+        <div id="tournaments-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            </div>
+      </div>
+
+      <div class="bg-[#222222] p-6 rounded-xl shadow-lg mt-8">
+        <h2 class="text-2xl font-bold text-gray-100 mb-4">Ranking del Torneo</h2>
+        <div id="ranking-index-container"></div>
+      </div>
+      </div>
     </div>
   </main>
   
-  <script type="module" src="public.js"></script>
+  <script type="module" src="/public.js"></script>
 </body>
 </html>
