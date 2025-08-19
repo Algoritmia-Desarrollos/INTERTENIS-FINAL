@@ -36,7 +36,13 @@ async function renderCategories() {
         return;
     }
 
-    categoriesList.innerHTML = data.map(category => `
+    // Ordenar categorías numéricamente por nombre (ej: 1°, 2°, 10°)
+    const sortedCategories = [...data].sort((a, b) => {
+        const numA = parseInt(a.name);
+        const numB = parseInt(b.name);
+        return numA - numB;
+    });
+    categoriesList.innerHTML = sortedCategories.map(category => `
         <div class="flex justify-between items-center p-3 rounded-lg hover:bg-black">
             <div class="flex items-center gap-3">
                 <span class="inline-block w-5 h-5 rounded-full border border-gray-600" style="background:${category.color || '#e5e7eb'}"></span>

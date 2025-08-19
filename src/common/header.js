@@ -30,6 +30,8 @@ export function renderHeader() {
   }
   
   const headerHTML = `
+    // Si estamos en index.html, no mostrar nav ni botones de sesión
+    const isPublicIndex = currentPage === 'index.html' || currentPage === '';
     <header class="flex items-center justify-between border-b border-gray-700 bg-[#222222] px-4 sm:px-6 py-3 sticky top-0 z-50">
       <div class="flex items-center gap-4">
         <a href="/src/admin/dashboard.html">

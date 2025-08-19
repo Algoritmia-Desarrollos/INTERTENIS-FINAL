@@ -11,16 +11,6 @@ const rankingsContainer = document.getElementById('rankings-container');
 
 // --- Lógica Principal ---
 
-async function populateTournamentFilter() {
-    tournamentFilter.innerHTML = '<option value="" disabled selected>Seleccione un torneo...</option>';
-    const { data: tournaments } = await supabase.from('tournaments').select('*').order('created_at', { ascending: false });
-    if (tournaments) {
-        tournaments.forEach(t => {
-            tournamentFilter.innerHTML += `<option value="${t.id}">${t.name}</option>`;
-        });
-    }
-}
-
 async function renderRankings(playerToHighlight = null) {
     const tournamentId = tournamentFilter.value;
     rankingsContainer.innerHTML = '<p class="text-center p-8">Calculando rankings...</p>';
@@ -51,18 +41,45 @@ async function renderRankings(playerToHighlight = null) {
 
     categoriesInTournament.forEach(category => {
         let categoryStats = stats.filter(s => s.categoryId === category.id);
-        
         const categoryTitle = document.createElement('h3');
         categoryTitle.className = 'text-2xl font-bold text-gray-100';
         categoryTitle.textContent = `Categoría: ${category.name}`;
         rankingsContainer.appendChild(categoryTitle);
-
         const tableContainer = document.createElement('div');
         tableContainer.className = 'bg-[#222222] p-6 rounded-xl shadow-lg overflow-x-auto';
         tableContainer.innerHTML = generateRankingsHTML(categoryStats, playerToHighlight);
         rankingsContainer.appendChild(tableContainer);
     });
 }
+
+// Reemplaza la función existente en rankings.js con esta
+
+async function populateTournamentFilter() {
+    tournamentFilter.innerHTML = '<option value="" disabled selected>Seleccione un torneo...</option>';
+    
+    // 1. Obtenemos los torneos de la base de datos (sin un orden específico)
+    const { data: tournaments } = await supabase.from('tournaments').select('*');
+    
+    if (tournaments) {
+        // 2. Ordenamos la lista de torneos numéricamente en JavaScript
+        tournaments.sort((a, b) => {
+            // Extraemos solo el número del nombre (ej: "10°" -> 10)
+            const numA = parseInt(a.name);
+            const numB = parseInt(b.name);
+            
+            // Comparamos los números para un orden ascendente
+            return numA - numB;
+        });
+
+        // 3. Creamos las opciones del menú con la lista ya ordenada
+        tournaments.forEach(t => {
+            tournamentFilter.innerHTML += `<option value="${t.id}">${t.name}</option>`;
+        });
+    }
+}
+
+
+
 
 function calculateStats(players, matches) {
     const stats = players.map(player => ({

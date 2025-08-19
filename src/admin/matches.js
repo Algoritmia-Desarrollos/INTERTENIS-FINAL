@@ -163,7 +163,13 @@ function updateSummaryCards() {
 
 function populateFilterSelects() {
     filterTournamentSelect.innerHTML = '<option value="">Todos los Torneos</option>';
-    allTournaments.forEach(t => filterTournamentSelect.innerHTML += `<option value="${t.id}">${t.name}</option>`);
+    // Ordenar torneos numéricamente por nombre (ej: 1°, 2°, 10°)
+    const sortedTournaments = [...allTournaments].sort((a, b) => {
+        const numA = parseInt(a.name);
+        const numB = parseInt(b.name);
+        return numA - numB;
+    });
+    sortedTournaments.forEach(t => filterTournamentSelect.innerHTML += `<option value="${t.id}">${t.name}</option>`);
     updateClearFiltersBtn();
 }
 

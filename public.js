@@ -1,141 +1,122 @@
 import { supabase } from './src/common/supabase.js';
-import { renderPublicHeader } from './public/public-header.js';
+import { renderHeader } from './src/common/header.js';
 
-const headerContainer = document.getElementById('header-container');
-const tournamentsList = document.getElementById('tournaments-list');
-// --- RENDERIZADO ---
-async function renderPublicTournaments() {
-    tournamentsList.innerHTML = '<p class="col-span-full text-center text-gray-400">Cargando torneos...</p>';
+// --- Elementos del DOM ---
+const header = document.getElementById('header');
+const tournamentFilter = document.getElementById('tournament-filter');
+const rankingsContainer = document.getElementById('rankings-container');
 
-    const { data: tournaments, error } = await supabase
-        .from('tournaments')
-        .select(`*, category:category_id(name)`)
-        .order('created_at', { ascending: false });
+// --- Header Público con buscador de jugador ---
+function renderPublicHeaderWithSearch() {
+    header.innerHTML = renderHeader();
+}
 
-    if (error || !tournaments || tournaments.length === 0) {
-        tournamentsList.innerHTML = '<p class="col-span-full text-center text-gray-400">No hay torneos disponibles.</p>';
+// --- Lógica Principal de Rankings ---
+
+async function populateTournamentFilter() {
+    tournamentFilter.innerHTML = '<option value="" disabled selected>Seleccione un torneo...</option>';
+    const { data: tournaments } = await supabase.from('tournaments').select('*');
+    if (tournaments) {
+        // Sort tournaments numerically by name (e.g., 1°, 2°, ... 11°)
+        tournaments.sort((a, b) => {
+            const numA = parseInt((a.name || '').match(/\d+/)?.[0] || '0', 10);
+            const numB = parseInt((b.name || '').match(/\d+/)?.[0] || '0', 10);
+            return numA - numB;
+        });
+        tournaments.forEach(t => {
+            tournamentFilter.innerHTML += `<option value="${t.id}">${t.name}</option>`;
+        });
+    }
+}
+
+async function renderRankings(playerToHighlight = null) {
+    const tournamentId = tournamentFilter.value;
+    rankingsContainer.innerHTML = '<p class="text-center p-8 text-gray-400">Calculando rankings...</p>';
+
+    if (!tournamentId) {
+        rankingsContainer.innerHTML = '<div class="bg-[#222222] p-8 rounded-xl"><p class="text-center text-gray-400">Seleccione un torneo para ver los rankings.</p></div>';
         return;
     }
 
-    tournamentsList.innerHTML = tournaments.map(t => `
-        <a href="/public/public-tournament-view.html?id=${t.id}" class="block bg-[#222222] rounded-xl shadow-lg border border-gray-700 p-6 flex flex-col transition hover:border-yellow-400 group">
-            <div class="flex-grow">
-                <p class="text-sm font-semibold text-yellow-400">${t.category.name}</p>
-                <h3 class="font-bold text-xl text-gray-100 mt-1 group-hover:text-yellow-400">${t.name}</h3>
-            </div>
-            <div class="mt-4 border-t border-gray-700 pt-4 text-center font-semibold text-gray-300 group-hover:text-white">
-                Ver Ranking y Partidos
-            </div>
-        </a>
-    `).join('');
-}
-
-
-function setupPlayerSearch() {
-    const searchInput = document.getElementById('player-search-input');
-    const searchResults = document.getElementById('player-search-results');
-    if (!searchInput || !searchResults) return;
-
-    searchInput.addEventListener('input', async (e) => {
-        const searchTerm = e.target.value;
-        if (searchTerm.length < 2) {
-            searchResults.classList.add('hidden');
-            return;
-        }
-        const { data, error } = await supabase.rpc('search_players_unaccent', { search_term: searchTerm });
-        if (error || !data || data.length === 0) {
-            searchResults.innerHTML = '<div class="px-4 py-2 text-sm text-gray-400">No se encontraron jugadores.</div>';
-            searchResults.classList.remove('hidden');
-            return;
-        }
-        searchResults.innerHTML = data.map(player => `
-            <a href="/public/public-player-dashboard.html?id=${player.id}" class="block px-4 py-3 text-sm text-gray-200 hover:bg-gray-600">
-                ${player.name}
-            </a>
-        `).join('');
-        searchResults.classList.remove('hidden');
-    });
-
-    document.addEventListener('click', (e) => {
-        if (!e.target.closest('#player-search-input')) {
-            searchResults.classList.add('hidden');
-        }
-    });
-}
-
-
-// --- INICIALIZACIÓN ---
-
-// --- RANKING EN INDEX ---
-async function renderIndexRanking() {
-    const rankingContainer = document.getElementById('ranking-index-container');
-    if (!rankingContainer) return;
-    rankingContainer.innerHTML = '<p class="text-center p-8">Cargando ranking...</p>';
-
-    // Obtener el primer torneo abierto
-    const { data: tournaments } = await supabase.from('tournaments').select('*').order('created_at', { ascending: false });
-    if (!tournaments || tournaments.length === 0) {
-        rankingContainer.innerHTML = '<div class="bg-[#222222] p-8 rounded-xl"><p class="text-center text-gray-400">No hay torneos para mostrar ranking.</p></div>';
-        return;
-    }
-    const tournament = tournaments[0];
-
-    // Obtener jugadores y partidos
-    const { data: tournamentPlayersLinks } = await supabase.from('tournament_players').select('player_id').eq('tournament_id', tournament.id);
+    const { data: tournamentPlayersLinks } = await supabase.from('tournament_players').select('player_id').eq('tournament_id', tournamentId);
     if (!tournamentPlayersLinks || tournamentPlayersLinks.length === 0) {
-        rankingContainer.innerHTML = '<div class="bg-[#222222] p-8 rounded-xl"><p class="text-center text-gray-400">Este torneo no tiene jugadores inscritos.</p></div>';
+        rankingsContainer.innerHTML = '<div class="bg-[#222222] p-8 rounded-xl"><p class="text-center text-gray-400">Este torneo no tiene jugadores inscritos.</p></div>';
         return;
     }
     const playerIds = tournamentPlayersLinks.map(link => link.player_id);
+
     const { data: playersInTournament } = await supabase.from('players').select('*, teams(name, image_url), categories(id, name)').in('id', playerIds);
-    const { data: matchesInTournament } = await supabase.from('matches').select('*').eq('tournament_id', tournament.id).not('winner_id', 'is', null);
+    const { data: matchesInTournament } = await supabase.from('matches').select('*').eq('tournament_id', tournamentId).not('winner_id', 'is', null);
 
-    // Calcular stats y categorías
     const stats = calculateStats(playersInTournament || [], matchesInTournament || []);
-    const categoriesInTournament = [...new Map((playersInTournament||[]).map(p => p && [p.category_id, p.categories]).filter(Boolean)).values()];
+    const categoriesInTournament = [...new Map(playersInTournament.map(p => p && [p.category_id, p.categories]).filter(Boolean)).values()];
 
-    rankingContainer.innerHTML = '';
+    rankingsContainer.innerHTML = '';
     if (categoriesInTournament.length === 0) {
-        rankingContainer.innerHTML = '<div class="bg-[#222222] p-8 rounded-xl"><p class="text-center text-gray-400">No hay jugadores con categoría en este torneo.</p></div>';
+        rankingsContainer.innerHTML = '<div class="bg-[#222222] p-8 rounded-xl"><p class="text-center text-gray-400">No hay jugadores con categoría en este torneo.</p></div>';
         return;
     }
+
     categoriesInTournament.forEach(category => {
         let categoryStats = stats.filter(s => s.categoryId === category.id);
-        rankingContainer.innerHTML += `<h3 class="text-2xl font-bold text-gray-100">Categoría: ${category.name}</h3>`;
-        rankingContainer.innerHTML += `<div class="bg-[#222222] p-6 rounded-xl shadow-lg overflow-x-auto">${generateRankingsHTML(categoryStats)}</div>`;
+        
+        const categoryTitle = document.createElement('h3');
+        categoryTitle.className = 'text-2xl font-bold text-gray-100';
+        categoryTitle.textContent = `Categoría: ${category.name}`;
+        rankingsContainer.appendChild(categoryTitle);
+
+        const tableContainer = document.createElement('div');
+        tableContainer.className = 'bg-[#222222] p-6 rounded-xl shadow-lg overflow-x-auto';
+        tableContainer.innerHTML = generateRankingsHTML(categoryStats, playerToHighlight);
+        rankingsContainer.appendChild(tableContainer);
     });
 }
 
 function calculateStats(players, matches) {
-    const stats = (players||[]).map(player => ({
-        playerId: player.id, name: player.name, categoryId: player.category_id,
+    const stats = players.map(player => ({
+        playerId: player.id, name: player.name, categoryId: player.category_id, 
         teamName: player.teams ? player.teams.name : 'N/A',
         teamImageUrl: player.teams ? player.teams.image_url : null,
         pj: 0, pg: 0, pp: 0, sg: 0, sp: 0, gg: 0, gp: 0, bonus: 0, puntos: 0,
     }));
-    (matches||[]).forEach(match => {
+
+    matches.forEach(match => {
         const p1Stat = stats.find(s => s.playerId === match.player1_id);
         const p2Stat = stats.find(s => s.playerId === match.player2_id);
         if (!p1Stat || !p2Stat) return;
-        p1Stat.pj++; p2Stat.pj++;
+        
+        p1Stat.pj++; 
+        p2Stat.pj++;
+        
         let p1SetsWon = 0, p2SetsWon = 0;
         (match.sets || []).forEach(set => {
-            p1Stat.gg += set.p1; p1Stat.gp += set.p2;
-            p2Stat.gg += set.p2; p2Stat.gp += set.p1;
+            p1Stat.gg += set.p1; 
+            p1Stat.gp += set.p2;
+            p2Stat.gg += set.p2; 
+            p2Stat.gp += set.p1;
             if(set.p1 > set.p2) p1SetsWon++; else p2SetsWon++;
         });
-        p1Stat.sg += p1SetsWon; p1Stat.sp += p2SetsWon;
-        p2Stat.sg += p2SetsWon; p2Stat.sp += p1SetsWon;
+
+        p1Stat.sg += p1SetsWon; 
+        p1Stat.sp += p2SetsWon;
+        p2Stat.sg += p2SetsWon; 
+        p2Stat.sp += p1SetsWon;
+
         if (match.winner_id === p1Stat.playerId) {
-            p1Stat.pg++; p2Stat.pp++; p1Stat.puntos += 2;
+            p1Stat.pg++; 
+            p2Stat.pp++; 
+            p1Stat.puntos += 2;
             if (match.bonus_loser) p2Stat.bonus += 1;
         } else {
-            p2Stat.pg++; p1Stat.pp++; p2Stat.puntos += 2;
+            p2Stat.pg++; 
+            p1Stat.pp++; 
+            p2Stat.puntos += 2;
             if (match.bonus_loser) p1Stat.bonus += 1;
         }
     });
+
     stats.forEach(s => {
-        s.puntos += s.bonus;
+        s.puntos += s.bonus; 
         s.difP = s.pg - s.pp;
         s.difS = s.sg - s.sp;
         s.difG = s.gg - s.gp;
@@ -143,6 +124,7 @@ function calculateStats(players, matches) {
         s.partidosParaPromediar = Math.max(s.pj, 8);
         s.promedio = s.pj > 0 ? (s.puntos / s.partidosParaPromediar) : 0;
     });
+
     stats.sort((a, b) => {
         if (a.pj === 0 && b.pj > 0) return 1;
         if (b.pj === 0 && a.pj > 0) return -1;
@@ -152,10 +134,11 @@ function calculateStats(players, matches) {
         if (b.difG !== a.difG) return b.difG - a.difG;
         return b.puntos - a.puntos;
     });
+
     return stats;
 }
 
-function generateRankingsHTML(stats) {
+function generateRankingsHTML(stats, playerToHighlight = null) {
     let tableHTML = `
         <table class="min-w-full text-sm text-gray-200">
             <thead class="bg-black">
@@ -178,7 +161,8 @@ function generateRankingsHTML(stats) {
                 </tr>
             </thead>
             <tbody class="divide-y divide-gray-700">`;
-    if (!stats || stats.length === 0) {
+    
+    if (stats.length === 0) {
         tableHTML += '<tr><td colspan="15" class="text-center p-8 text-gray-400">No hay jugadores en esta categoría para mostrar.</td></tr>';
     } else {
         stats.forEach((s, index) => {
@@ -186,8 +170,10 @@ function generateRankingsHTML(stats) {
             const difPClass = s.difP < 0 ? 'text-red-500' : s.difP > 0 ? 'text-green-400' : 'text-gray-300';
             const difSClass = s.difS < 0 ? 'text-red-500' : s.difS > 0 ? 'text-green-400' : 'text-gray-300';
             const difGClass = s.difG < 0 ? 'text-red-500' : s.difG > 0 ? 'text-green-400' : 'text-gray-300';
+            const highlightClass = s.playerId == playerToHighlight ? 'bg-yellow-900/50 border-l-4 border-yellow-500' : '';
+
             tableHTML += `
-                <tr>
+                <tr class="${highlightClass}">
                     <td class="px-3 py-3 font-bold text-yellow-400 text-base">${index + 1}°</td>
                     <td class="px-3 py-3 whitespace-nowrap">
                         <div class="flex items-center gap-3">
@@ -218,9 +204,21 @@ function generateRankingsHTML(stats) {
     return tableHTML;
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-    headerContainer.innerHTML = renderPublicHeader();
-    setupPlayerSearch();
-    renderPublicTournaments();
-    renderIndexRanking();
+// --- Event Listeners ---
+document.addEventListener('DOMContentLoaded', async () => {
+    renderPublicHeaderWithSearch();
+    await populateTournamentFilter();
+    
+    const urlParams = new URLSearchParams(window.location.search);
+    const tournamentIdToSelect = urlParams.get('tournamentId');
+    const playerToHighlight = urlParams.get('highlightPlayerId');
+
+    if (tournamentIdToSelect) {
+        tournamentFilter.value = tournamentIdToSelect;
+        await renderRankings(playerToHighlight);
+    } else {
+        rankingsContainer.innerHTML = '<div class="bg-[#222222] p-8 rounded-xl"><p class="text-center text-gray-400">Seleccione un torneo para ver los rankings.</p></div>';
+    }
 });
+
+tournamentFilter.addEventListener('change', () => renderRankings(null));

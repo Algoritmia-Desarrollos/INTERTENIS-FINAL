@@ -1,37 +1,33 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>InterTenis - Torneos y Jugadores</title>
-  <link rel="icon" href="/logo_2021_02.png" type="image/png">
-  <link rel="stylesheet" href="/src/common/styles.css" />
-  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"/>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>InterTenis - Rankings de Torneos</title>
+    <link rel="icon" href="/logo_2021_02.png" type="image/png">
+    <meta property="og:image" content="/logo_2021_02.png" />
+    <meta name="twitter:image" content="/logo_2021_02.png" />
+    <link rel="stylesheet" href="/src/common/styles.css">
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"/>
 </head>
 <body class="bg-black text-gray-200">
-  
-  <div id="header-container"></div>
+    <header id="header"></header>
+    <main class="flex-1 py-8">
+        <div class="content-container max-w-7xl mx-auto space-y-8">
+            <h1 class="text-3xl font-bold text-gray-100">Rankings de Torneos</h1>
 
-  <main class="flex-1 py-8">
-    <div class="content-container max-w-6xl mx-auto space-y-8">
-      
-
-
-      <div>
-        <h1 class="text-3xl font-bold text-gray-100 mb-6">Torneos Abiertos</h1>
-        <div id="tournaments-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div class="bg-[#222222] p-6 rounded-xl shadow-lg">
+                <div class="max-w-xs">
+                    <label for="tournament-filter" class="block text-sm font-medium text-gray-300 mb-2">Seleccionar Torneo</label>
+                    <select id="tournament-filter" class="input-field dark-input"></select>
+                </div>
             </div>
-      </div>
 
-      <div class="bg-[#222222] p-6 rounded-xl shadow-lg mt-8">
-        <h2 class="text-2xl font-bold text-gray-100 mb-4">Ranking del Torneo</h2>
-        <div id="ranking-index-container"></div>
-      </div>
-      </div>
-    </div>
-  </main>
-  
-  <script type="module" src="/public.js"></script>
+            <div id="rankings-container" class="space-y-8">
+                </div>
+        </div>
+    </main>
+    <script type="module" src="public.js"></script>
 </body>
 </html>
