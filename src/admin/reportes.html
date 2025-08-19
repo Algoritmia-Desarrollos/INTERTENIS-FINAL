@@ -13,7 +13,7 @@
     <style>
         body { background-color: #e0e0e0; }
         main { max-width: 210mm; margin: 20px auto; }
-        .page { background: white; width: 210mm; min-height: 297mm; padding: 15mm; margin-bottom: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); box-sizing: border-box; display: flex; flex-direction: column; }
+        .page { background: white; width: 210mm; min-height: 297mm; padding: 15mm; box-shadow: 0 0 10px rgba(0,0,0,0.1); box-sizing: border-box; display: flex; flex-direction: column; }
         .page-header { border-bottom: 2px solid #ccc; padding-bottom: 10px; margin-bottom: 15px; flex-shrink: 0; }
         .page-content { flex-grow: 1; }
         .report-table { width: 100%; border-collapse: collapse; }
@@ -25,6 +25,8 @@
             main { margin: 0; width: 100%; }
             .no-print { display: none !important; }
             .page { box-shadow: none; margin: 0; width: 100%; height: auto !important; min-height: 297mm; padding: 15mm; background: #fff !important; }
+                .page:last-child { margin-bottom: 0; }
+
         }
     </style>
 </head>

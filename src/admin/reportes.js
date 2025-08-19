@@ -63,7 +63,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // 4. Lógica de paginación
     const A4_PAGE_HEIGHT_MM = 297;
-    const PADDING_MM = 20 * 2;
+    const PADDING_MM = 15 * 2;
     const PAGE_HEADER_HEIGHT_MM = 25;
     const HEADER_ROW_HEIGHT_MM = 12; 
     const ROW_HEIGHT_MM = 8;
@@ -174,7 +174,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             if (container.children.length > 0) {
                  const spacer = document.createElement('div');
-                 spacer.style.height = '20px';
+                 spacer.style.height = `${SPACER_HEIGHT_MM}mm`;
                  container.appendChild(spacer);
                  currentHeight += SPACER_HEIGHT_MM;
             }
@@ -249,7 +249,24 @@ document.addEventListener('DOMContentLoaded', async () => {
     // 5. Lógica para los botones de acción
     document.getElementById('btn-save-pdf').addEventListener('click', () => {
         const element = document.getElementById('report-pages-container');
-        html2pdf().set({ margin: 0, filename: `reporte_partidos.pdf`, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } }).from(element).save();
+        html2pdf()
+            .set({
+                margin: 0,
+                filename: `reporte_partidos.pdf`,
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 2, useCORS: true },
+                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            })
+            .from(element)
+            .toPdf()
+            .get('pdf')
+            .then(function (pdf) {
+                const totalPages = pdf.internal.getNumberOfPages();
+                if (totalPages > 1) {
+                    pdf.deletePage(totalPages); // Elimina la última página
+                }
+            })
+            .save();
     });
     document.getElementById('btn-save-report').addEventListener('click', async () => {
         if (!reportData || reportData.length === 0) return alert('No hay datos de reporte para guardar.');
