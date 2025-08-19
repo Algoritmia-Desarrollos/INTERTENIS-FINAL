@@ -453,21 +453,21 @@ function openScoreModal(match) {
                             <div class="grid grid-cols-2 gap-4">
                                 <div><label class="block text-sm font-medium text-gray-300">Jugador A</label><select id="player1-select-modal" class="input-field mt-1 bg-[#181818] text-gray-100 border-[#444]" ${isPlayed ? 'disabled' : ''}>${playersInTournament.map(p => `<option value="${p.id}" ${p.id === match.player1_id ? 'selected' : ''}>${p.name}</option>`).join('')}</select></div>
                                 <div><label class="block text-sm font-medium text-gray-300">Jugador B</label><select id="player2-select-modal" class="input-field mt-1 bg-[#181818] text-gray-100 border-[#444]" ${isPlayed ? 'disabled' : ''}>${playersInTournament.map(p => `<option value="${p.id}" ${p.id === match.player2_id ? 'selected' : ''}>${p.name}</option>`).join('')}</select></div>
-                            </div>
-                            <div class="grid grid-cols-2 gap-4">
-                                <div><label class="block text-sm font-medium text-gray-300">Fecha</label><input type="text" id="match-date-modal" class="input-field mt-1 bg-[#181818] text-gray-100 border-[#444]" value="${match.match_date || ''}" autocomplete="off"></div>
-                                <div><label class="block text-sm font-medium text-gray-300">Hora</label><input type="time" id="match-time-modal" class="input-field mt-1 bg-[#181818] text-gray-100 border-[#444]" value="${match.match_time || ''}"></div>
-                            </div>
-                            <div class="grid grid-cols-2 gap-4">
-                                <div><label class="block text-sm font-medium text-gray-300">Sede</label><select id="match-sede-modal" class="input-field mt-1 bg-[#181818] text-gray-100 border-[#444]">
-                                    <option value="Funes" ${match.location?.startsWith('Funes') ? 'selected' : ''}>Funes</option>
-                                    <option value="Centro" ${match.location?.startsWith('Centro') ? 'selected' : ''}>Centro</option>
-                                </select></div>
-                                <div><label class="block text-sm font-medium text-gray-300">Cancha</label><select id="match-cancha-modal" class="input-field mt-1 bg-[#181818] text-gray-100 border-[#444]">${[1,2,3,4,5,6].map(n => `<option value="Cancha ${n}" ${match.location?.includes(`Cancha ${n}`) ? 'selected' : ''}>Cancha ${n}</option>`).join('')}</select></div>
-                            </div>
-                            <div class="grid grid-cols-3 gap-4 items-center pt-4"><span class="font-semibold text-gray-200">SET</span><span class="font-semibold text-center text-gray-200" style="font-size:14px;">${match.player1.name}</span><span class="font-semibold text-center text-gray-200" style="font-size:14px;">${match.player2.name}</span></div>
-                            ${[1, 2, 3].map(i => `<div class="grid grid-cols-3 gap-4 items-center"><span class="text-gray-300">Set ${i}</span><input type="number" id="p1_set${i}" class="input-field text-center bg-[#181818] text-gray-100 border-[#444]" value="${sets[i-1]?.p1 ?? ''}" min="0" max="9"><input type="number" id="p2_set${i}" class="input-field text-center bg-[#181818] text-gray-100 border-[#444]" value="${sets[i-1]?.p2 ?? ''}" min="0" max="9"></div>`).join('')}
-                        </form>
+                            <style>
+                                .matches-report-style { min-width: 800px; width: 100%; border-collapse: separate; border-spacing: 0; }
+                                .matches-report-style th, .matches-report-style td { padding: 6px 4px; font-size: 9pt; border-bottom: 1px solid #4a4a4a; text-align: center; vertical-align: middle; background: #222222; color: #ffffff; white-space: nowrap; }
+                                .matches-report-style thead th { background: #000; font-size: 8pt; color: #a0a0a0; text-transform: uppercase; font-weight: 600; padding-top: 8px; padding-bottom: 8px; border: none; }
+                                .matches-report-style tbody tr:last-child td { border-bottom: none; }
+                                .matches-report-style .winner { font-weight: 700 !important; color: #f4ec05 !important; }
+                                .matches-report-style .player-name { font-weight: 700; font-size: 10pt; }
+                                .matches-report-style .player-name-right { text-align: right; padding-right: 8px; }
+                                .matches-report-style .player-name-left { text-align: left; padding-left: 8px; }
+                                .matches-report-style .font-mono { font-family: 'Consolas', 'Menlo', 'Courier New', monospace; font-size: 10pt; }
+                                .matches-report-style .pts-col { font-weight: 700; text-align: center; }
+                                .matches-report-style .cat-col { font-family: 'Segoe UI Black', 'Arial Black', sans-serif; font-weight: 900; font-size: 10pt; text-align: center; }
+                                .matches-report-style .action-cell button { color: #9ca3af; }
+                                .matches-report-style .action-cell button:hover { color: #ffffff; }
+                            </style>
                                     <div class="p-4 bg-[#181818] flex flex-col sm:flex-row justify-between gap-3 sm:gap-4 rounded-b-xl border-t border-[#333]">
                                         <div class="flex flex-row flex-wrap items-center gap-2 justify-center sm:justify-start mb-2 sm:mb-0">
                                             <button id="btn-delete-match" class="btn btn-secondary !p-2" title="Eliminar Partido"><span class="material-icons !text-red-600">delete_forever</span></button>

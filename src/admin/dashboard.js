@@ -199,7 +199,7 @@ function renderLastMatches(matchesToRender) {
                 .matches-report-style thead th { background: #000; font-size: 8pt; color: #a0a0a0; text-transform: uppercase; font-weight: 600; padding-top: 8px; padding-bottom: 8px; border: none; }
                 .matches-report-style tbody tr:last-child td { border-bottom: none; }
                 .matches-report-style .winner { font-weight: 700 !important; color: #f4ec05 !important; }
-                .matches-report-style .player-name { font-weight: 700; }
+                .matches-report-style .player-name { font-weight: 700; font-size: 10pt; }
                 .matches-report-style .player-name-right { text-align: right; padding-right: 8px; }
                 .matches-report-style .player-name-left { text-align: left; padding-left: 8px; }
                 .matches-report-style .font-mono { font-family: 'Consolas', 'Menlo', 'Courier New', monospace; font-size: 10pt; }
