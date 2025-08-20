@@ -20,12 +20,12 @@ async function cargarReportes() {
   }
   
   cont.innerHTML = data.map(r => `
-    <div class="bg-[#222222] rounded-lg shadow-lg p-4 flex items-center justify-between hover:bg-gray-800 transition-colors">
-      <div>
+    <div class="bg-[#222222] rounded-lg shadow-lg p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 hover:bg-gray-800 transition-colors">
+      <div class="w-full sm:w-auto">
         <div class="font-semibold text-gray-100">${r.title}</div>
         <div class="text-xs text-gray-400">${new Date(r.created_at).toLocaleString('es-AR')}</div>
       </div>
-      <div class="flex items-center gap-2 flex-wrap">
+      <div class="flex items-center gap-2 flex-wrap w-full sm:w-auto justify-start sm:justify-end">
         <a href="reportes.html?id=${r.id}" class="btn btn-secondary !py-1 !px-3 !text-xs" target="_blank">Ver Reporte Admin</a>
         <a href="/public/public-report-view.html?id=${r.id}" class="btn btn-secondary !py-1 !px-3 !text-xs" target="_blank">Ver Reporte Público</a>
         <button data-action="delete" data-id="${r.id}" class="btn btn-secondary !py-1 !px-3 !text-xs !bg-red-900/50 hover:!bg-red-800/60 !border-red-500/20">Eliminar</button>
