@@ -158,12 +158,16 @@
 
   <div id="score-modal-container"></div>
   
-  <div id="bulk-action-bar" class="fixed bottom-0 left-1/2 -translate-x-1/2 mb-4 bg-gray-800 text-white p-3 rounded-lg shadow-2xl flex items-center gap-6 transition-transform transform translate-y-24 opacity-0">
-    <p class="text-sm font-semibold"><span id="selected-count">0</span> seleccionados</p>
-    <button id="bulk-deselect" class="flex items-center gap-2 text-sm hover:text-gray-400 ml-2"><span class="material-icons">close</span>Deseleccionar</button>
-    <div class="border-l border-gray-600 h-6"></div>
-    <button id="bulk-delete" class="flex items-center gap-2 text-sm hover:text-red-400"><span class="material-icons">delete</span>Eliminar</button>
-    <button id="bulk-report" class="flex items-center gap-2 text-sm hover:text-blue-400"><span class="material-icons">assessment</span>Generar Reporte</button>
+  <div id="bulk-action-bar" class="fixed bottom-4 left-4 right-4 sm:left-1/2 sm:-translate-x-1/2 sm:w-auto bg-gray-800 text-white p-2 rounded-lg shadow-2xl flex flex-col sm:flex-row items-center gap-2 sm:gap-4 transition-transform transform translate-y-24 opacity-0">
+    <div class="flex items-center gap-3">
+        <p class="text-sm font-semibold"><span id="selected-count">0</span> seleccionados</p>
+        <button id="bulk-deselect" class="flex items-center gap-1 text-sm text-gray-400 hover:text-white"><span class="material-icons !text-base">close</span>Deseleccionar</button>
+    </div>
+    <div class="w-full sm:w-auto h-px sm:h-6 bg-gray-600 sm:bg-transparent sm:border-l sm:border-gray-600"></div>
+    <div class="flex items-center justify-around w-full sm:w-auto sm:gap-4">
+        <button id="bulk-delete" class="flex items-center gap-2 text-sm text-red-400 hover:text-red-300"><span class="material-icons">delete</span>Eliminar</button>
+        <button id="bulk-report" class="flex items-center gap-2 text-sm text-blue-400 hover:text-blue-300"><span class="material-icons">assessment</span>Generar Reporte</button>
+    </div>
   </div>
 
   <script type="module" src="matches.js"></script>
