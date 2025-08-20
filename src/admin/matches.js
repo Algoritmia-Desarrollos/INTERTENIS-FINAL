@@ -26,9 +26,6 @@ let filterDateRange = [null, null];
 let lastDateRangeStr = '';
 
 // Crear botón Limpiar Filtros
-
-// --- Limpiar Filtros ---
-// Usar el botón existente en el HTML
 const clearFiltersBtn = document.getElementById('btn-clear-all-filters');
 
 function anyFilterActive() {
@@ -85,7 +82,8 @@ async function loadInitialData() {
     ] = await Promise.all([
         supabase.from('players').select('*').order('name'),
         supabase.from('tournaments').select('*, category:category_id(id, name)').order('name'),
-supabase.from('matches').select(`*, category:category_id(id, name, color), player1:player1_id(*, team:team_id(name, image_url, color)), player2:player2_id(*, team:team_id(name, image_url, color)), winner:winner_id(name)`).order('match_date', { ascending: true, nullsFirst: false }).order('match_time', { ascending: true, nullsFirst: false }),        supabase.from('tournament_players').select('tournament_id, player_id')
+        supabase.from('matches').select(`*, category:category_id(id, name, color), player1:player1_id(*, team:team_id(name, image_url, color)), player2:player2_id(*, team:team_id(name, image_url, color)), winner:winner_id(name)`).order('match_date', { ascending: true, nullsFirst: false }).order('match_time', { ascending: true, nullsFirst: false }),
+        supabase.from('tournament_players').select('tournament_id, player_id')
     ]);
 
     allPlayers = playersData || [];
@@ -104,7 +102,6 @@ supabase.from('matches').select(`*, category:category_id(id, name, color), playe
 
     updateSummaryCards();
     populateFilterSelects();
-    // Inicializar flatpickr para el filtro de fechas si no está ya hecho
     if (filterDateRangeInput && !filterDateRangeInput._flatpickr) {
         flatpickr(filterDateRangeInput, {
             mode: 'range',
@@ -113,7 +110,6 @@ supabase.from('matches').select(`*, category:category_id(id, name, color), playe
             onChange: function(selectedDates, dateStr) {
                 if (selectedDates.length === 2) {
                     filterDateRange = [selectedDates[0], selectedDates[1]];
-                    // Mostrar el rango en formato d/M a d/M
                     const d1 = selectedDates[0];
                     const d2 = selectedDates[1];
                     const str = `${d1.getDate()}/${d1.getMonth()+1} a ${d2.getDate()}/${d2.getMonth()+1}`;
@@ -129,7 +125,6 @@ supabase.from('matches').select(`*, category:category_id(id, name, color), playe
                 applyFiltersAndSort();
             },
             onOpen: function() {
-                // Si hay un rango, mostrarlo en negro
                 if (filterDateRange[0] && filterDateRange[1]) {
                     filterDateRangeInput.value = lastDateRangeStr;
                     filterDateRangeInput.style.color = '#000';
@@ -189,7 +184,6 @@ function applyFiltersAndSort() {
         else if (statusFilter === 'completado') processedMatches = processedMatches.filter(m => !!m.winner_id);
         else if (statusFilter === 'suspendido') processedMatches = processedMatches.filter(m => m.status === 'suspendido');
     }
-    // Filtro por rango de fechas
     if (filterDateRange && filterDateRange[0] && filterDateRange[1]) {
         processedMatches = processedMatches.filter(m => {
             if (!m.match_date) return false;
@@ -206,7 +200,6 @@ function applyFiltersAndSort() {
         });
     }
 
-    // Filtros rápidos por tarjetas
     if (quickFilterMode === 'pendientes') {
         processedMatches = processedMatches.filter(m => !m.winner_id && m.status !== 'suspendido');
     } else if (quickFilterMode === 'recientes') {
@@ -227,7 +220,6 @@ function applyFiltersAndSort() {
         });
     }
 
-    // Ordenar por fecha (match_date) según sortOrderDesc, soportando ambos formatos
     processedMatches.sort((a, b) => {
         function parseFecha(fecha) {
             if (!fecha) return null;
@@ -275,8 +267,8 @@ clearFiltersBtn.onclick = function() {
 };
 
 // --- Filtros rápidos por tarjetas resumen y orden ---
-let quickFilterMode = null; // null | 'pendientes' | 'recientes'
-let sortOrderDesc = true; // true: más recientes arriba (default)
+let quickFilterMode = null;
+let sortOrderDesc = true; 
 
 function clearQuickFilter() {
     quickFilterMode = null;
@@ -301,11 +293,12 @@ function renderMatches(matchesToRender) {
         return acc;
     }, {});
 
-const sortedDates = Object.keys(groupedByDate).sort((a, b) => {
-    const dateA = new Date(a);
-    const dateB = new Date(b);
-    return sortOrderDesc ? dateB - dateA : dateA - dateB;
-});    let tableHTML = '';
+    const sortedDates = Object.keys(groupedByDate).sort((a, b) => {
+        const dateA = new Date(a);
+        const dateB = new Date(b);
+        return sortOrderDesc ? dateB - dateA : dateA - dateB;
+    });
+    let tableHTML = '';
 
     for (const [dateIdx, date] of sortedDates.entries()) {
     if (dateIdx > 0) tableHTML += `<tr><td colspan="10" style="height: 18px; background: #000; border: none;"></td></tr>`;
@@ -321,31 +314,30 @@ const sortedDates = Object.keys(groupedByDate).sort((a, b) => {
             if (sedeIdx > 0) tableHTML += `<tr><td colspan="10" style="height: 14px; background: #000; border: none;"></td></tr>`;
             sedeIdx++;
             const matchesInSede = groupedBySede[sede];
-            // Header unificado sede + fecha
             const dateObj = new Date(date + 'T00:00:00');
             const weekday = dateObj.toLocaleDateString('es-AR', { weekday: 'long' });
             const day = dateObj.getDate();
             const month = dateObj.toLocaleDateString('es-AR', { month: 'long' });
             let formattedDate = `${weekday} ${day} de ${month}`;
             formattedDate = formattedDate.charAt(0).toUpperCase() + formattedDate.slice(1);
-                        let headerBgColor;
-                        if (sede.toLowerCase() === 'centro') {
-                            headerBgColor = '#222222';
-                        } else if (sede.toLowerCase() === 'muro') {
-                            headerBgColor = '#2e2f31';
-                        } else {
-                            headerBgColor = '#fdc100';
-                        }
-                        const headerTextColor = sede.toLowerCase() === 'centro' ? '#ffc000' : '#000000';
-                        tableHTML += `
-                            <tr>
-                                <td colspan="3" style="background-color: ${headerBgColor}; color: ${headerTextColor}; font-weight: 700; text-align: center; vertical-align: middle; padding: 12px 0 8px 0; font-size: 15pt; border-radius: 0; letter-spacing: 1px; border-right: none;">
-                                    ${sede.toUpperCase()}
-                                </td>
-                                <td colspan="7" style="background-color: ${headerBgColor}; color: ${headerTextColor}; font-weight: 700; text-align: center; vertical-align: middle; padding: 12px 0 8px 0; font-size: 15pt; border-radius: 0; letter-spacing: 1px; border-left: none;">
-                                    ${formattedDate}
-                                </td>
-                            </tr>`;
+            let headerBgColor;
+            if (sede.toLowerCase() === 'centro') {
+                headerBgColor = '#222222';
+            } else if (sede.toLowerCase() === 'muro') {
+                headerBgColor = '#2e2f31';
+            } else {
+                headerBgColor = '#fdc100';
+            }
+            const headerTextColor = sede.toLowerCase() === 'centro' ? '#ffc000' : '#000000';
+            tableHTML += `
+                <tr>
+                    <td colspan="3" style="background-color: ${headerBgColor}; color: ${headerTextColor}; font-weight: 700; text-align: center; vertical-align: middle; padding: 12px 0 8px 0; font-size: 15pt; border-radius: 0; letter-spacing: 1px; border-right: none;">
+                        ${sede.toUpperCase()}
+                    </td>
+                    <td colspan="7" style="background-color: ${headerBgColor}; color: ${headerTextColor}; font-weight: 700; text-align: center; vertical-align: middle; padding: 12px 0 8px 0; font-size: 15pt; border-radius: 0; letter-spacing: 1px; border-left: none;">
+                        ${formattedDate}
+                    </td>
+                </tr>`;
 
             for (const match of matchesInSede) {
                 const { p1_points, p2_points } = calculatePoints(match);
@@ -414,7 +406,6 @@ const sortedDates = Object.keys(groupedByDate).sort((a, b) => {
     </table>
     </div>`;
 
-    // Seleccionar/Deseleccionar todos los partidos visibles
     const selectAllCheckbox = document.getElementById('select-all-matches');
     if (selectAllCheckbox) {
         selectAllCheckbox.addEventListener('change', function() {
@@ -435,6 +426,8 @@ const sortedDates = Object.keys(groupedByDate).sort((a, b) => {
     }
 }
 
+// --- MODAL Y ACCIONES (NUEVO CÓDIGO UNIFICADO) ---
+
 function openScoreModal(match) {
     const sets = match.sets || [];
     const isPlayed = !!match.winner_id;
@@ -446,58 +439,71 @@ function openScoreModal(match) {
         playersInTournament = allPlayers.filter(p => p.category_id === match.category_id);
     }
     modalContainer.innerHTML = `
-                        <div id="modal-overlay" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-2 z-50">
-                            <div id="modal-content" class="bg-[#232323] rounded-xl shadow-lg w-full max-w-lg border border-[#444] mx-2 sm:mx-0">
-                        <div class="p-6 border-b border-[#333]"><h3 class="text-xl font-bold text-yellow-400">Editar Partido / Resultado</h3></div>
-                        <form id="modal-form" class="p-6 space-y-4">
-                            <div class="grid grid-cols-2 gap-4">
-                                <div><label class="block text-sm font-medium text-gray-300">Jugador A</label><select id="player1-select-modal" class="input-field mt-1 bg-[#181818] text-gray-100 border-[#444]" ${isPlayed ? 'disabled' : ''}>${playersInTournament.map(p => `<option value="${p.id}" ${p.id === match.player1_id ? 'selected' : ''}>${p.name}</option>`).join('')}</select></div>
-                                <div><label class="block text-sm font-medium text-gray-300">Jugador B</label><select id="player2-select-modal" class="input-field mt-1 bg-[#181818] text-gray-100 border-[#444]" ${isPlayed ? 'disabled' : ''}>${playersInTournament.map(p => `<option value="${p.id}" ${p.id === match.player2_id ? 'selected' : ''}>${p.name}</option>`).join('')}</select></div>
-                            <style>
-                                .matches-report-style { min-width: 800px; width: 100%; border-collapse: separate; border-spacing: 0; }
-                                .matches-report-style th, .matches-report-style td { padding: 6px 4px; font-size: 9pt; border-bottom: 1px solid #4a4a4a; text-align: center; vertical-align: middle; background: #222222; color: #ffffff; white-space: nowrap; }
-                                .matches-report-style thead th { background: #000; font-size: 8pt; color: #a0a0a0; text-transform: uppercase; font-weight: 600; padding-top: 8px; padding-bottom: 8px; border: none; }
-                                .matches-report-style tbody tr:last-child td { border-bottom: none; }
-                                .matches-report-style .winner { font-weight: 700 !important; color: #f4ec05 !important; }
-                                .matches-report-style .player-name { font-weight: 700; font-size: 10pt; }
-                                .matches-report-style .player-name-right { text-align: right; padding-right: 8px; }
-                                .matches-report-style .player-name-left { text-align: left; padding-left: 8px; }
-                                .matches-report-style .font-mono { font-family: 'Consolas', 'Menlo', 'Courier New', monospace; font-size: 10pt; }
-                                .matches-report-style .pts-col { font-weight: 700; text-align: center; }
-                                .matches-report-style .cat-col { font-family: 'Segoe UI Black', 'Arial Black', sans-serif; font-weight: 900; font-size: 10pt; text-align: center; }
-                                .matches-report-style .action-cell button { color: #9ca3af; }
-                                .matches-report-style .action-cell button:hover { color: #ffffff; }
-                            </style>
-                                    <div class="p-4 bg-[#181818] flex flex-col sm:flex-row justify-between gap-3 sm:gap-4 rounded-b-xl border-t border-[#333]">
-                                        <div class="flex flex-row flex-wrap items-center gap-2 justify-center sm:justify-start mb-2 sm:mb-0">
-                                            <button id="btn-delete-match" class="btn btn-secondary !p-2" title="Eliminar Partido"><span class="material-icons !text-red-600">delete_forever</span></button>
-                                            ${isPlayed ? `<button id="btn-clear-score" class="btn btn-secondary !p-2" title="Limpiar Resultado"><span class="material-icons !text-yellow-600">cleaning_services</span></button>` : ''}
-                                            <button id="btn-suspend-match" class="btn btn-secondary !p-2" title="Marcar como Suspendido"><span class="material-icons !text-red-500">cancel</span></button>
-                                        </div>
-                                        <div class="flex flex-row flex-wrap gap-2 justify-center sm:justify-end">
-                                            <button id="btn-cancel-modal" class="btn btn-secondary w-full sm:w-auto">Cancelar</button>
-                                            <button id="btn-save-score" class="btn btn-primary w-full sm:w-auto">Guardar</button>
-                                        </div>
-                                    </div>
+        <div id="score-modal-overlay" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-2 z-50">
+            <div id="score-modal-content" class="bg-[#232323] rounded-xl shadow-lg w-full max-w-lg border border-[#444] mx-2 sm:mx-0">
+                <div class="p-6 border-b border-[#333]"><h3 class="text-xl font-bold text-yellow-400">Editar Partido / Resultado</h3></div>
+                <form id="score-form" class="p-6 space-y-4">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300">Jugador A</label>
+                            <select id="player1-select-modal" class="input-field mt-1 bg-[#181818] text-gray-100 border-[#444]" ${isPlayed ? 'disabled' : ''}>
+                                ${playersInTournament.map(p => `<option value="${p.id}" ${p.id === match.player1_id ? 'selected' : ''}>${p.name}</option>`).join('')}
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300">Jugador B</label>
+                            <select id="player2-select-modal" class="input-field mt-1 bg-[#181818] text-gray-100 border-[#444]" ${isPlayed ? 'disabled' : ''}>
+                                ${playersInTournament.map(p => `<option value="${p.id}" ${p.id === match.player2_id ? 'selected' : ''}>${p.name}</option>`).join('')}
+                            </select>
+                        </div>
                     </div>
-                </div>`;
-    flatpickr('#match-date-modal', {dateFormat: 'Y-m-d', allowInput: true});
-    document.getElementById('btn-save-score').onclick = () => saveMatch(match.id);
+                    <div class="grid grid-cols-3 gap-4 items-center pt-4">
+                        <span class="font-semibold text-gray-200">SET</span>
+                        <span class="font-semibold text-center text-gray-200" style="font-size:14px;">${match.player1.name}</span>
+                        <span class="font-semibold text-center text-gray-200" style="font-size:14px;">${match.player2.name}</span>
+                    </div>
+                    ${[1, 2, 3].map(i => `
+                        <div class="grid grid-cols-3 gap-4 items-center">
+                            <span class="text-gray-300">Set ${i}</span>
+                            <input type="number" id="p1_set${i}" class="input-field text-center bg-[#181818] text-gray-100 border-[#444]" value="${sets[i-1]?.p1 ?? ''}" min="0" max="9">
+                            <input type="number" id="p2_set${i}" class="input-field text-center bg-[#181818] text-gray-100 border-[#444]" value="${sets[i-1]?.p2 ?? ''}" min="0" max="9">
+                        </div>
+                    `).join('')}
+                </form>
+                <div class="p-4 bg-[#181818] flex flex-col sm:flex-row justify-between gap-3 sm:gap-4 rounded-b-xl border-t border-[#333]">
+                    <div class="flex flex-row flex-wrap items-center gap-2 justify-center sm:justify-start mb-2 sm:mb-0">
+                        <button id="btn-delete-match" class="btn btn-secondary !p-2" title="Eliminar Partido"><span class="material-icons !text-red-600">delete_forever</span></button>
+                        ${isPlayed ? `<button id="btn-clear-score" class="btn btn-secondary !p-2" title="Limpiar Resultado"><span class="material-icons !text-yellow-600">cleaning_services</span></button>` : ''}
+                        <button id="btn-suspend-match" class="btn btn-secondary !p-2" title="Marcar como Suspendido"><span class="material-icons !text-red-500">cancel</span></button>
+                    </div>
+                    <div class="flex flex-row flex-wrap gap-2 justify-center sm:justify-end">
+                        <button id="btn-cancel-modal" class="btn btn-secondary w-full sm:w-auto">Cancelar</button>
+                        <button id="btn-save-score" class="btn btn-primary w-full sm:w-auto">Guardar</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+
+    document.getElementById('btn-save-score').onclick = () => saveScores(match.id);
     document.getElementById('btn-cancel-modal').onclick = closeModal;
     document.getElementById('btn-delete-match').onclick = () => deleteMatch(match.id);
     document.getElementById('btn-suspend-match').onclick = () => suspendMatch(match.id);
     if (isPlayed) document.getElementById('btn-clear-score').onclick = () => clearScore(match.id);
-    document.getElementById('modal-overlay').onclick = (e) => { if (e.target.id === 'modal-overlay') closeModal(); };
+    document.getElementById('score-modal-overlay').onclick = (e) => { if (e.target.id === 'score-modal-overlay') closeModal(); };
 }
 
-function closeModal() { modalContainer.innerHTML = ''; }
+function closeModal() {
+    modalContainer.innerHTML = '';
+}
 
-async function saveMatch(matchId) {
+async function saveScores(matchId) {
     const sets = [];
     let p1SetsWon = 0, p2SetsWon = 0;
+    
     for (let i = 1; i <= 3; i++) {
-        const p1Score = document.getElementById(`p1_set${i}`)?.value;
-        const p2Score = document.getElementById(`p2_set${i}`)?.value;
+        const p1Score = document.getElementById(`p1_set${i}`).value;
+        const p2Score = document.getElementById(`p2_set${i}`).value;
         if (p1Score && p2Score && p1Score !== '' && p2Score !== '') {
             const p1 = parseInt(p1Score, 10);
             const p2 = parseInt(p2Score, 10);
@@ -506,24 +512,54 @@ async function saveMatch(matchId) {
             if (p2 > p1) p2SetsWon++;
         }
     }
+    
     const p1_id = document.getElementById('player1-select-modal').value;
     const p2_id = document.getElementById('player2-select-modal').value;
     if (p1_id === p2_id) return alert("Los jugadores no pueden ser los mismos.");
+
     let winner_id = null;
     if (sets.length > 0) {
         if (sets.length < 2 || (p1SetsWon < 2 && p2SetsWon < 2)) return alert("El resultado no es válido. Un jugador debe ganar al menos 2 sets.");
         winner_id = p1SetsWon > p2SetsWon ? p1_id : p2_id;
     }
-    const match_date = document.getElementById('match-date-modal').value;
-    const location = `${document.getElementById('match-sede-modal').value} - ${document.getElementById('match-cancha-modal').value}`;
-    const { error } = await supabase.from('matches').update({ player1_id: p1_id, player2_id: p2_id, sets: sets.length > 0 ? sets : null, winner_id, status: 'programado', match_date, match_time: document.getElementById('match-time-modal').value, location }).eq('id', matchId);
-    if (error) alert("Error al guardar el partido: " + error.message);
+    
+    const { error } = await supabase.from('matches').update({ 
+            sets: sets.length > 0 ? sets : null, 
+            winner_id, 
+            player1_id: p1_id,
+            player2_id: p2_id,
+            status: winner_id ? 'completado' : 'programado',
+            bonus_loser: (p1SetsWon === 1 && winner_id == p2_id) || (p2SetsWon === 1 && winner_id == p1_id)
+        }).eq('id', matchId);
+    
+    if (error) alert("Error al guardar: " + error.message);
     else { closeModal(); await loadInitialData(); }
 }
 
-async function clearScore(matchId) { if (confirm("¿Limpiar el resultado de este partido?")) { const { error } = await supabase.from('matches').update({ sets: null, winner_id: null, status: 'programado' }).eq('id', matchId); if (error) alert("Error: " + error.message); else { closeModal(); await loadInitialData(); } } }
-async function deleteMatch(matchId) { if (confirm("¿ELIMINAR este partido permanentemente?")) { const { error } = await supabase.from('matches').delete().eq('id', matchId); if (error) alert("Error: " + error.message); else { closeModal(); await loadInitialData(); } } }
-async function suspendMatch(matchId) { if (confirm("¿Marcar este partido como suspendido?")) { const { error } = await supabase.from('matches').update({ status: 'suspendido', sets: null, winner_id: null }).eq('id', matchId); if (error) alert("Error: " + error.message); else { closeModal(); await loadInitialData(); } } }
+async function clearScore(matchId) {
+    if (confirm("¿Limpiar el resultado de este partido?")) {
+        const { error } = await supabase.from('matches').update({ sets: null, winner_id: null, bonus_loser: false, status: 'programado' }).eq('id', matchId);
+        if (error) alert("Error: " + error.message);
+        else { closeModal(); await loadInitialData(); }
+    }
+}
+
+async function deleteMatch(matchId) {
+    if (confirm("¿ELIMINAR este partido permanentemente?")) {
+        const { error } = await supabase.from('matches').delete().eq('id', matchId);
+        if (error) alert("Error: " + error.message);
+        else { closeModal(); await loadInitialData(); }
+    }
+}
+
+async function suspendMatch(matchId) {
+    if (confirm("¿Marcar este partido como suspendido?")) {
+        const { error } = await supabase.from('matches').update({ status: 'suspendido', sets: null, winner_id: null }).eq('id', matchId);
+        if (error) alert("Error: " + error.message);
+        else { closeModal(); await loadInitialData(); }
+    }
+}
+
 
 function updateBulkActionBar() {
     selectedCountSpan.textContent = selectedMatches.size;
@@ -549,17 +585,16 @@ function handleBulkReport() {
 
         const { p1_points, p2_points } = calculatePoints(match);
         
-        // CORRECCIÓN: Ahora guardamos más datos cruciales para la edición
         return {
-            id: match.id, // ID del partido (esencial para actualizar la DB)
+            id: match.id,
             date: match.match_date ? match.match_date.split('T')[0] : '',
             time: match.match_time || '',
             location: match.location || '',
             category: match.category?.name || '',
-            category_id: match.category?.id || null, // ID de la categoría (esencial para filtrar)
+            category_id: match.category?.id || null,
             category_color: match.category?.color || '#e5e7eb',
             player1: {
-                id: match.player1?.id, // ID del jugador 1
+                id: match.player1?.id,
                 name: match.player1?.name || '',
                 points: p1_points ?? '',
                 isWinner: match.winner_id === match.player1_id,
@@ -567,7 +602,7 @@ function handleBulkReport() {
                 teamImage: match.player1?.team?.image_url
             },
             player2: {
-                id: match.player2?.id, // ID del jugador 2
+                id: match.player2?.id,
                 name: match.player2?.name || '',
                 points: p2_points ?? '',
                 isWinner: match.winner_id === match.player2_id,
@@ -586,7 +621,6 @@ function handleBulkReport() {
 document.addEventListener('DOMContentLoaded', async () => {
     header.innerHTML = renderHeader();
     await loadInitialData();
-    // Eventos para tarjetas resumen
     const cardPendientes = document.getElementById('card-pendientes');
     const cardRecientes = document.getElementById('card-recientes');
     if (cardPendientes) {
@@ -597,7 +631,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         cardRecientes.style.cursor = 'pointer';
         cardRecientes.onclick = () => applyQuickFilter('recientes');
     }
-    // Botón de orden
     const btnSortOrder = document.getElementById('btn-sort-order');
     if (btnSortOrder) {
         btnSortOrder.innerHTML = `<span class="material-icons mr-1" style="font-size:18px;">swap_vert</span> ${sortOrderDesc ? 'Más recientes arriba' : 'Más antiguos arriba'}`;
@@ -631,9 +664,8 @@ btnShowForm.addEventListener('click', () => {
     if (el) el.addEventListener('input', applyFiltersAndSort);
 });
 
-// Click para seleccionar, doble clic para editar
 let lastClickTime = 0;
-const DOUBLE_CLICK_INTERVAL = 200; // ms, mucho más rápido
+const DOUBLE_CLICK_INTERVAL = 200;
 matchesContainer.addEventListener('click', (e) => {
     const row = e.target.closest('tr[data-match-id]');
     if (!row) return;
@@ -653,12 +685,10 @@ matchesContainer.addEventListener('click', (e) => {
     if (!e.target.closest('button, input')) {
         const now = Date.now();
         if (now - lastClickTime < DOUBLE_CLICK_INTERVAL) {
-            // Doble clic: abrir modal de edición
             const matchData = allMatches.find(m => m.id === matchId);
             if (matchData) openScoreModal(matchData);
             lastClickTime = 0;
         } else {
-            // Simple clic: seleccionar/deseleccionar
             const checkboxInRow = row.querySelector('.match-checkbox');
             checkboxInRow.checked = !checkboxInRow.checked;
             checkboxInRow.checked ? selectedMatches.add(matchId) : selectedMatches.delete(matchId);
