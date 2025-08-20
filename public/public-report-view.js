@@ -67,10 +67,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         const sortedDates = Object.keys(groupedByDate).sort((a, b) => new Date(a) - new Date(b));
         
         let tableBodyHTML = '';
+        let isFirstTable = true;
 
-        for (const [dateIdx, date] of sortedDates.entries()) {
-            if (dateIdx > 0) tableBodyHTML += `<tr><td colspan="8" style="height: 12px; background: #000; border: none;"></td></tr>`;
-            
+        for (const date of sortedDates) {
             const groupedBySede = groupedByDate[date].reduce((acc, match) => {
                 const sede = (match.location ? match.location.split(' - ')[0] : 'Sede no definida').trim();
                 if(!acc[sede]) acc[sede] = [];
@@ -79,23 +78,22 @@ document.addEventListener('DOMContentLoaded', async () => {
             }, {});
 
             for(const sede in groupedBySede) {
+                if (!isFirstTable) {
+                    tableBodyHTML += `<tr><td colspan="8" style="height: 15px; background: #000; border: none;"></td></tr>`;
+                }
+
                 const matchesInSede = groupedBySede[sede];
                 const dateObj = new Date(date + 'T00:00:00');
                 const formattedDate = new Intl.DateTimeFormat('es-AR', { weekday: 'long', day: 'numeric', month: 'long' }).format(dateObj);
                 const headerBgColor = sede.toLowerCase() === 'centro' ? '#222222' : '#fdc100';
                 const headerTextColor = sede.toLowerCase() === 'centro' ? '#ffc000' : '#000000';
 
-                // Espaciado entre tablas de sede
-                if (Object.keys(groupedBySede).indexOf(sede) > 0) {
-                    tableBodyHTML += `<tr><td colspan="8" style="height: 22px; background: #000; border: none;"></td></tr>`;
-                }
-
                 tableBodyHTML += `
                     <tr>
-                        <td colspan="2" class="sede-fecha" style="background-color: ${headerBgColor}; color: ${headerTextColor}; font-weight: 700; text-align: center; vertical-align: middle; padding: 8px 0; border-right: none;">
+                        <td colspan="2" class="sede-fecha" style="background-color: ${headerBgColor}; color: ${headerTextColor}; font-weight: 700; text-align: center; vertical-align: middle; padding: 10px 0; border-right: none;">
                             ${sede.toUpperCase()}
                         </td>
-                        <td colspan="6" class="sede-fecha" style="background-color: ${headerBgColor}; color: ${headerTextColor}; font-weight: 700; text-align: center; vertical-align: middle; padding: 8px 0; border-left: none;">
+                        <td colspan="6" class="sede-fecha" style="background-color: ${headerBgColor}; color: ${headerTextColor}; font-weight: 700; text-align: center; vertical-align: middle; padding: 10px 0; border-left: none;">
                             ${formattedDate}
                         </td>
                     </tr>`;
@@ -145,6 +143,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                             <td class="cat-col" style="background:#000;color:${match.category_color || '#b45309'};">${match.category || 'N/A'}</td>
                         </tr>`;
                 }
+                isFirstTable = false;
             }
         }
         
@@ -152,21 +151,32 @@ document.addEventListener('DOMContentLoaded', async () => {
         <div class="bg-[#18191b] p-4 rounded-xl shadow-lg overflow-x-auto">
             <style>
                 /* Estilos por defecto (Móvil) */
-                .responsive-table .player-name { font-size: 9pt; }
+                .responsive-table .player-name { 
+                    font-size: 9pt;
+                    white-space: nowrap;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                    max-width: 1px; /* Truco para que text-overflow funcione en tablas */
+                }
                 .responsive-table .sede-fecha { font-size: 11pt; }
-                .responsive-table th:nth-child(1), .responsive-table td:nth-child(1) { width: 6%; }  /* Cancha más chica */
-                .responsive-table th:nth-child(2), .responsive-table td:nth-child(2) { width: 10%; }
-                .responsive-table th:nth-child(3), .responsive-table td:nth-child(3) { width: 23%; } /* Jugador 1 */
-                .responsive-table th:nth-child(4), .responsive-table td:nth-child(4) { width: 7%; }
+                .responsive-table th:nth-child(1), .responsive-table td:nth-child(1) { width: 8%; }
+                .responsive-table th:nth-child(2), .responsive-table td:nth-child(2) { width: 12%; }
+                .responsive-table th:nth-child(3), .responsive-table td:nth-child(3) { width: 20%; } /* Jugador 1 más angosto */
+                .responsive-table th:nth-child(4), .responsive-table td:nth-child(4) { width: 8%; }
                 .responsive-table th:nth-child(5), .responsive-table td:nth-child(5) { width: 14%; }
-                .responsive-table th:nth-child(6), .responsive-table td:nth-child(6) { width: 7%; }
-                .responsive-table th:nth-child(7), .responsive-table td:nth-child(7) { width: 23%; } /* Jugador 2 */
+                .responsive-table th:nth-child(6), .responsive-table td:nth-child(6) { width: 8%; }
+                .responsive-table th:nth-child(7), .responsive-table td:nth-child(7) { width: 20%; } /* Jugador 2 más angosto */
                 .responsive-table th:nth-child(8), .responsive-table td:nth-child(8) { width: 10%; }
                 
                 /* Estilos para pantallas grandes (Desktop) a partir de 768px */
                 @media (min-width: 768px) {
-                    .responsive-table .player-name { font-size: 11pt; } /* Nombres más grandes en desktop */
-                    .responsive-table .sede-fecha { font-size: 1.35rem; } /* Más grande sede y fecha en desktop */
+                    .responsive-table .player-name { 
+                        font-size: 11pt;
+                        white-space: normal; /* Permite que el texto se ajuste en varias líneas si es necesario */
+                        overflow: visible;
+                        text-overflow: clip;
+                    }
+                    .responsive-table .sede-fecha { font-size: 1.35rem; }
                     .responsive-table th:nth-child(1), .responsive-table td:nth-child(1) { width: 5%; }
                     .responsive-table th:nth-child(2), .responsive-table td:nth-child(2) { width: 8%; }
                     .responsive-table th:nth-child(3), .responsive-table td:nth-child(3) { width: 28%; } /* Jugador 1 más ancho */
@@ -178,6 +188,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
             </style>
             <table class="matches-report-style responsive-table">
+                <thead><tr>
+                    <th>Cancha</th><th>Hora</th><th style="text-align: right; padding-right: 8px;">Jugador 1</th><th>Pts</th><th>Resultado</th><th>Pts</th><th style="text-align: left; padding-left: 8px;">Jugador 2</th><th>Cat.</th>
+                </tr></thead>
                 <tbody>${tableBodyHTML}</tbody>
             </table>
         </div>`;
