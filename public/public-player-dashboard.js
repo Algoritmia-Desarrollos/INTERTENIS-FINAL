@@ -92,7 +92,6 @@ function renderDashboard(player, matches, stats, tournaments) {
                                     const gano = m.winner_id === player.id;
                                     const resultado = m.winner_id ? (gano ? 'Victoria' : 'Derrota') : 'Pendiente';
                                     const resultadoClass = m.winner_id ? (gano ? 'text-green-400' : 'text-red-400') : 'text-gray-500';
-                                    // Lógica para mostrar los sets del partido
                                     let setsStr = '';
                                     if (Array.isArray(m.sets) && m.sets.length > 0 && m.winner_id) {
                                         setsStr = '<span class="text-xs text-gray-400 ml-2">(' + m.sets.map((set) => {
@@ -117,7 +116,7 @@ function renderDashboard(player, matches, stats, tournaments) {
                 <h2 class="text-xl font-semibold mb-4 text-gray-100">Torneos Inscritos</h2>
                 <div class="space-y-4">
                     ${tournaments.length > 0 ? tournaments.map(t => `
-                        <a href="/public/public-tournament-view.html?id=${t.id}&highlightPlayerId=${player.id}" class="block p-4 rounded-lg bg-gray-800 hover:bg-gray-700 border border-gray-700 hover:border-yellow-400 transition group">
+                        <a href="/index.html?tournamentId=${t.id}&highlightPlayerId=${player.id}" class="block p-4 rounded-lg bg-gray-800 hover:bg-gray-700 border border-gray-700 hover:border-yellow-400 transition group">
                             <p class="font-bold text-gray-100 group-hover:text-yellow-400">${t.name}</p>
                             <p class="text-sm text-gray-400">${t.category.name}</p>
                             <div class="flex items-center text-xs text-yellow-500 font-semibold mt-2">

@@ -85,6 +85,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const headerBgColor = sede.toLowerCase() === 'centro' ? '#222222' : '#fdc100';
                 const headerTextColor = sede.toLowerCase() === 'centro' ? '#ffc000' : '#000000';
 
+                // Espaciado entre tablas de sede
+                if (Object.keys(groupedBySede).indexOf(sede) > 0) {
+                    tableBodyHTML += `<tr><td colspan="8" style="height: 22px; background: #000; border: none;"></td></tr>`;
+                }
+
                 tableBodyHTML += `
                     <tr>
                         <td colspan="2" class="sede-fecha" style="background-color: ${headerBgColor}; color: ${headerTextColor}; font-weight: 700; text-align: center; vertical-align: middle; padding: 8px 0; border-right: none;">

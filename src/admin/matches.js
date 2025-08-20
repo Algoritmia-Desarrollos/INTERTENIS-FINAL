@@ -394,9 +394,10 @@ function renderMatches(matchesToRender) {
         }
     }
     
+    // **CAMBIO CLAVE**: Se añade un ancho mínimo a la tabla para forzar el scroll en móvil.
     matchesContainer.innerHTML = `
     <div class="bg-[#18191b] p-6 rounded-xl shadow-lg overflow-x-auto">
-    <table class="matches-report-style">
+    <table class="matches-report-style" style="min-width: 800px;">
             <colgroup><col style="width: 4%"><col style="width: 5%"><col style="width: 4%"><col style="width: 25%"><col style="width: 5%"><col style="width: 13%"><col style="width: 5%"><col style="width: 25%"><col style="width: 5%"><col style="width: 5%"></colgroup>
             <thead><tr>
                 <th><input type="checkbox" id="select-all-matches"></th>
@@ -583,14 +584,8 @@ function handleBulkReport() {
         return;
     }
 
-    // 1. Obtener solo el array de IDs de los partidos seleccionados.
     const matchIds = Array.from(selectedMatches);
-
-    // 2. Guardar este array de IDs en localStorage.
-    //    reportes.js usará esta clave para buscar los datos actualizados.
     localStorage.setItem('reportMatchIds', JSON.stringify(matchIds));
-
-    // 3. Abrir la página de reportes en una nueva pestaña.
     window.open('reportes.html', '_blank');
 }
 
@@ -611,10 +606,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     const btnSortOrder = document.getElementById('btn-sort-order');
     if (btnSortOrder) {
-        btnSortOrder.innerHTML = `<span class="material-icons mr-1" style="font-size:18px;">swap_vert</span> ${sortOrderDesc ? 'Más recientes arriba' : 'Más antiguos arriba'}`;
+        btnSortOrder.innerHTML = `<span class="material-icons mr-1" style="font-size:18px;">swap_vert</span> ${sortOrderDesc ? 'Más recientes' : 'Más antiguos'}`;
         btnSortOrder.onclick = () => {
             sortOrderDesc = !sortOrderDesc;
-            btnSortOrder.innerHTML = `<span class=\"material-icons mr-1\" style=\"font-size:18px;\">swap_vert</span> ${sortOrderDesc ? 'Más recientes arriba' : 'Más antiguos arriba'}`;
+            const sortText = btnSortOrder.querySelector('span:last-child');
+            if(sortText) sortText.textContent = sortOrderDesc ? 'Más recientes' : 'Más antiguos';
             applyFiltersAndSort();
         };
     }
