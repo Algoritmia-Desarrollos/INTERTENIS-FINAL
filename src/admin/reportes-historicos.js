@@ -25,12 +25,37 @@ async function cargarReportes() {
         <div class="font-semibold text-gray-100">${r.title}</div>
         <div class="text-xs text-gray-400">${new Date(r.created_at).toLocaleString('es-AR')}</div>
       </div>
-      <a href="reportes.html?id=${r.id}" class="btn btn-secondary">Ver Reporte</a>
+      <div class="flex items-center gap-2">
+        <a href="reportes.html?id=${r.id}" class="btn btn-secondary !py-1 !px-3 !text-xs">Ver Reporte</a>
+        <button data-action="delete" data-id="${r.id}" class="btn btn-secondary !py-1 !px-3 !text-xs !bg-red-900/50 hover:!bg-red-800/60 !border-red-500/20">Eliminar</button>
+      </div>
     </div>
   `).join('');
 }
 
+async function handleDelete(reportId) {
+    if (!confirm('¿Estás seguro de que quieres eliminar este reporte de forma permanente?')) return;
+
+    const { error } = await supabase.from('reports').delete().eq('id', reportId);
+
+    if (error) {
+        alert('Error al eliminar el reporte: ' + error.message);
+    } else {
+        alert('Reporte eliminado con éxito.');
+        cargarReportes(); // Recargar la lista
+    }
+}
+
+
 document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('header').innerHTML = renderHeader();
     cargarReportes();
+
+    document.getElementById('reportes-list').addEventListener('click', (e) => {
+        const button = e.target.closest('button[data-action="delete"]');
+        if (button) {
+            const reportId = button.dataset.id;
+            handleDelete(reportId);
+        }
+    });
 });
