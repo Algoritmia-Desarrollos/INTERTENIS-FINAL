@@ -576,46 +576,24 @@ async function handleBulkDelete() {
     }
 }
 
+// --- **FUNCIÓN CORREGIDA** ---
 function handleBulkReport() {
-    if (selectedMatches.size === 0) return alert("No hay partidos seleccionados.");
-    
-    const reportMatches = Array.from(selectedMatches).map(id => {
-        const match = allMatches.find(m => m.id === id);
-        if (!match) return null;
+    if (selectedMatches.size === 0) {
+        alert("No hay partidos seleccionados.");
+        return;
+    }
 
-        const { p1_points, p2_points } = calculatePoints(match);
-        
-        return {
-            id: match.id,
-            date: match.match_date ? match.match_date.split('T')[0] : '',
-            time: match.match_time || '',
-            location: match.location || '',
-            category: match.category?.name || '',
-            category_id: match.category?.id || null,
-            category_color: match.category?.color || '#e5e7eb',
-            player1: {
-                id: match.player1?.id,
-                name: match.player1?.name || '',
-                points: p1_points ?? '',
-                isWinner: match.winner_id === match.player1_id,
-                teamColor: match.player1?.team?.color,
-                teamImage: match.player1?.team?.image_url
-            },
-            player2: {
-                id: match.player2?.id,
-                name: match.player2?.name || '',
-                points: p2_points ?? '',
-                isWinner: match.winner_id === match.player2_id,
-                teamColor: match.player2?.team?.color,
-                teamImage: match.player2?.team?.image_url
-            },
-            sets: (match.sets && match.sets.length > 0) ? match.sets.map(s => `${s.p1}-${s.p2}`).join(', ') : ''
-        };
-    }).filter(Boolean);
+    // 1. Obtener solo el array de IDs de los partidos seleccionados.
+    const matchIds = Array.from(selectedMatches);
 
-    localStorage.setItem('reportMatches', JSON.stringify(reportMatches));
+    // 2. Guardar este array de IDs en localStorage.
+    //    reportes.js usará esta clave para buscar los datos actualizados.
+    localStorage.setItem('reportMatchIds', JSON.stringify(matchIds));
+
+    // 3. Abrir la página de reportes en una nueva pestaña.
     window.open('reportes.html', '_blank');
 }
+
 
 // --- EVENT LISTENERS ---
 document.addEventListener('DOMContentLoaded', async () => {

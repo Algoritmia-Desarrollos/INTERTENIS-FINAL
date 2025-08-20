@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>InterTenis - Reporte de Partidos</title>
+    <link rel="icon" href="/logo_2021_02.png" type="image/png">
+    <meta property="og:image" content="/logo_2021_02.png" />
+    <meta name="twitter:image" content="/logo_2021_02.png" />
+    <link rel="stylesheet" href="../src/common/styles.css">
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"/>
+    <style>
+        /* Estilos de la tabla tomados de admin/matches.html para una apariencia idéntica */
+        .matches-report-style {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            border-radius: 8px;
+            overflow: hidden;
+            min-width: 800px; /* Ancho mínimo para forzar el scroll en pantallas chicas */
+        }
+        .matches-report-style th,
+        .matches-report-style td {
+            padding: 6px 4px;
+            font-size: 9pt;
+            border-bottom: 1px solid #4a4a4a;
+            text-align: center;
+            vertical-align: middle;
+            background: #222222;
+            color: #ffffff;
+        }
+        .matches-report-style tr td {
+          border-right: 1px solid #4a4a4a;
+        }
+        .matches-report-style tr td:first-child {
+           border-left: 1px solid #4a4a4a;
+        }
+        .matches-report-style tbody tr:last-child td {
+          border-bottom: none;
+        }
+        .matches-report-style thead th {
+            font-size: 8pt;
+            color: #a0a0a0;
+            text-transform: uppercase;
+            font-weight: 600;
+            padding-top: 8px;
+            padding-bottom: 8px;
+            border: none;
+            background: #000;
+        }
+        .matches-report-style .winner {
+            font-weight: 700 !important;
+            color: #f4ec05 !important;
+        }
+        .matches-report-style .player-name { font-weight: 700; }
+        .matches-report-style .player-name-right { text-align: right; padding-right: 8px;}
+        .matches-report-style .player-name-left { text-align: left; padding-left: 8px;}
+        .matches-report-style .font-mono { 
+            font-family: 'Consolas', 'Menlo', 'Courier New', monospace;
+            font-size: 10pt;
+        }
+        .matches-report-style .pts-col { font-weight: 700; text-align: center; }
+        .matches-report-style .cat-col {
+            font-family: 'Segoe UI Black', 'Arial Black', sans-serif;
+            font-weight: 900;
+            font-size: 10pt;
+            text-align: center;
+        }
+    </style>
+</head>
+<body class="bg-black text-gray-200">
+    <div id="header-container"></div>
+
+    <main class="py-8">
+        <div class="content-container max-w-6xl mx-auto space-y-6">
+            <div id="report-title-container" class="text-center">
+                <h1 id="report-title" class="text-3xl font-bold text-gray-100 mb-4">Cargando Reporte...</h1>
+            </div>
+            <div id="report-container">
+                </div>
+        </div>
+    </main>
+
+    <script type="module" src="/public/public-report-view.js"></script>
+</body>
+</html>

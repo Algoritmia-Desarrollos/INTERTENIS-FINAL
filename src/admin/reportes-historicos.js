@@ -25,8 +25,9 @@ async function cargarReportes() {
         <div class="font-semibold text-gray-100">${r.title}</div>
         <div class="text-xs text-gray-400">${new Date(r.created_at).toLocaleString('es-AR')}</div>
       </div>
-      <div class="flex items-center gap-2">
-        <a href="reportes.html?id=${r.id}" class="btn btn-secondary !py-1 !px-3 !text-xs">Ver Reporte</a>
+      <div class="flex items-center gap-2 flex-wrap">
+        <a href="reportes.html?id=${r.id}" class="btn btn-secondary !py-1 !px-3 !text-xs" target="_blank">Ver Reporte Admin</a>
+        <a href="/public/public-report-view.html?id=${r.id}" class="btn btn-secondary !py-1 !px-3 !text-xs" target="_blank">Ver Reporte Público</a>
         <button data-action="delete" data-id="${r.id}" class="btn btn-secondary !py-1 !px-3 !text-xs !bg-red-900/50 hover:!bg-red-800/60 !border-red-500/20">Eliminar</button>
       </div>
     </div>

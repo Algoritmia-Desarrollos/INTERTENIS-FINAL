@@ -2,24 +2,54 @@ import { supabase } from '../src/common/supabase.js';
 
 export function renderPublicHeader() {
   const headerHTML = `
-    <header class="flex items-center justify-between border-b border-gray-700 bg-[#222222] px-4 sm:px-6 py-3 sticky top-0 z-50">
-      <div class="flex items-center gap-4">
+    <header class="flex items-center justify-between gap-4 border-b border-gray-700 bg-[#222222] px-4 py-3 sticky top-0 z-50">
+      
+      <div class="flex-shrink-0">
         <a href="/index.html">
             <img src="/logo_2021_02.png" alt="Logo" class="h-10">
         </a>
       </div>
-      <div class="flex-1 flex justify-end">
-        <div class="relative w-full max-w-xs">
-          <span class="material-icons absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">search</span>
-          <input type="text" id="player-search-input" class="input-field !pl-10 w-full" placeholder="Buscar jugador..." autocomplete="off">
+
+      <div class="flex-1 px-2">
+        <div class="relative w-full max-w-md mx-auto">
+          <span class="material-icons absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xl">search</span>
+          <input type="text" id="player-search-input" class="input-field !pl-10 w-full" placeholder="Buscar Jugador..." autocomplete="off">
           <div id="player-search-results" class="absolute top-full mt-2 w-full bg-gray-700 border border-gray-600 rounded-lg shadow-xl z-50 hidden"></div>
         </div>
       </div>
+
+      <div class="flex-shrink-0">
+        <nav class="hidden sm:flex items-center gap-2">
+            <a href="/index.html" class="text-sm font-medium text-gray-300 hover:text-white px-3 py-2 rounded-md">Rankings</a>
+            <a href="/public/public-reports-list.html" class="text-sm font-medium text-gray-300 hover:text-white px-3 py-2 rounded-md">Reportes</a>
+        </nav>
+        <button id="hamburgerBtn" class="sm:hidden text-gray-300">
+            <span class="material-icons">menu</span>
+        </button>
+      </div>
+
     </header>
+
+    <div id="mobileMenu" class="hidden fixed inset-0 z-50">
+        <div id="mobileMenuOverlay" class="absolute inset-0 bg-black bg-opacity-70"></div>
+        <div class="relative bg-[#222222] w-72 h-full p-6 flex flex-col">
+            <div class="flex justify-between items-center mb-8">
+                <a href="/index.html">
+                    <img src="/logo_2021_02.png" alt="Logo" class="h-10">
+                </a>
+                <button id="closeMobileMenu" class="text-gray-300"><span class="material-icons">close</span></button>
+            </div>
+            <nav class="flex flex-col gap-4">
+                <a href="/index.html" class="text-lg font-medium text-gray-300 hover:text-yellow-400 px-3 py-2 rounded-md">Rankings</a>
+                <a href="/public/public-reports-list.html" class="text-lg font-medium text-gray-300 hover:text-yellow-400 px-3 py-2 rounded-md">Reportes</a>
+            </nav>
+        </div>
+    </div>
   `;
 
   // Se agrega un temporizador para asegurar que el DOM esté listo
   setTimeout(() => {
+    // Lógica del buscador (sin cambios)
     const searchInput = document.getElementById('player-search-input');
     const searchResults = document.getElementById('player-search-results');
 
@@ -31,7 +61,6 @@ export function renderPublicHeader() {
               return;
           }
           
-          // Llama a la función de Supabase para buscar jugadores
           const { data, error } = await supabase.rpc('search_players_unaccent', { search_term: searchTerm });
 
           if (error || !data || data.length === 0) {
@@ -46,13 +75,23 @@ export function renderPublicHeader() {
           searchResults.classList.remove('hidden');
       });
 
-      // Oculta los resultados si se hace clic fuera del buscador
       document.addEventListener('click', (e) => {
           if (!e.target.closest('.relative')) {
               searchResults.classList.add('hidden');
           }
       });
     }
+
+    // --- Lógica para el Menú Móvil ---
+    const hamburgerBtn = document.getElementById('hamburgerBtn');
+    const mobileMenu = document.getElementById('mobileMenu');
+    const closeMobileMenu = document.getElementById('closeMobileMenu');
+    const mobileMenuOverlay = document.getElementById('mobileMenuOverlay');
+  
+    if (hamburgerBtn) hamburgerBtn.addEventListener('click', () => mobileMenu?.classList.remove('hidden'));
+    if (closeMobileMenu) closeMobileMenu.addEventListener('click', () => mobileMenu?.classList.add('hidden'));
+    if (mobileMenuOverlay) mobileMenuOverlay.addEventListener('click', () => mobileMenu?.classList.add('hidden'));
+
   }, 0);
 
   return headerHTML;
