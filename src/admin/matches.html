@@ -19,6 +19,7 @@
   <style>
     .matches-report-style {
         width: 100%;
+        min-width: 800px; /* Ancho mínimo para forzar el scroll en móvil */
         border-collapse: separate;
         border-spacing: 0;
         border-radius: 8px;
@@ -74,14 +75,13 @@
     .matches-report-style .action-cell button { color: #9ca3af; }
     .matches-report-style .action-cell button:hover { color: #ffffff; }
 
-    /* Estilos para los filtros en modo oscuro */
     .dark-input {
-      background-color: #374151; /* gray-700 */
-      border-color: #4b5563; /* gray-600 */
-      color: #e5e7eb; /* gray-200 */
+      background-color: #374151;
+      border-color: #4b5563;
+      color: #e5e7eb;
     }
     .dark-input:focus {
-      border-color: #fbbF24; /* amber-400 */
+      border-color: #fbbF24;
       box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.3);
     }
   </style>
@@ -93,7 +93,7 @@
       <div class="flex flex-wrap justify-between items-center gap-4">
         <h1 class="text-3xl font-bold text-gray-100">Gestión de Partidos</h1>
       </div>
-      <div id="match-summary-cards" class="flex flex-wrap gap-6 my-4">
+      <div id="match-summary-cards" class="grid sm:grid-cols-2 gap-6 my-4">
         <div id="card-pendientes" class="flex-1 min-w-[220px] cursor-pointer bg-[#222222] border border-transparent rounded-xl shadow-lg p-5 flex items-center gap-4 hover:shadow-md hover:border-yellow-400 transition">
           <span class="material-icons text-yellow-500 text-3xl">schedule</span>
           <div>
@@ -123,36 +123,35 @@
       <div id="mass-match-loader-container" class="hidden bg-[#222222] p-6 rounded-xl shadow-lg transition-all"></div>
 
       <div class="bg-[#222222] p-6 rounded-xl shadow-lg max-w-7xl mx-auto">
-        <div class="flex flex-col md:flex-row md:flex-wrap md:items-center md:justify-between gap-4 mb-4 pb-4 border-b border-gray-700">
-            <div class="flex flex-wrap gap-2">
-              <select id="filter-tournament" class="input-field dark-input flex-grow sm:flex-grow-0 sm:w-auto"><option value="">Torneos</option></select>
-              <select id="filter-status" class="input-field dark-input flex-grow sm:flex-grow-0 sm:w-auto"><option value="">Estados</option><option value="pendiente">Pendientes</option><option value="completado">Completados</option><option value="suspendido">Suspendidos</option></select>
-              <select id="filter-sede" class="input-field dark-input flex-grow sm:flex-grow-0 sm:w-auto"><option value="">Sedes</option><option value="Funes">Funes</option><option value="Centro">Centro</option></select>
-              <select id="filter-cancha" class="input-field dark-input flex-grow sm:flex-grow-0 sm:w-auto"><option value="">Canchas</option><option value="Cancha 1">Cancha 1</option><option value="Cancha 2">Cancha 2</option><option value="Cancha 3">Cancha 3</option><option value="Cancha 4">Cancha 4</option><option value="Cancha 5">Cancha 5</option><option value="Cancha 6">Cancha 6</option></select>
-              <div class="relative flex-grow sm:flex-grow-0 sm:w-auto">
-                  <span class="material-icons text-gray-400 absolute left-2 top-1/2 -translate-y-1/2 pointer-events-none">event</span>
-                  <input type="text" id="filter-date-range" class="input-field dark-input w-full pl-9 pr-2" placeholder="Fecha" autocomplete="off" style="height:44px;">
-              </div>
-            </div>
+        <div class="flex flex-col sm:flex-row gap-2 mb-4 pb-4 border-b border-gray-700">
+          <select id="filter-tournament" class="input-field dark-input flex-1"><option value="">Todos los Torneos</option></select>
+          <select id="filter-status" class="input-field dark-input flex-1"><option value="">Todos los Estados</option><option value="pendiente">Pendientes</option><option value="completado">Completados</option><option value="suspendido">Suspendidos</option></select>
+          <select id="filter-sede" class="input-field dark-input flex-1"><option value="">Todas las Sedes</option><option value="Funes">Funes</option><option value="Centro">Centro</option></select>
+          <select id="filter-cancha" class="input-field dark-input flex-1"><option value="">Todas las Canchas</option><option value="Cancha 1">Cancha 1</option><option value="Cancha 2">Cancha 2</option><option value="Cancha 3">Cancha 3</option><option value="Cancha 4">Cancha 4</option><option value="Cancha 5">Cancha 5</option><option value="Cancha 6">Cancha 6</option></select>
+          <div class="relative flex-1">
+            <span class="material-icons text-gray-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none">event</span>
+            <input type="text" id="filter-date-range" class="input-field dark-input w-full pl-10" placeholder="Fecha" autocomplete="off">
+          </div>
         </div>
-
+        
         <div class="flex flex-col md:flex-row gap-4 justify-between items-center mb-4">
           <div class="relative w-full md:flex-1">
               <span class="material-icons text-gray-400 absolute left-3 top-1/2 -translate-y-1/2">search</span>
               <input type="text" id="search-player" class="input-field dark-input !pl-10 w-full" placeholder="Buscar por jugador...">
           </div>
           <div class="flex items-center gap-2 w-full md:w-auto">
-            <button id="btn-sort-order" class="btn btn-secondary flex-1" title="Ordenar por fecha">
-              <span class="material-icons" style="font-size:18px;">swap_vert</span>
-              <span>Más recientes</span>
+            <button id="btn-sort-order" class="btn btn-secondary flex-1 md:flex-initial justify-center" title="Ordenar por fecha">
+              <span class="material-icons">swap_vert</span>
+              <span class="ml-2">Más recientes</span>
             </button>
-            <button id="btn-clear-all-filters" class="btn btn-secondary hidden" title="Limpiar filtros">
-              <span class="material-icons" style="font-size:18px;">cleaning_services</span>
+            <button id="btn-clear-all-filters" class="btn btn-secondary hidden items-center gap-2" title="Limpiar filtros">
+              <span class="material-icons">cleaning_services</span>
+              <span>Limpiar Filtros</span>
             </button>
           </div>
         </div>
         
-        <div id="matches-container" class="overflow-x-auto mt-4"></div>
+        <div id="matches-container"></div>
       </div>
       </div>
   </main>

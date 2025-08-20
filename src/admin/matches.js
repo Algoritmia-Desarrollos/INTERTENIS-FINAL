@@ -25,7 +25,6 @@ const filterDateRangeInput = document.getElementById('filter-date-range');
 let filterDateRange = [null, null];
 let lastDateRangeStr = '';
 
-// Crear botón Limpiar Filtros
 const clearFiltersBtn = document.getElementById('btn-clear-all-filters');
 
 function anyFilterActive() {
@@ -40,8 +39,9 @@ clearFiltersBtn.onclick = function() {
     filterCanchaSelect.value = '';
     searchInput.value = '';
     filterDateRange = [null, null];
-    filterDateRangeInput.value = '';
-    filterDateRangeInput.style.color = '';
+    if (filterDateRangeInput._flatpickr) {
+        filterDateRangeInput._flatpickr.clear();
+    }
     lastDateRangeStr = '';
     quickFilterMode = null;
     applyFiltersAndSort();
@@ -110,25 +110,10 @@ async function loadInitialData() {
             onChange: function(selectedDates, dateStr) {
                 if (selectedDates.length === 2) {
                     filterDateRange = [selectedDates[0], selectedDates[1]];
-                    const d1 = selectedDates[0];
-                    const d2 = selectedDates[1];
-                    const str = `${d1.getDate()}/${d1.getMonth()+1} a ${d2.getDate()}/${d2.getMonth()+1}`;
-                    filterDateRangeInput.value = str;
-                    filterDateRangeInput.style.color = '#000';
-                    lastDateRangeStr = str;
                 } else {
                     filterDateRange = [null, null];
-                    filterDateRangeInput.value = '';
-                    filterDateRangeInput.style.color = '';
-                    lastDateRangeStr = '';
                 }
                 applyFiltersAndSort();
-            },
-            onOpen: function() {
-                if (filterDateRange[0] && filterDateRange[1]) {
-                    filterDateRangeInput.value = lastDateRangeStr;
-                    filterDateRangeInput.style.color = '#000';
-                }
             }
         });
     }
@@ -142,14 +127,7 @@ function updateSummaryCards() {
     const finDelDia = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
     const recientes = allMatches.filter(m => {
         if (!m.winner_id || !m.match_date) return false;
-        let matchDate;
-        if (m.match_date.includes('-')) {
-            const [y, mth, d] = m.match_date.split('-');
-            matchDate = new Date(Number(y), Number(mth) - 1, Number(d));
-        } else if (m.match_date.includes('/')) {
-            const [d, mth, y] = m.match_date.split('/');
-            matchDate = new Date(Number(y), Number(mth) - 1, Number(d));
-        } else { return false; }
+        let matchDate = new Date(m.match_date);
         return matchDate >= sieteDiasAtras && matchDate <= finDelDia;
     }).length;
     document.getElementById('count-pendientes').textContent = pendientes;
@@ -187,15 +165,7 @@ function applyFiltersAndSort() {
     if (filterDateRange && filterDateRange[0] && filterDateRange[1]) {
         processedMatches = processedMatches.filter(m => {
             if (!m.match_date) return false;
-            let matchDateObj = null;
-            if (m.match_date.includes('-')) {
-                const [y, mth, d] = m.match_date.split('-');
-                matchDateObj = new Date(Number(y), Number(mth) - 1, Number(d));
-            } else if (m.match_date.includes('/')) {
-                const [d, mth, y] = m.match_date.split('/');
-                matchDateObj = new Date(Number(y), Number(mth) - 1, Number(d));
-            }
-            if (!matchDateObj) return false;
+            let matchDateObj = new Date(m.match_date);
             return matchDateObj >= filterDateRange[0] && matchDateObj <= filterDateRange[1];
         });
     }
@@ -208,32 +178,14 @@ function applyFiltersAndSort() {
         const finDelDia = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
         processedMatches = processedMatches.filter(m => {
             if (!m.winner_id || !m.match_date) return false;
-            let matchDate;
-            if (m.match_date.includes('-')) {
-                const [y, mth, d] = m.match_date.split('-');
-                matchDate = new Date(Number(y), Number(mth) - 1, Number(d));
-            } else if (m.match_date.includes('/')) {
-                const [d, mth, y] = m.match_date.split('/');
-                matchDate = new Date(Number(y), Number(mth) - 1, Number(d));
-            } else { return false; }
+            let matchDate = new Date(m.match_date);
             return matchDate >= sieteDiasAtras && matchDate <= finDelDia;
         });
     }
 
     processedMatches.sort((a, b) => {
-        function parseFecha(fecha) {
-            if (!fecha) return null;
-            if (fecha.includes('-')) {
-                const [y, m, d] = fecha.split('-');
-                return new Date(Number(y), Number(m) - 1, Number(d));
-            } else if (fecha.includes('/')) {
-                const [d, m, y] = fecha.split('/');
-                return new Date(Number(y), Number(m) - 1, Number(d));
-            }
-            return null;
-        }
-        const da = parseFecha(a.match_date);
-        const db = parseFecha(b.match_date);
+        const da = a.match_date ? new Date(a.match_date) : null;
+        const db = b.match_date ? new Date(b.match_date) : null;
         if (!da) return 1;
         if (!db) return -1;
         return sortOrderDesc ? db - da : da - db;
@@ -251,20 +203,6 @@ function updateClearFiltersBtn() {
         clearFiltersBtn.classList.add('hidden');
     }
 }
-
-clearFiltersBtn.onclick = function() {
-    filterTournamentSelect.value = '';
-    filterStatusSelect.value = '';
-    filterSedeSelect.value = '';
-    filterCanchaSelect.value = '';
-    searchInput.value = '';
-    filterDateRange = [null, null];
-    filterDateRangeInput.value = '';
-    filterDateRangeInput.style.color = '';
-    lastDateRangeStr = '';
-    quickFilterMode = null;
-    applyFiltersAndSort();
-};
 
 // --- Filtros rápidos por tarjetas resumen y orden ---
 let quickFilterMode = null;
@@ -394,10 +332,9 @@ function renderMatches(matchesToRender) {
         }
     }
     
-    // **CAMBIO CLAVE**: Se añade un ancho mínimo a la tabla para forzar el scroll en móvil.
     matchesContainer.innerHTML = `
-    <div class="bg-[#18191b] p-6 rounded-xl shadow-lg overflow-x-auto">
-    <table class="matches-report-style" style="min-width: 800px;">
+    <div class="bg-[#18191b] p-4 sm:p-6 rounded-xl shadow-lg overflow-x-auto">
+    <table class="matches-report-style">
             <colgroup><col style="width: 4%"><col style="width: 5%"><col style="width: 4%"><col style="width: 25%"><col style="width: 5%"><col style="width: 13%"><col style="width: 5%"><col style="width: 25%"><col style="width: 5%"><col style="width: 5%"></colgroup>
             <thead><tr>
                 <th><input type="checkbox" id="select-all-matches"></th>
@@ -577,13 +514,11 @@ async function handleBulkDelete() {
     }
 }
 
-// --- **FUNCIÓN CORREGIDA** ---
 function handleBulkReport() {
     if (selectedMatches.size === 0) {
         alert("No hay partidos seleccionados.");
         return;
     }
-
     const matchIds = Array.from(selectedMatches);
     localStorage.setItem('reportMatchIds', JSON.stringify(matchIds));
     window.open('reportes.html', '_blank');
@@ -606,11 +541,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     const btnSortOrder = document.getElementById('btn-sort-order');
     if (btnSortOrder) {
-        btnSortOrder.innerHTML = `<span class="material-icons mr-1" style="font-size:18px;">swap_vert</span> ${sortOrderDesc ? 'Más recientes' : 'Más antiguos'}`;
+        const sortText = btnSortOrder.querySelector('span:last-child');
+        if (sortText) sortText.textContent = sortOrderDesc ? 'Más recientes' : 'Más antiguos';
+        
         btnSortOrder.onclick = () => {
             sortOrderDesc = !sortOrderDesc;
-            const sortText = btnSortOrder.querySelector('span:last-child');
-            if(sortText) sortText.textContent = sortOrderDesc ? 'Más recientes' : 'Más antiguos';
+            if (sortText) sortText.textContent = sortOrderDesc ? 'Más recientes' : 'Más antiguos';
             applyFiltersAndSort();
         };
     }
