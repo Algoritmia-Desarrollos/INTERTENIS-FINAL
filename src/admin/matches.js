@@ -542,18 +542,42 @@ async function handleBulkDelete() {
 
 function handleBulkReport() {
     if (selectedMatches.size === 0) return alert("No hay partidos seleccionados.");
+    
     const reportMatches = Array.from(selectedMatches).map(id => {
         const match = allMatches.find(m => m.id === id);
         if (!match) return null;
+
         const { p1_points, p2_points } = calculatePoints(match);
+        
+        // CORRECCIÓN: Ahora guardamos más datos cruciales para la edición
         return {
-            date: match.match_date ? match.match_date.split('T')[0] : '', time: match.match_time || '', location: match.location || '',
-            category: match.category?.name || '', category_color: match.category?.color || '#e5e7eb',
-            player1: { name: match.player1?.name || '', points: p1_points ?? '', isWinner: match.winner_id === match.player1_id, teamColor: match.player1?.team?.color, teamImage: match.player1?.team?.image_url },
-            player2: { name: match.player2?.name || '', points: p2_points ?? '', isWinner: match.winner_id === match.player2_id, teamColor: match.player2?.team?.color, teamImage: match.player2?.team?.image_url },
+            id: match.id, // ID del partido (esencial para actualizar la DB)
+            date: match.match_date ? match.match_date.split('T')[0] : '',
+            time: match.match_time || '',
+            location: match.location || '',
+            category: match.category?.name || '',
+            category_id: match.category?.id || null, // ID de la categoría (esencial para filtrar)
+            category_color: match.category?.color || '#e5e7eb',
+            player1: {
+                id: match.player1?.id, // ID del jugador 1
+                name: match.player1?.name || '',
+                points: p1_points ?? '',
+                isWinner: match.winner_id === match.player1_id,
+                teamColor: match.player1?.team?.color,
+                teamImage: match.player1?.team?.image_url
+            },
+            player2: {
+                id: match.player2?.id, // ID del jugador 2
+                name: match.player2?.name || '',
+                points: p2_points ?? '',
+                isWinner: match.winner_id === match.player2_id,
+                teamColor: match.player2?.team?.color,
+                teamImage: match.player2?.team?.image_url
+            },
             sets: (match.sets && match.sets.length > 0) ? match.sets.map(s => `${s.p1}-${s.p2}`).join(', ') : ''
         };
     }).filter(Boolean);
+
     localStorage.setItem('reportMatches', JSON.stringify(reportMatches));
     window.open('reportes.html', '_blank');
 }
