@@ -69,7 +69,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         let tableBodyHTML = '';
 
         for (const [dateIdx, date] of sortedDates.entries()) {
-            if (dateIdx > 0) tableBodyHTML += `<tr><td colspan="8" style="height: 18px; background: #000; border: none;"></td></tr>`;
+            if (dateIdx > 0) tableBodyHTML += `<tr><td colspan="8" style="height: 12px; background: #000; border: none;"></td></tr>`;
             
             const groupedBySede = groupedByDate[date].reduce((acc, match) => {
                 const sede = (match.location ? match.location.split(' - ')[0] : 'Sede no definida').trim();
@@ -87,10 +87,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 tableBodyHTML += `
                     <tr>
-                        <td colspan="2" style="background-color: ${headerBgColor}; color: ${headerTextColor}; font-weight: 700; text-align: center; vertical-align: middle; padding: 10px 0; font-size: 14pt; border-right: none;">
+                        <td colspan="2" class="sede-fecha" style="background-color: ${headerBgColor}; color: ${headerTextColor}; font-weight: 700; text-align: center; vertical-align: middle; padding: 8px 0; border-right: none;">
                             ${sede.toUpperCase()}
                         </td>
-                        <td colspan="6" style="background-color: ${headerBgColor}; color: ${headerTextColor}; font-weight: 700; text-align: center; vertical-align: middle; padding: 10px 0; font-size: 14pt; border-left: none;">
+                        <td colspan="6" class="sede-fecha" style="background-color: ${headerBgColor}; color: ${headerTextColor}; font-weight: 700; text-align: center; vertical-align: middle; padding: 8px 0; border-left: none;">
                             ${formattedDate}
                         </td>
                     </tr>`;
@@ -114,8 +114,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                         p1PointsDisplay = (typeof match.player1.points !== 'undefined' && match.player1.points !== null) ? match.player1.points : '';
                         p2PointsDisplay = (typeof match.player2.points !== 'undefined' && match.player2.points !== null) ? match.player2.points : '';
                     } else {
-                        if (match.player1.teamImage) p1PointsDisplay = `<img src="${match.player1.teamImage}" alt="" style="height: 20px; object-fit: contain; margin: auto; display: block;">`;
-                        if (match.player2.teamImage) p2PointsDisplay = `<img src="${match.player2.teamImage}" alt="" style="height: 20px; object-fit: contain; margin: auto; display: block;">`;
+                        if (match.player1.teamImage) p1PointsDisplay = `<img src="${match.player1.teamImage}" alt="" style="height: 18px; object-fit: contain; margin: auto; display: block;">`;
+                        if (match.player2.teamImage) p2PointsDisplay = `<img src="${match.player2.teamImage}" alt="" style="height: 18px; object-fit: contain; margin: auto; display: block;">`;
                     }
 
                     let cancha = 'N/A';
@@ -130,13 +130,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                     tableBodyHTML += `
                         <tr class="data-row">
-                            <td style="background-color: ${canchaBackgroundColor} !important; color: ${canchaTextColor} !important; font-weight: bold;">${cancha}</td>
-                            <td style="background:#000;color:#fff;">${hora}</td>
-                            <td class="player-name player-name-right ${p1_class}" style='background:#000;color:#fff;${p1NameStyle};font-size:12pt;'>${match.player1.name}</td>
+                            <td style="background-color: ${canchaBackgroundColor} !important; color: ${canchaTextColor} !important; font-weight: bold; font-size: 8pt;">${cancha}</td>
+                            <td style="background:#000;color:#fff; font-size: 8pt;">${hora}</td>
+                            <td class="player-name player-name-right ${p1_class}" style='background:#000;color:#fff;${p1NameStyle};'>${match.player1.name}</td>
                             <td class="pts-col" style='background:${p1TeamColor || '#3a3838'};color:${p1TextColor};'>${p1PointsDisplay}</td>
-                            <td class="font-mono" style="background:#000;color:#fff;">${setsDisplay}</td>
+                            <td class="font-mono" style="background:#000;color:#fff; font-size: 9pt;">${setsDisplay}</td>
                             <td class="pts-col" style='background:${p2TeamColor || '#3a3838'};color:${p2TextColor};'>${p2PointsDisplay}</td>
-                            <td class="player-name player-name-left ${p2_class}" style='background:#000;color:#fff;${p2NameStyle};font-size:12pt;'>${match.player2.name}</td>
+                            <td class="player-name player-name-left ${p2_class}" style='background:#000;color:#fff;${p2NameStyle};'>${match.player2.name}</td>
                             <td class="cat-col" style="background:#000;color:${match.category_color || '#b45309'};">${match.category || 'N/A'}</td>
                         </tr>`;
                 }
@@ -144,12 +144,35 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         
         reportContainer.innerHTML = `
-        <div class="bg-[#18191b] p-6 rounded-xl shadow-lg overflow-x-auto">
-            <table class="matches-report-style">
-                <colgroup><col style="width: 5%"><col style="width: 8%"><col style="width: 28%"><col style="width: 5%"><col style="width: 12%"><col style="width: 5%"><col style="width: 28%"><col style="width: 9%"></colgroup>
-                <thead><tr>
-                    <th>Cancha</th><th>Hora</th><th style="text-align: right; padding-right: 8px;">Jugador 1</th><th>Pts</th><th>Resultado</th><th>Pts</th><th style="text-align: left; padding-left: 8px;">Jugador 2</th><th>Cat.</th>
-                </tr></thead>
+        <div class="bg-[#18191b] p-4 rounded-xl shadow-lg overflow-x-auto">
+            <style>
+                /* Estilos por defecto (Móvil) */
+                .responsive-table .player-name { font-size: 9pt; }
+                .responsive-table .sede-fecha { font-size: 11pt; }
+                .responsive-table th:nth-child(1), .responsive-table td:nth-child(1) { width: 6%; }  /* Cancha más chica */
+                .responsive-table th:nth-child(2), .responsive-table td:nth-child(2) { width: 10%; }
+                .responsive-table th:nth-child(3), .responsive-table td:nth-child(3) { width: 23%; } /* Jugador 1 */
+                .responsive-table th:nth-child(4), .responsive-table td:nth-child(4) { width: 7%; }
+                .responsive-table th:nth-child(5), .responsive-table td:nth-child(5) { width: 14%; }
+                .responsive-table th:nth-child(6), .responsive-table td:nth-child(6) { width: 7%; }
+                .responsive-table th:nth-child(7), .responsive-table td:nth-child(7) { width: 23%; } /* Jugador 2 */
+                .responsive-table th:nth-child(8), .responsive-table td:nth-child(8) { width: 10%; }
+                
+                /* Estilos para pantallas grandes (Desktop) a partir de 768px */
+                @media (min-width: 768px) {
+                    .responsive-table .player-name { font-size: 11pt; } /* Nombres más grandes en desktop */
+                    .responsive-table .sede-fecha { font-size: 1.35rem; } /* Más grande sede y fecha en desktop */
+                    .responsive-table th:nth-child(1), .responsive-table td:nth-child(1) { width: 5%; }
+                    .responsive-table th:nth-child(2), .responsive-table td:nth-child(2) { width: 8%; }
+                    .responsive-table th:nth-child(3), .responsive-table td:nth-child(3) { width: 28%; } /* Jugador 1 más ancho */
+                    .responsive-table th:nth-child(4), .responsive-table td:nth-child(4) { width: 5%; }
+                    .responsive-table th:nth-child(5), .responsive-table td:nth-child(5) { width: 12%; }
+                    .responsive-table th:nth-child(6), .responsive-table td:nth-child(6) { width: 5%; }
+                    .responsive-table th:nth-child(7), .responsive-table td:nth-child(7) { width: 28%; } /* Jugador 2 más ancho */
+                    .responsive-table th:nth-child(8), .responsive-table td:nth-child(8) { width: 9%; }
+                }
+            </style>
+            <table class="matches-report-style responsive-table">
                 <tbody>${tableBodyHTML}</tbody>
             </table>
         </div>`;
