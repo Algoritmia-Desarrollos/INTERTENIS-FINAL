@@ -124,33 +124,38 @@
 
       <div class="bg-[#222222] p-6 rounded-xl shadow-lg max-w-7xl mx-auto">
         <div class="flex flex-wrap gap-4 items-center justify-between mb-4 pb-4 border-b border-gray-700">
-            <div class="flex flex-wrap gap-2 sm:gap-4 items-center w-full max-w-7xl mx-auto">
-              <select id="filter-tournament" class="input-field dark-input flex-1 min-w-[60px] max-w-[120px] sm:max-w-xs"><option value="">Todos los Torneos</option></select>
-              <select id="filter-status" class="input-field dark-input flex-1 min-w-[60px] max-w-[120px] sm:max-w-xs"><option value="">Todos los Estados</option><option value="pendiente">Pendientes</option><option value="completado">Completados</option><option value="suspendido">Suspendidos</option></select>
-              <select id="filter-sede" class="input-field dark-input flex-1 min-w-[60px] max-w-[120px] sm:max-w-xs"><option value="">Todas las Sedes</option><option value="Funes">Funes</option><option value="Centro">Centro</option></select>
-              <select id="filter-cancha" class="input-field dark-input flex-1 min-w-[60px] max-w-[120px] sm:max-w-xs"><option value="">Todas las Canchas</option><option value="Cancha 1">Cancha 1</option><option value="Cancha 2">Cancha 2</option><option value="Cancha 3">Cancha 3</option><option value="Cancha 4">Cancha 4</option><option value="Cancha 5">Cancha 5</option><option value="Cancha 6">Cancha 6</option></select>
-              <div class="flex items-center flex-1">
+            <div class="flex flex-col sm:flex-row flex-wrap gap-2 sm:gap-4 items-stretch w-full max-w-7xl mx-auto">
+              <select id="filter-tournament" class="input-field dark-input w-full sm:w-auto min-w-[60px] sm:max-w-xs"><option value="">Todos los Torneos</option></select>
+              <select id="filter-status" class="input-field dark-input w-full sm:w-auto min-w-[60px] sm:max-w-xs"><option value="">Todos los Estados</option><option value="pendiente">Pendientes</option><option value="completado">Completados</option><option value="suspendido">Suspendidos</option></select>
+              <select id="filter-sede" class="input-field dark-input w-full sm:w-auto min-w-[60px] sm:max-w-xs"><option value="">Todas las Sedes</option><option value="Funes">Funes</option><option value="Centro">Centro</option></select>
+              <select id="filter-cancha" class="input-field dark-input w-full sm:w-auto min-w-[60px] sm:max-w-xs"><option value="">Todas las Canchas</option><option value="Cancha 1">Cancha 1</option><option value="Cancha 2">Cancha 2</option><option value="Cancha 3">Cancha 3</option><option value="Cancha 4">Cancha 4</option><option value="Cancha 5">Cancha 5</option><option value="Cancha 6">Cancha 6</option></select>
+              <div class="flex w-full sm:w-auto">
                 <div class="relative w-full">
                   <span class="material-icons text-gray-400 absolute left-2 top-1/2 -translate-y-1/2 pointer-events-none">event</span>
                   <input type="text" id="filter-date-range" class="input-field dark-input w-full pl-9 pr-2" placeholder="Fecha" autocomplete="off" style="height:44px;">
+                </div>
+              </div>
+              <div class="flex flex-col sm:flex-row w-full gap-2 mt-2 sm:mt-0">
+                <div class="flex items-center w-full sm:w-auto rounded-lg border border-gray-600 px-2 py-1 gap-2" style="background:#384152;">
+                  <span class="material-icons text-gray-400 ml-1">search</span>
+                  <input type="text" id="search-player" class="input-field dark-input border-0 focus:ring-0 !pl-2 !py-1 flex-1" placeholder="Buscar por jugador...">
+                </div>
+                <div class="flex w-full sm:w-auto gap-2">
+                  <button id="btn-sort-order" class="w-full sm:w-auto px-4 py-2 rounded bg-gray-700 hover:bg-gray-600 text-gray-300 border border-gray-600 transition flex items-center justify-center text-sm font-medium" type="button" title="Ordenar por fecha">
+                    <span class="material-icons mr-1" style="font-size:18px;">swap_vert</span>
+                    Más recientes arriba
+                  </button>
+                  <button id="btn-clear-all-filters" class="w-full sm:w-auto px-4 py-2 rounded bg-gray-700 hover:bg-gray-600 text-gray-300 border border-gray-600 transition flex items-center justify-center text-sm font-medium hidden" type="button" title="Limpiar filtros">
+                    <span class="material-icons mr-1" style="font-size:18px;">cleaning_services</span>
+                    Limpiar Filtros
+                  </button>
                 </div>
               </div>
             </div>
         </div>
         <div class="flex justify-center mb-4">
           <div class="flex w-full max-w-7xl mx-auto items-center justify-between">
-              <div class="flex items-center flex-1 rounded-lg border border-gray-600 px-2 py-1 gap-2" style="background:#384152;">
-              <span class="material-icons text-gray-400 ml-1">search</span>
-              <input type="text" id="search-player" class="input-field dark-input border-0 focus:ring-0 !pl-2 !py-1 flex-1" placeholder="Buscar por jugador...">
-            </div>
-            <button id="btn-sort-order" class="ml-4 px-4 py-2 rounded bg-gray-700 hover:bg-gray-600 text-gray-300 border border-gray-600 transition flex items-center justify-center text-sm font-medium" type="button" title="Ordenar por fecha">
-              <span class="material-icons mr-1" style="font-size:18px;">swap_vert</span>
-              Más recientes arriba
-            </button>
-            <button id="btn-clear-all-filters" class="ml-4 px-4 py-2 rounded bg-gray-700 hover:bg-gray-600 text-gray-300 border border-gray-600 transition flex items-center justify-center text-sm font-medium hidden" type="button" title="Limpiar filtros">
-              <span class="material-icons mr-1" style="font-size:18px;">cleaning_services</span>
-              Limpiar Filtros
-            </button>
+              <!-- Eliminado: ahora el buscador y los botones están en la barra de filtros arriba para responsive -->
           </div>
         </div>
         

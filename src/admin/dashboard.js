@@ -192,31 +192,31 @@ function renderLastMatches(matchesToRender) {
     }
     
     matchesContainer.innerHTML = `
-    <div class="bg-[#18191b] p-6 rounded-xl shadow-lg overflow-x-auto rounded-xl">
-             <style>
-                .matches-report-style { min-width: 800px; width: 100%; border-collapse: separate; border-spacing: 0; border-radius: 18px; overflow: hidden; }
-                .matches-report-style th, .matches-report-style td { padding: 6px 4px; font-size: 9pt; border-bottom: 1px solid #4a4a4a; text-align: center; vertical-align: middle; background: #222222; color: #ffffff; white-space: nowrap; }
-                .matches-report-style thead th { background: #000; font-size: 8pt; color: #a0a0a0; text-transform: uppercase; font-weight: 600; padding-top: 8px; padding-bottom: 8px; border: none; }
-                .matches-report-style tbody tr:last-child td { border-bottom: none; }
-                .matches-report-style .winner { font-weight: 700 !important; color: #f4ec05 !important; }
-                .matches-report-style .player-name { font-weight: 700; font-size: 10pt; }
-                .matches-report-style .player-name-right { text-align: right; padding-right: 8px; }
-                .matches-report-style .player-name-left { text-align: left; padding-left: 8px; }
-                .matches-report-style .font-mono { font-family: 'Consolas', 'Menlo', 'Courier New', monospace; font-size: 10pt; }
-                .matches-report-style .pts-col { font-weight: 700; text-align: center; }
-                .matches-report-style .cat-col { font-family: 'Segoe UI Black', 'Arial Black', sans-serif; font-weight: 900; font-size: 10pt; text-align: center; }
-                .matches-report-style .action-cell button { color: #9ca3af; }
-                .matches-report-style .action-cell button:hover { color: #ffffff; }
-                .matches-report-style .sede-fecha-row td { border-radius: 0 !important; }
-            </style>
-            <table class="matches-report-style">
-                <colgroup><col style="width: 5%"><col style="width: 8%"><col style="width: 26%"><col style="width: 5%"><col style="width: 13%"><col style="width: 5%"><col style="width: 26%"><col style="width: 6%"><col style="width: 6%"></colgroup>
-                <thead><tr>
-                    <th>Cancha</th><th>Hora</th><th style="text-align: right; padding-right: 8px;">Jugador 1</th><th>Pts</th><th>Resultado</th><th>Pts</th><th style="text-align: left; padding-left: 8px;">Jugador 2</th><th>Cat.</th><th>Editar</th>
-                </tr></thead>
-                <tbody>${tableHTML}</tbody>
-            </table>
-        </div>`;
+    <div class="bg-[#18191b] p-6 rounded-xl shadow-lg overflow-x-auto border border-[#444]" style="border: 2px solid #444 !important;">
+        <style>
+            .matches-report-style { min-width: 800px; width: 100%; border-collapse: separate; border-spacing: 0; border-radius: 18px; overflow: hidden; border: 2px solid #444 !important; }
+            .matches-report-style th, .matches-report-style td { padding: 6px 4px; font-size: 9pt; border-bottom: 1px solid #4a4a4a !important; text-align: center; vertical-align: middle; background: #222222; color: #ffffff; white-space: nowrap; }
+            .matches-report-style thead th { background: #000; font-size: 8pt; color: #a0a0a0; text-transform: uppercase; font-weight: 600; padding-top: 8px; padding-bottom: 8px; border: none !important; }
+            .matches-report-style tbody tr:last-child td { border-bottom: none !important; }
+            .matches-report-style .winner { font-weight: 700 !important; color: #f4ec05 !important; }
+            .matches-report-style .player-name { font-weight: 700; font-size: 10pt; }
+            .matches-report-style .player-name-right { text-align: right; padding-right: 8px; }
+            .matches-report-style .player-name-left { text-align: left; padding-left: 8px; }
+            .matches-report-style .font-mono { font-family: 'Consolas', 'Menlo', 'Courier New', monospace; font-size: 10pt; }
+            .matches-report-style .pts-col { font-weight: 700; text-align: center; }
+            .matches-report-style .cat-col { font-family: 'Segoe UI Black', 'Arial Black', sans-serif; font-weight: 900; font-size: 10pt; text-align: center; }
+            .matches-report-style .action-cell button { color: #9ca3af; }
+            .matches-report-style .action-cell button:hover { color: #ffffff; }
+            .matches-report-style .sede-fecha-row td { border-radius: 0 !important; }
+        </style>
+        <table class="matches-report-style">
+            <colgroup><col style="width: 5%"><col style="width: 8%"><col style="width: 26%"><col style="width: 5%"><col style="width: 13%"><col style="width: 5%"><col style="width: 26%"><col style="width: 6%"><col style="width: 6%"></colgroup>
+            <thead><tr>
+                <th>Cancha</th><th>Hora</th><th style="text-align: right; padding-right: 8px;">Jugador 1</th><th>Pts</th><th>Resultado</th><th>Pts</th><th style="text-align: left; padding-left: 8px;">Jugador 2</th><th>Cat.</th><th>Editar</th>
+            </tr></thead>
+            <tbody>${tableHTML}</tbody>
+        </table>
+    </div>`;
 }
 
 function openScoreModal(match) {

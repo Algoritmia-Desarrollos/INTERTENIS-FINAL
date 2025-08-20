@@ -11,47 +11,6 @@ const rankingsContainer = document.getElementById('rankings-container');
 
 // --- Lógica Principal ---
 
-async function renderRankings(playerToHighlight = null) {
-    const tournamentId = tournamentFilter.value;
-    rankingsContainer.innerHTML = '<p class="text-center p-8">Calculando rankings...</p>';
-
-    if (!tournamentId) {
-        rankingsContainer.innerHTML = '<div class="bg-[#222222] p-8 rounded-xl"><p class="text-center text-gray-400">Seleccione un torneo para ver los rankings.</p></div>';
-        return;
-    }
-
-    const { data: tournamentPlayersLinks } = await supabase.from('tournament_players').select('player_id').eq('tournament_id', tournamentId);
-    if (!tournamentPlayersLinks || tournamentPlayersLinks.length === 0) {
-        rankingsContainer.innerHTML = '<div class="bg-[#222222] p-8 rounded-xl"><p class="text-center text-gray-400">Este torneo no tiene jugadores inscritos.</p></div>';
-        return;
-    }
-    const playerIds = tournamentPlayersLinks.map(link => link.player_id);
-
-    const { data: playersInTournament } = await supabase.from('players').select('*, teams(name, image_url), categories(id, name)').in('id', playerIds);
-    const { data: matchesInTournament } = await supabase.from('matches').select('*').eq('tournament_id', tournamentId).not('winner_id', 'is', null);
-
-    const stats = calculateStats(playersInTournament || [], matchesInTournament || []);
-    const categoriesInTournament = [...new Map(playersInTournament.map(p => p && [p.category_id, p.categories]).filter(Boolean)).values()];
-
-    rankingsContainer.innerHTML = '';
-    if (categoriesInTournament.length === 0) {
-        rankingsContainer.innerHTML = '<div class="bg-[#222222] p-8 rounded-xl"><p class="text-center text-gray-400">No hay jugadores con categoría en este torneo.</p></div>';
-        return;
-    }
-
-    categoriesInTournament.forEach(category => {
-        let categoryStats = stats.filter(s => s.categoryId === category.id);
-        const categoryTitle = document.createElement('h3');
-        categoryTitle.className = 'text-2xl font-bold text-gray-100';
-        categoryTitle.textContent = `Categoría: ${category.name}`;
-        rankingsContainer.appendChild(categoryTitle);
-        const tableContainer = document.createElement('div');
-        tableContainer.className = 'bg-[#222222] p-6 rounded-xl shadow-lg overflow-x-auto';
-        tableContainer.innerHTML = generateRankingsHTML(categoryStats, playerToHighlight);
-        rankingsContainer.appendChild(tableContainer);
-    });
-}
-
 // Reemplaza la función existente en rankings.js con esta
 
 async function populateTournamentFilter() {
