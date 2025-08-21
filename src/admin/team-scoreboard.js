@@ -48,11 +48,16 @@ async function renderScoreboard() {
 
     // --- 1. Obtener datos ---
     const { data: linked } = await supabase.from('linked_tournaments').select('source_tournament_id').eq('team_tournament_id', teamTournamentId);
-    if (!linked || linked.length === 0) {
-        scoreboardContainer.innerHTML = '<div class="bg-[#222222] p-8 rounded-xl"><p class="text-center text-gray-400">Este torneo no tiene torneos vinculados para sumar puntos.</p></div>';
+    if (!linked) {
+        scoreboardContainer.innerHTML = '<div class="bg-[#222222] p-8 rounded-xl"><p class="text-center text-gray-400">Error al cargar los torneos vinculados.</p></div>';
         return;
     }
+    
     const sourceTournamentIds = linked.map(l => l.source_tournament_id);
+    // Añadir el ID del propio torneo de equipos para incluir sus partidos de dobles
+    if (!sourceTournamentIds.includes(parseInt(teamTournamentId))) {
+        sourceTournamentIds.push(parseInt(teamTournamentId));
+    }
 
     const [{ data: matches }, { data: teams }] = await Promise.all([
         supabase.from('matches').select('*, player1:player1_id(team_id), player2:player2_id(team_id), player3:player3_id(team_id), player4:player4_id(team_id)').in('tournament_id', sourceTournamentIds).not('winner_id', 'is', null),
@@ -60,7 +65,7 @@ async function renderScoreboard() {
     ]);
 
     if (!matches || !teams) {
-        scoreboardContainer.innerHTML = '<p class="text-red-500">Error al cargar datos.</p>';
+        scoreboardContainer.innerHTML = '<p class="text-red-500">Error al cargar datos de partidos o equipos.</p>';
         return;
     }
 
@@ -104,21 +109,18 @@ async function renderScoreboard() {
         const team1_id = match.player1?.team_id;
         const team2_id = match.player2?.team_id;
 
-        const winning_team_id = match.winner_id === match.player1_id ? team1_id : team2_id;
-        const losing_team_id = match.winner_id === match.player1_id ? team2_id : team1_id;
-
-        // Asignar puntos al equipo ganador
-        if (winning_team_id && teamStats[winning_team_id]) {
-            const team = teamStats[winning_team_id];
+        // Asignar puntos al equipo del Lado 1
+        if (team1_id && teamStats[team1_id]) {
+            const team = teamStats[team1_id];
             if (!team.byFortnight[fortnightLabel]) team.byFortnight[fortnightLabel] = { singles: 0, doubles: 0, total: 0 };
             
             if (isDoubles) team.byFortnight[fortnightLabel].doubles += p1_points;
             else team.byFortnight[fortnightLabel].singles += p1_points;
         }
 
-        // Asignar puntos al equipo perdedor
-        if (losing_team_id && teamStats[losing_team_id]) {
-            const team = teamStats[losing_team_id];
+        // Asignar puntos al equipo del Lado 2
+        if (team2_id && teamStats[team2_id]) {
+            const team = teamStats[team2_id];
             if (!team.byFortnight[fortnightLabel]) team.byFortnight[fortnightLabel] = { singles: 0, doubles: 0, total: 0 };
 
             if (isDoubles) team.byFortnight[fortnightLabel].doubles += p2_points;
