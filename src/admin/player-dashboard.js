@@ -16,7 +16,6 @@ async function loadPlayerData() {
         return;
     }
 
-    // --- CORRECCIÓN: Se añaden todos los jugadores al select para identificar partidos de dobles ---
     const [
         { data: player, error: playerError },
         { data: matches, error: matchesError },
@@ -68,7 +67,7 @@ function calculatePlayerStats(playerId, matches) {
     return stats;
 }
 
-function renderDashboard(player, matches, stats, tournaments) {
+function renderDashboard(player, matches, stats, enrolledTournaments) {
     container.innerHTML = `
         <div class="bg-[#222222] p-6 rounded-xl shadow-lg flex flex-col sm:flex-row items-center gap-6">
             <img src="${player.team?.image_url || 'https://via.placeholder.com/80'}" alt="Logo" class="h-24 w-24 rounded-full object-cover border-4 border-gray-700">
@@ -78,20 +77,43 @@ function renderDashboard(player, matches, stats, tournaments) {
             </div>
         </div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <div class="lg:col-span-2 space-y-8">
-                <div class="bg-[#222222] p-6 rounded-xl shadow-lg">
-                    <h2 class="text-xl font-semibold mb-4 text-gray-100">Estadísticas Generales</h2>
-                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
-                        <div class="bg-gray-800 p-4 rounded-lg"><p class="text-3xl font-bold text-gray-100">${stats.pj}</p><p class="text-sm text-gray-400">Jugados</p></div>
-                        <div class="bg-green-900/50 p-4 rounded-lg"><p class="text-3xl font-bold text-green-400">${stats.pg}</p><p class="text-sm text-green-500">Victorias</p></div>
-                        <div class="bg-red-900/50 p-4 rounded-lg"><p class="text-3xl font-bold text-red-400">${stats.pp}</p><p class="text-sm text-red-500">Derrotas</p></div>
-                        <div class="bg-yellow-900/50 p-4 rounded-lg"><p class="text-3xl font-bold text-yellow-400">${stats.pj > 0 ? ((stats.pg / stats.pj) * 100).toFixed(0) : 0}%</p><p class="text-sm text-yellow-500">Efectividad</p></div>
-                    </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+            <div class="bg-[#222222] p-6 rounded-xl shadow-lg">
+                <h2 class="text-xl font-semibold mb-4 text-gray-100">Estadísticas</h2>
+                <div class="grid grid-cols-2 gap-4 text-center">
+                    <div class="bg-gray-800 p-4 rounded-lg"><p class="text-3xl font-bold text-gray-100">${stats.pj}</p><p class="text-sm text-gray-400">Jugados</p></div>
+                    <div class="bg-green-900/50 p-4 rounded-lg"><p class="text-3xl font-bold text-green-400">${stats.pg}</p><p class="text-sm text-green-500">Victorias</p></div>
+                    <div class="bg-red-900/50 p-4 rounded-lg"><p class="text-3xl font-bold text-red-400">${stats.pp}</p><p class="text-sm text-red-500">Derrotas</p></div>
+                    <div class="bg-yellow-900/50 p-4 rounded-lg"><p class="text-3xl font-bold text-yellow-400">${stats.pj > 0 ? ((stats.pg / stats.pj) * 100).toFixed(0) : 0}%</p><p class="text-sm text-yellow-500">Efectividad</p></div>
                 </div>
-                <div class="bg-[#222222] p-6 rounded-xl shadow-lg">
-                    <h2 class="text-xl font-semibold mb-4 text-gray-100">Historial de Partidos</h2>
-                    <div class="space-y-4">
+            </div>
+            <div class="bg-[#222222] p-6 rounded-xl shadow-lg">
+                <h2 class="text-xl font-semibold mb-4 text-gray-100">Torneos Inscritos</h2>
+                <div class="space-y-4 max-h-[220px] overflow-y-auto pr-2">
+                    ${enrolledTournaments.length > 0 ? enrolledTournaments.map(t => `
+                        <a href="rankings.html?tournamentId=${t.id}&highlightPlayerId=${player.id}" class="block p-4 rounded-lg bg-gray-800 hover:bg-gray-700 border border-gray-700 hover:border-yellow-400 transition group">
+                            <p class="font-bold text-gray-100 group-hover:text-yellow-400">${t.name}</p>
+                            <p class="text-sm text-gray-400">${t.category.name}</p>
+                        </a>
+                    `).join('') : '<p class="text-center text-sm text-gray-400 py-4">No está inscrito en ningún torneo.</p>'}
+                </div>
+            </div>
+        </div>
+        
+        <div class="bg-[#222222] p-6 rounded-xl shadow-lg">
+            <h2 class="text-xl font-semibold mb-4 text-gray-100">Historial de Partidos</h2>
+            <div class="overflow-x-auto">
+                <table class="min-w-full text-sm">
+                    <thead class="bg-black">
+                        <tr>
+                            <th class="px-4 py-2 text-left text-xs font-semibold text-gray-400 uppercase">Fecha</th>
+                            <th class="px-4 py-2 text-left text-xs font-semibold text-gray-400 uppercase">Torneo</th>
+                            <th class="px-4 py-2 text-left text-xs font-semibold text-gray-400 uppercase">Modalidad</th>
+                            <th class="px-4 py-2 text-left text-xs font-semibold text-gray-400 uppercase">Detalle</th>
+                            <th class="px-4 py-2 text-left text-xs font-semibold text-gray-400 uppercase">Resultado</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-700">
                         ${matches.length > 0 ? matches.map(m => {
                             const isDoubles = m.player3 && m.player4;
                             const isPlayerInSide1 = m.player1_id === player.id || m.player3_id === player.id;
@@ -112,50 +134,31 @@ function renderDashboard(player, matches, stats, tournaments) {
                                 opponents = [isPlayerInSide1 ? m.player2 : m.player1];
                             }
 
-                            const resultadoClass = m.winner_id ? (gano ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400') : 'bg-gray-700 text-gray-400';
-                            const setsStr = (m.sets || []).map(s => isPlayerInSide1 ? `${s.p1}-${s.p2}` : `${s.p2}-${s.p1}`).join(' ');
+                            const opponentsStr = opponents.map(o => o ? o.name : '').join(' / ');
+                            const playersDisplay = myPartner 
+                                ? `con <span class="font-semibold text-gray-300">${myPartner.name}</span> vs ${opponentsStr}`
+                                : `vs ${opponentsStr}`;
+
+                            const resultado = m.winner_id ? (gano ? 'Victoria' : 'Derrota') : 'Pendiente';
+                            const resultadoClass = m.winner_id ? (gano ? 'text-green-400' : 'text-red-400') : 'text-gray-500';
+                            
+                            let setsStr = '';
+                            if (Array.isArray(m.sets) && m.sets.length > 0 && m.winner_id) {
+                                const setsFormatted = m.sets.map(set => isPlayerInSide1 ? `${set.p1}-${set.p2}` : `${set.p2}-${set.p1}`).join(', ');
+                                setsStr = `<span class="text-xs text-gray-400 ml-2 font-mono">(${setsFormatted})</span>`;
+                            }
 
                             return `
-                            <div class="bg-gray-800 p-4 rounded-lg border-l-4 ${gano ? 'border-green-500' : 'border-red-500'}">
-                                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-2">
-                                    <div>
-                                        <p class="font-bold text-gray-100">${m.tournament.name}</p>
-                                        <p class="text-xs text-gray-400">${new Date(m.match_date + 'T00:00:00').toLocaleDateString('es-AR', { year: 'numeric', month: 'long', day: 'numeric' })} - ${m.location || 'Lugar a definir'}</p>
-                                    </div>
-                                    <div class="text-sm font-bold px-3 py-1 rounded-full ${resultadoClass} mt-2 sm:mt-0">${m.winner_id ? (gano ? 'VICTORIA' : 'DERROTA') : 'PENDIENTE'}</div>
-                                </div>
-                                <div class="flex flex-col sm:flex-row items-center justify-between mt-3 pt-3 border-t border-gray-700">
-                                    <div class="text-center sm:text-left">
-                                        <p class="text-xs text-gray-500">${isDoubles ? 'Tu Pareja' : ''}</p>
-                                        <p class="font-semibold text-gray-200">${myPartner ? myPartner.name : ''}</p>
-                                    </div>
-                                    <div class="text-3xl font-light text-gray-500 my-2 sm:my-0">vs</div>
-                                    <div class="text-center sm:text-right">
-                                        <p class="text-xs text-gray-500">Oponentes</p>
-                                        <p class="font-semibold text-gray-200">${opponents.map(o => o.name).join(' / ')}</p>
-                                    </div>
-                                </div>
-                                ${m.winner_id ? `<div class="text-center mt-3 font-mono text-lg text-yellow-400 tracking-wider">${setsStr}</div>` : ''}
-                            </div>
-                            `
-                        }).join('') : '<p class="text-center p-4 text-gray-400">No hay partidos registrados.</p>'}
-                    </div>
-                </div>
-            </div>
-            <div class="bg-[#222222] p-6 rounded-xl shadow-lg">
-                <h2 class="text-xl font-semibold mb-4 text-gray-100">Torneos Inscritos</h2>
-                <div class="space-y-4">
-                    ${tournaments.length > 0 ? tournaments.map(t => `
-                        <a href="rankings.html?tournamentId=${t.id}&highlightPlayerId=${player.id}" class="block p-4 rounded-lg bg-gray-800 hover:bg-gray-700 border border-gray-700 hover:border-yellow-400 transition group">
-                            <p class="font-bold text-gray-100 group-hover:text-yellow-400">${t.name}</p>
-                            <p class="text-sm text-gray-400">${t.category.name}</p>
-                            <div class="flex items-center text-xs text-yellow-500 font-semibold mt-2">
-                                <span>Ver mi posición en el ranking</span>
-                                <span class="material-icons text-sm ml-1">arrow_forward</span>
-                            </div>
-                        </a>
-                    `).join('') : '<p class="text-center text-sm text-gray-400 py-4">No está inscrito en ningún torneo.</p>'}
-                </div>
+                            <tr>
+                                <td class="px-4 py-3 whitespace-nowrap text-gray-300">${new Date(m.match_date + 'T00:00:00').toLocaleDateString('es-AR')}</td>
+                                <td class="px-4 py-3 whitespace-nowrap text-gray-300">${m.tournament.name}</td>
+                                <td class="px-4 py-3 whitespace-nowrap text-gray-300">${isDoubles ? 'Dobles' : 'Individual'}</td>
+                                <td class="px-4 py-3 text-gray-300">${playersDisplay}</td>
+                                <td class="px-4 py-3 whitespace-nowrap font-bold ${resultadoClass}">${resultado} ${setsStr}</td>
+                            </tr>`;
+                        }).join('') : '<tr><td colspan="5" class="text-center p-4 text-gray-400">No hay partidos registrados.</td></tr>'}
+                    </tbody>
+                </table>
             </div>
         </div>
     `;
