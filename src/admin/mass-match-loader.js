@@ -1,14 +1,6 @@
 import { supabase } from '../common/supabase.js';
 
-export function setupMassMatchLoader({
-  container,
-  btnAddRow,
-  btnSave,
-  allTournaments,
-  allPlayers,
-  tournamentPlayersMap,
-  loadInitialData
-}) {
+export function setupMassMatchLoader({ container, allTournaments, allPlayers, tournamentPlayersMap, loadInitialData }) {
 
   // --- ESTADO CENTRAL ---
   let matchesData = [];
@@ -177,7 +169,9 @@ export function setupMassMatchLoader({
 
 
   // --- OPCIONES CACHEADAS ---
-  const tournamentOptionsHTML = `<option value="">Seleccionar</option>` + allTournaments.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+    const individualTournaments = allTournaments.filter(t => t.category && t.category.name !== 'Equipos');
+    const tournamentOptionsHTML = `<option value="">Seleccionar Torneo</option>` + individualTournaments.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+  
   const sedeOptionsHTML = `<option value="">Seleccionar</option>` + ['Funes', 'Centro'].map(s => `<option value="${s}">${s}</option>`).join('');
   const canchaOptionsHTML = `<option value="">Seleccionar</option>` + [1, 2, 3, 4, 5, 6].map(n => `<option value="Cancha ${n}">Cancha ${n}</option>`).join('');
 
@@ -409,7 +403,6 @@ export function setupMassMatchLoader({
       inputElement = document.createElement('input');
       inputElement.type = 'text';
       inputElement.placeholder = 'Seleccionar fecha...';
-      // Evitar que el input expanda la celda
       inputElement.style.width = '100%';
       inputElement.style.height = '100%';
       inputElement.style.boxSizing = 'border-box';
@@ -449,7 +442,7 @@ export function setupMassMatchLoader({
         script.onload = openCalendar;
         document.body.appendChild(script);
       }
-      return; // Evitar listeners genéricos
+      return;
 
         default:
             cell.innerHTML = originalContent;
@@ -463,12 +456,10 @@ export function setupMassMatchLoader({
   cell.appendChild(inputElement);
   inputElement.focus();
 
-  // MEJORA: Abrir el selector de hora automáticamente
   if ((inputElement.tagName === 'SELECT' || inputElement.type === 'time') && typeof inputElement.showPicker === 'function') {
       setTimeout(() => inputElement.showPicker(), 0);
   }
 
-  // Confirmar selección automáticamente al elegir una opción en <select>
   if (inputElement.tagName === 'SELECT') {
     inputElement.addEventListener('change', () => {
       saveChange();
@@ -480,12 +471,10 @@ export function setupMassMatchLoader({
       if (e.key === 'Enter' || e.key === 'Tab') { e.preventDefault(); inputElement.blur(); } 
       else if (e.key === 'Escape') { cell.innerHTML = originalContent; cell.classList.remove('is-editing'); }
   });
-  // Restaurar comportamiento estándar del select, pero forzar apertura hacia abajo solo con CSS moderno
   if (inputElement.tagName === 'SELECT') {
     inputElement.style.color = 'black';
     inputElement.style.background = 'white';
     inputElement.style.direction = 'ltr';
-    // CSS para forzar apertura hacia abajo en navegadores modernos
     inputElement.style.position = '';
     inputElement.style.zIndex = '';
     inputElement.style.boxShadow = '';

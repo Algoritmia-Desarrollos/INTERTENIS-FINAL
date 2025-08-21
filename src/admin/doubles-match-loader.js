@@ -18,15 +18,15 @@ export function setupDoublesMatchLoader({
       background: #18191b !important;
       color: #fff !important;
       border: 1px solid #333 !important;
-      font-size: 9pt; /* Reducimos un poco el tamaño de la fuente */
-      padding: 4px; /* Ajustamos el padding */
+      font-size: 9pt;
+      padding: 4px;
     }
     .doubles-loader-table thead th {
       background: #111 !important;
       font-weight: 700;
       text-transform: uppercase;
       padding: 8px 4px;
-      font-size: 8pt; /* Letra de encabezado más chica */
+      font-size: 8pt;
     }
     .doubles-loader-table select, .doubles-loader-table input {
       background-color: #374151;
@@ -34,7 +34,7 @@ export function setupDoublesMatchLoader({
       color: #e5e7eb;
       width: 100%;
       border-radius: 4px;
-      height: 36px; /* Altura más compacta */
+      height: 36px;
       border: 1px solid #4b5563;
       padding: 0 6px;
     }
@@ -47,7 +47,11 @@ export function setupDoublesMatchLoader({
   document.head.appendChild(style);
 
   // --- OPCIONES PARA LOS SELECTS ---
-  const tournamentOptionsHTML = `<option value="">Seleccionar Torneo</option>` + allTournaments.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+  // *** INICIO DE LA CORRECCIÓN ***
+  const teamTournaments = allTournaments.filter(t => t.category && t.category.name === 'Equipos');
+  const tournamentOptionsHTML = `<option value="">Seleccionar Torneo</option>` + teamTournaments.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+  // *** FIN DE LA CORRECCIÓN ***
+
   const teamOptionsHTML = `<option value="">Seleccionar Equipo</option>` + allTeams.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
   const sedeOptionsHTML = `<option value="">Sede</option>` + ['Funes', 'Centro'].map(s => `<option value="${s}">${s}</option>`).join('');
   const canchaOptionsHTML = `<option value="">Cancha</option>` + [1, 2, 3, 4, 5, 6].map(n => `<option value="Cancha ${n}">Cancha ${n}</option>`).join('');

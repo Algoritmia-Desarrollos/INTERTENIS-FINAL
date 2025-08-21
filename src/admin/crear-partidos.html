@@ -8,24 +8,6 @@
   <link rel="stylesheet" href="../common/styles.css" />
   <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
   <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"/>
-  <style>
-    /* Estilos para los inputs y la tabla en modo oscuro */
-    .dark-input {
-      background-color: #374151; /* gray-700 */
-      border-color: #4b5563; /* gray-600 */
-      color: #e5e7eb; /* gray-200 */
-    }
-    .dark-input:focus {
-      border-color: #fbbF24; /* amber-400 */
-      box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.3);
-    }
-    .matches-table { width: 100%; border-collapse: separate; border-spacing: 0; }
-    .matches-table th, .matches-table td { padding: 8px 10px; vertical-align: middle; }
-    .matches-table thead th { font-size: 0.75rem; color: #a0a0a0; text-transform: uppercase; font-weight: 600; background-color: #000; }
-    .matches-table tbody tr { border-bottom: 1px solid #4a4a4a; }
-    .matches-table tbody tr:last-child { border-bottom: none; }
-    .matches-table tbody tr:hover { background-color: #1f2937; }
-  </style>
 </head>
 <body class="bg-black text-gray-200">
   <header id="header"></header>
@@ -35,56 +17,30 @@
         <h1 class="text-3xl font-bold text-gray-100">Crear y Gestionar Partidos</h1>
         <div class="flex items-center gap-2">
             <button id="btn-import-excel" class="btn btn-secondary">
-                <span class="material-icons">upload_file</span>
-                Importar Excel
+                <span class="material-icons">upload_file</span> Importar Excel
             </button>
-            <button id="btn-show-mass-loader" class="btn btn-primary">
-                <span class="material-icons">add</span>
-                Crear Partidos
+            <button id="btn-show-singles-form" class="btn btn-primary">
+                <span class="material-icons">person_add</span> Crear Partido Individual
+            </button>
+            <button id="btn-show-doubles-form" class="btn btn-primary">
+                <span class="material-icons">groups</span> Crear Partido Dobles
             </button>
         </div>
       </div>
       
-      <section id="mass-loader-section" class="hidden bg-[#222222] p-6 rounded-xl shadow-lg transition-all">
-        <h2 class="text-xl font-semibold mb-4 text-gray-100">Cargador Masivo de Partidos</h2>
-        <div id="table-wrapper" class="overflow-x-auto">
-            </div>
-        <div class="flex justify-between items-center mt-4 pt-4 border-t border-gray-700">
-            <button id="btn-add-row" class="btn btn-secondary">
-                <span class="material-icons">add</span>
-                Añadir Fila
-            </button>
-            <button id="btn-save-all" class="btn btn-primary">
-                <span class="material-icons">save</span>
-                Guardar Todos los Partidos
-            </button>
-        </div>
-      </section>
+      <section id="mass-match-loader-container" class="hidden bg-[#222222] p-6 rounded-xl shadow-lg transition-all"></section>
+      
+      <section id="doubles-match-loader-container" class="hidden bg-[#222222] p-6 rounded-xl shadow-lg transition-all"></section>
 
       <div class="bg-[#222222] p-6 rounded-xl shadow-lg">
-        <div class="flex flex-wrap gap-4 items-center justify-between mb-4 pb-4 border-b border-gray-700">
-            <h2 class="text-xl font-semibold text-gray-100">Partidos Existentes</h2>
-            <div class="flex flex-wrap gap-4 items-center">
-              <select id="filter-tournament" class="input-field dark-input !w-auto"><option value="">Todos los Torneos</option></select>
-              <select id="filter-status" class="input-field dark-input !w-auto"><option value="">Todos</option><option value="pendiente">Pendientes</option><option value="completado">Completados</option><option value="suspendido">Suspendidos</option></select>
-              <input type="text" id="search-player" class="input-field dark-input !w-auto" placeholder="Buscar por jugador...">
-            </div>
-        </div>
-        <div id="matches-container">
-            </div>
+        <h2 class="text-xl font-semibold text-gray-100 mb-4">Partidos Existentes</h2>
+        <div id="matches-container"></div>
       </div>
     </div>
   </main>
 
   <div id="score-modal-container"></div>
-  
-  <div id="bulk-action-bar" class="fixed bottom-0 left-1/2 -translate-x-1/2 mb-4 bg-gray-800 text-white p-3 rounded-lg shadow-2xl flex items-center gap-6 transition-transform transform translate-y-24 opacity-0">
-    <p class="text-sm font-semibold"><span id="selected-count">0</span> seleccionados</p>
-    <button id="bulk-deselect" class="flex items-center gap-2 text-sm hover:text-gray-400 ml-2"><span class="material-icons">close</span>Deseleccionar</button>
-    <div class="border-l border-gray-600 h-6"></div>
-    <button id="bulk-delete" class="flex items-center gap-2 text-sm hover:text-red-400"><span class="material-icons">delete</span>Eliminar</button>
-  </div>
-
+  <div id="bulk-action-bar"></div>
   <script type="module" src="crear-partidos.js"></script>
 </body>
 </html>
