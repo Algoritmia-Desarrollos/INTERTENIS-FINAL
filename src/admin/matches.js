@@ -4,13 +4,14 @@ import { requireRole } from '../common/router.js';
 import { supabase } from '../common/supabase.js';
 import { importMatchesFromFile } from '../common/excel-importer.js';
 import { setupMassMatchLoader } from './mass-match-loader.js';
+import { setupDoublesMatchLoader } from './doubles-match-loader.js'; // Importar el nuevo cargador
 
 requireRole('admin');
 
 // --- Elementos del DOM ---
 const header = document.getElementById('header');
-const formContainer = document.getElementById('form-container');
-const btnShowForm = document.getElementById('btn-show-form');
+const btnShowSinglesForm = document.getElementById('btn-show-singles-form');
+const btnShowDoublesForm = document.getElementById('btn-show-doubles-form');
 const matchesContainer = document.getElementById('matches-container');
 const filterTournamentSelect = document.getElementById('filter-tournament');
 const filterStatusSelect = document.getElementById('filter-status');
@@ -21,6 +22,7 @@ const bulkActionBar = document.getElementById('bulk-action-bar');
 const selectedCountSpan = document.getElementById('selected-count');
 const modalContainer = document.getElementById('score-modal-container');
 const massLoaderContainer = document.getElementById('mass-match-loader-container');
+const doublesLoaderContainer = document.getElementById('doubles-match-loader-container');
 const filterDateRangeInput = document.getElementById('filter-date-range');
 let filterDateRange = [null, null];
 let lastDateRangeStr = '';
@@ -50,10 +52,12 @@ clearFiltersBtn.onclick = function() {
 // --- Estado Global ---
 let allMatches = [];
 let allPlayers = [];
+let allTeams = [];
 let allTournaments = [];
 let tournamentPlayersMap = new Map();
 let selectedMatches = new Set();
-let isMassLoaderInitialized = false;
+let isSinglesLoaderInitialized = false;
+let isDoublesLoaderInitialized = false;
 
 // --- Funciones Auxiliares ---
 function isColorLight(hex) {
@@ -77,17 +81,28 @@ async function loadInitialData() {
     const [
         { data: playersData },
         { data: tournamentsData },
+        { data: teamsData },
         { data: matchesData },
         { data: tournamentPlayersData }
     ] = await Promise.all([
         supabase.from('players').select('*').order('name'),
         supabase.from('tournaments').select('*, category:category_id(id, name)').order('name'),
-        supabase.from('matches').select(`*, category:category_id(id, name, color), player1:player1_id(*, team:team_id(name, image_url, color)), player2:player2_id(*, team:team_id(name, image_url, color)), winner:winner_id(name)`).order('match_date', { ascending: true, nullsFirst: false }).order('match_time', { ascending: true, nullsFirst: false }),
+        supabase.from('teams').select('*').order('name'),
+        supabase.from('matches').select(`*, 
+            category:category_id(id, name, color), 
+            player1:player1_id(*, team:team_id(name, image_url, color)), 
+            player2:player2_id(*, team:team_id(name, image_url, color)), 
+            player3:player3_id(*, team:team_id(name, image_url, color)),
+            player4:player4_id(*, team:team_id(name, image_url, color)),
+            winner:winner_id(name)`)
+        .order('match_date', { ascending: true, nullsFirst: false })
+        .order('match_time', { ascending: true, nullsFirst: false }),
         supabase.from('tournament_players').select('tournament_id, player_id')
     ]);
 
     allPlayers = playersData || [];
     allTournaments = tournamentsData || [];
+    allTeams = teamsData || [];
     allMatches = matchesData || [];
     
     tournamentPlayersMap.clear();
@@ -151,7 +166,9 @@ function applyFiltersAndSort() {
     if (searchTerm) {
         processedMatches = processedMatches.filter(m => 
             (m.player1 && normalizeText(m.player1.name.toLowerCase()).includes(searchTerm)) || 
-            (m.player2 && normalizeText(m.player2.name.toLowerCase()).includes(searchTerm))
+            (m.player2 && normalizeText(m.player2.name.toLowerCase()).includes(searchTerm)) ||
+            (m.player3 && normalizeText(m.player3.name.toLowerCase()).includes(searchTerm)) ||
+            (m.player4 && normalizeText(m.player4.name.toLowerCase()).includes(searchTerm))
         );
     }
     if (tournamentFilter) processedMatches = processedMatches.filter(m => m.tournament_id == tournamentFilter);
@@ -279,30 +296,44 @@ function renderMatches(matchesToRender) {
 
             for (const match of matchesInSede) {
                 const { p1_points, p2_points } = calculatePoints(match);
-                const p1_class = match.player1.id === match.winner_id ? 'winner' : '';
-                const p2_class = match.player2.id === match.winner_id ? 'winner' : '';
+                const isDoubles = match.player3_id && match.player4_id;
+                const team1_winner = isDoubles ? (match.winner_id === match.player1_id || match.winner_id === match.player3_id) : (match.winner_id === match.player1_id);
+                const team2_winner = isDoubles ? (match.winner_id === match.player2_id || match.winner_id === match.player4_id) : (match.winner_id === match.player2_id);
+
+                const team1_class = team1_winner ? 'winner' : '';
+                const team2_class = team2_winner ? 'winner' : '';
+
+                let team1_names = match.player1.name;
+                if (isDoubles && match.player3) team1_names += ` / ${match.player3.name}`;
+
+                let team2_names = match.player2.name;
+                if (isDoubles && match.player4) team2_names += ` / ${match.player4.name}`;
+
                 let hora = match.match_time ? match.match_time.substring(0, 5) : 'HH:MM';
                 const setsDisplay = (match.sets || []).map(s => `${s.p1}/${s.p2}`).join(' ');
+
                 const p1TeamColor = match.player1.team?.color;
                 const p2TeamColor = match.player2.team?.color;
                 const p1TextColor = isColorLight(p1TeamColor) ? '#222' : '#fff';
                 const p2TextColor = isColorLight(p2TeamColor) ? '#222' : '#fff';
+
                 const played = !!(match.sets && match.sets.length > 0);
-                let p1NameStyle = played && !p1_class ? 'color:#888;' : '';
-                let p2NameStyle = played && !p2_class ? 'color:#888;' : '';
-                let p1PointsDisplay = '';
-                let p2PointsDisplay = '';
+                let team1NameStyle = played && !team1_winner ? 'color:#888;' : '';
+                let team2NameStyle = played && !team2_winner ? 'color:#888;' : '';
+
+                let team1PointsDisplay = '';
+                let team2PointsDisplay = '';
                 if (played) {
-                    p1PointsDisplay = (typeof p1_points !== 'undefined' && p1_points !== null) ? p1_points : '';
-                    if (p1PointsDisplay === 0) p1PointsDisplay = '0';
-                    p2PointsDisplay = (typeof p2_points !== 'undefined' && p2_points !== null) ? p2_points : '';
-                    if (p2PointsDisplay === 0) p2PointsDisplay = '0';
+                    team1PointsDisplay = (typeof p1_points !== 'undefined' && p1_points !== null) ? p1_points : '';
+                    if (team1PointsDisplay === 0) team1PointsDisplay = '0';
+                    team2PointsDisplay = (typeof p2_points !== 'undefined' && p2_points !== null) ? p2_points : '';
+                    if (team2PointsDisplay === 0) team2PointsDisplay = '0';
                 } else {
                     if (match.player1.team?.image_url) {
-                        p1PointsDisplay = `<img src="${match.player1.team.image_url}" alt="" style="height: 20px; object-fit: contain; margin: auto; display: block;">`;
+                        team1PointsDisplay = `<img src="${match.player1.team.image_url}" alt="" style="height: 20px; object-fit: contain; margin: auto; display: block;">`;
                     }
                     if (match.player2.team?.image_url) {
-                        p2PointsDisplay = `<img src="${match.player2.team.image_url}" alt="" style="height: 20px; object-fit: contain; margin: auto; display: block;">`;
+                        team2PointsDisplay = `<img src="${match.player2.team.image_url}" alt="" style="height: 20px; object-fit: contain; margin: auto; display: block;">`;
                     }
                 }
                 let cancha = 'N/A';
@@ -320,11 +351,11 @@ function renderMatches(matchesToRender) {
                         <td style="padding: 4px; background-color: #1a1a1a;"><input type="checkbox" class="match-checkbox" data-id="${match.id}" ${selectedMatches.has(match.id) ? 'checked' : ''} style="transform: scale(1.2);"></td>
                         <td style="background-color: ${canchaBackgroundColor} !important; color: ${canchaTextColor} !important; font-weight: bold;">${cancha}</td>
                         <td style="background:#000;color:#fff;">${hora}</td>
-                        <td class="player-name player-name-right ${p1_class}" style='background:#000;color:#fff;${p1NameStyle};font-size:12pt;'>${match.player1.name}</td>
-                        <td class="pts-col" style='background:${p1TeamColor || '#3a3838'};color:${p1TextColor};'>${p1PointsDisplay}</td>
+                        <td class="player-name player-name-right ${team1_class}" style='background:#000;color:#fff;${team1NameStyle};font-size:${isDoubles ? '10pt' : '12pt'};'>${team1_names}</td>
+                        <td class="pts-col" style='background:${p1TeamColor || '#3a3838'};color:${p1TextColor};'>${team1PointsDisplay}</td>
                         <td class="font-mono" style="background:#000;color:#fff;">${setsDisplay}</td>
-                        <td class="pts-col" style='background:${p2TeamColor || '#3a3838'};color:${p2TextColor};'>${p2PointsDisplay}</td>
-                        <td class="player-name player-name-left ${p2_class}" style='background:#000;color:#fff;${p2NameStyle};font-size:12pt;'>${match.player2.name}</td>
+                        <td class="pts-col" style='background:${p2TeamColor || '#3a3838'};color:${p2TextColor};'>${team2PointsDisplay}</td>
+                        <td class="player-name player-name-left ${team2_class}" style='background:#000;color:#fff;${team2NameStyle};font-size:${isDoubles ? '10pt' : '12pt'};'>${team2_names}</td>
                         <td class="cat-col" style="background:#000;color:${match.category?.color || '#b45309'};">${match.category?.name || 'N/A'}</td>
                         <td class="action-cell" style="background:#000;"><button class="p-1 rounded-full hover:bg-gray-700" data-action="edit" title="Editar / Cargar Resultado"><span class="material-icons text-base" style="color:#fff;">edit</span></button></td>
                     </tr>`;
@@ -376,29 +407,53 @@ function openScoreModal(match) {
     } else {
         playersInTournament = allPlayers.filter(p => p.category_id === match.category_id);
     }
+    const isDoubles = match.player3_id && match.player4_id;
+
     modalContainer.innerHTML = `
         <div id="score-modal-overlay" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-2 z-50">
             <div id="score-modal-content" class="bg-[#232323] rounded-xl shadow-lg w-full max-w-lg border border-[#444] mx-2 sm:mx-0">
-                <div class="p-6 border-b border-[#333]"><h3 class="text-xl font-bold text-yellow-400">Editar Partido / Resultado</h3></div>
+                <div class="p-6 border-b border-[#333]">
+                    <h3 class="text-xl font-bold text-yellow-400">Editar Partido / Resultado</h3>
+                    <div class="mt-2">
+                        <label class="flex items-center">
+                            <input type="checkbox" id="doubles-toggle" class="form-checkbox h-5 w-5 text-yellow-400 bg-gray-700 border-gray-600 rounded" ${isDoubles ? 'checked' : ''} ${isPlayed ? 'disabled' : ''}>
+                            <span class="ml-2 text-gray-300">Partido de Dobles</span>
+                        </label>
+                    </div>
+                </div>
                 <form id="score-form" class="p-6 space-y-4">
                     <div class="grid grid-cols-2 gap-4">
                         <div>
-                            <label class="block text-sm font-medium text-gray-300">Jugador A</label>
+                            <label class="block text-sm font-medium text-gray-300">Jugador A1</label>
                             <select id="player1-select-modal" class="input-field mt-1 bg-[#181818] text-gray-100 border-[#444]" ${isPlayed ? 'disabled' : ''}>
                                 ${playersInTournament.map(p => `<option value="${p.id}" ${p.id === match.player1_id ? 'selected' : ''}>${p.name}</option>`).join('')}
                             </select>
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-300">Jugador B</label>
+                            <label class="block text-sm font-medium text-gray-300">Jugador B1</label>
                             <select id="player2-select-modal" class="input-field mt-1 bg-[#181818] text-gray-100 border-[#444]" ${isPlayed ? 'disabled' : ''}>
                                 ${playersInTournament.map(p => `<option value="${p.id}" ${p.id === match.player2_id ? 'selected' : ''}>${p.name}</option>`).join('')}
                             </select>
                         </div>
                     </div>
+                    <div id="doubles-players-container" class="grid grid-cols-2 gap-4 ${isDoubles ? '' : 'hidden'}">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300">Jugador A2</label>
+                            <select id="player3-select-modal" class="input-field mt-1 bg-[#181818] text-gray-100 border-[#444]" ${isPlayed ? 'disabled' : ''}>
+                                ${playersInTournament.map(p => `<option value="${p.id}" ${p.id === match.player3_id ? 'selected' : ''}>${p.name}</option>`).join('')}
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300">Jugador B2</label>
+                            <select id="player4-select-modal" class="input-field mt-1 bg-[#181818] text-gray-100 border-[#444]" ${isPlayed ? 'disabled' : ''}>
+                                ${playersInTournament.map(p => `<option value="${p.id}" ${p.id === match.player4_id ? 'selected' : ''}>${p.name}</option>`).join('')}
+                            </select>
+                        </div>
+                    </div>
                     <div class="grid grid-cols-3 gap-4 items-center pt-4">
                         <span class="font-semibold text-gray-200">SET</span>
-                        <span class="font-semibold text-center text-gray-200" style="font-size:14px;">${match.player1.name}</span>
-                        <span class="font-semibold text-center text-gray-200" style="font-size:14px;">${match.player2.name}</span>
+                        <span class="font-semibold text-center text-gray-200" style="font-size:14px;" id="teamA-name">${isDoubles ? `${match.player1.name} / ${match.player3.name}` : match.player1.name}</span>
+                        <span class="font-semibold text-center text-gray-200" style="font-size:14px;" id="teamB-name">${isDoubles ? `${match.player2.name} / ${match.player4.name}` : match.player2.name}</span>
                     </div>
                     ${[1, 2, 3].map(i => `
                         <div class="grid grid-cols-3 gap-4 items-center">
@@ -423,6 +478,17 @@ function openScoreModal(match) {
         </div>
     `;
 
+    document.getElementById('doubles-toggle').addEventListener('change', (e) => {
+        document.getElementById('doubles-players-container').classList.toggle('hidden', !e.target.checked);
+        updateTeamNamesInModal();
+    });
+    
+    document.getElementById('player1-select-modal').addEventListener('change', updateTeamNamesInModal);
+    document.getElementById('player2-select-modal').addEventListener('change', updateTeamNamesInModal);
+    document.getElementById('player3-select-modal').addEventListener('change', updateTeamNamesInModal);
+    document.getElementById('player4-select-modal').addEventListener('change', updateTeamNamesInModal);
+
+
     document.getElementById('btn-save-score').onclick = () => saveScores(match.id);
     document.getElementById('btn-cancel-modal').onclick = closeModal;
     document.getElementById('btn-delete-match').onclick = () => deleteMatch(match.id);
@@ -431,11 +497,39 @@ function openScoreModal(match) {
     document.getElementById('score-modal-overlay').onclick = (e) => { if (e.target.id === 'score-modal-overlay') closeModal(); };
 }
 
+
+function updateTeamNamesInModal() {
+    const isDoubles = document.getElementById('doubles-toggle').checked;
+    
+    const p1Select = document.getElementById('player1-select-modal');
+    const p2Select = document.getElementById('player2-select-modal');
+    const p3Select = document.getElementById('player3-select-modal');
+    const p4Select = document.getElementById('player4-select-modal');
+
+    const p1Name = p1Select.options[p1Select.selectedIndex].text;
+    const p2Name = p2Select.options[p2Select.selectedIndex].text;
+    const p3Name = p3Select.options[p3Select.selectedIndex].text;
+    const p4Name = p4Select.options[p4Select.selectedIndex].text;
+
+    let teamAName = p1Name;
+    let teamBName = p2Name;
+
+    if (isDoubles) {
+        teamAName += ` / ${p3Name}`;
+        teamBName += ` / ${p4Name}`;
+    }
+
+    document.getElementById('teamA-name').textContent = teamAName;
+    document.getElementById('teamB-name').textContent = teamBName;
+}
+
+
 function closeModal() {
     modalContainer.innerHTML = '';
 }
 
 async function saveScores(matchId) {
+    const isDoubles = document.getElementById('doubles-toggle').checked;
     const sets = [];
     let p1SetsWon = 0, p2SetsWon = 0;
     
@@ -453,22 +547,31 @@ async function saveScores(matchId) {
     
     const p1_id = document.getElementById('player1-select-modal').value;
     const p2_id = document.getElementById('player2-select-modal').value;
-    if (p1_id === p2_id) return alert("Los jugadores no pueden ser los mismos.");
+    const p3_id = isDoubles ? document.getElementById('player3-select-modal').value : null;
+    const p4_id = isDoubles ? document.getElementById('player4-select-modal').value : null;
 
-    let winner_id = null;
-    if (sets.length > 0) {
-        if (sets.length < 2 || (p1SetsWon < 2 && p2SetsWon < 2)) return alert("El resultado no es válido. Un jugador debe ganar al menos 2 sets.");
-        winner_id = p1SetsWon > p2SetsWon ? p1_id : p2_id;
+    if (p1_id === p2_id || p1_id === p3_id || p1_id === p4_id || p2_id === p3_id || p2_id === p4_id || (isDoubles && p3_id === p4_id)) {
+        return alert("Los jugadores no pueden repetirse.");
     }
     
-    const { error } = await supabase.from('matches').update({ 
-            sets: sets.length > 0 ? sets : null, 
-            winner_id, 
-            player1_id: p1_id,
-            player2_id: p2_id,
-            status: winner_id ? 'completado' : 'programado',
-            bonus_loser: (p1SetsWon === 1 && winner_id == p2_id) || (p2SetsWon === 1 && winner_id == p1_id)
-        }).eq('id', matchId);
+    let winner_id = null;
+    if (sets.length > 0) {
+        if (sets.length < 2 || (p1SetsWon < 2 && p2SetsWon < 2)) return alert("El resultado no es válido. Un equipo debe ganar al menos 2 sets.");
+        winner_id = p1SetsWon > p2SetsWon ? p1_id : p2_id;
+    }
+
+    const matchData = { 
+        sets: sets.length > 0 ? sets : null, 
+        winner_id, 
+        player1_id: p1_id,
+        player2_id: p2_id,
+        player3_id: p3_id,
+        player4_id: p4_id,
+        status: winner_id ? 'completado' : 'programado',
+        bonus_loser: (p1SetsWon === 1 && winner_id == p2_id) || (p2SetsWon === 1 && winner_id == p1_id)
+    };
+    
+    const { error } = await supabase.from('matches').update(matchData).eq('id', matchId);
     
     if (error) alert("Error al guardar: " + error.message);
     else { closeModal(); await loadInitialData(); }
@@ -552,13 +655,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 });
 
-btnShowForm.addEventListener('click', () => {
+btnShowSinglesForm.addEventListener('click', () => {
+    doublesLoaderContainer.classList.add('hidden'); // Ocultar el otro cargador
     const isHidden = massLoaderContainer.classList.toggle('hidden');
-    btnShowForm.innerHTML = isHidden
-        ? '<span class="material-icons">add</span> Crear Partido'
-        : '<span class="material-icons">close</span> Cancelar Carga';
+    btnShowSinglesForm.innerHTML = isHidden
+        ? '<span class="material-icons">person_add</span> Crear Partido Individual'
+        : '<span class="material-icons">close</span> Cancelar';
 
-    if (!isHidden && !isMassLoaderInitialized) {
+    if (!isHidden && !isSinglesLoaderInitialized) {
         setupMassMatchLoader({
             container: massLoaderContainer,
             allTournaments,
@@ -566,9 +670,30 @@ btnShowForm.addEventListener('click', () => {
             tournamentPlayersMap,
             loadInitialData
         });
-        isMassLoaderInitialized = true;
+        isSinglesLoaderInitialized = true;
     }
 });
+
+btnShowDoublesForm.addEventListener('click', () => {
+    massLoaderContainer.classList.add('hidden'); // Ocultar el otro cargador
+    const isHidden = doublesLoaderContainer.classList.toggle('hidden');
+    btnShowDoublesForm.innerHTML = isHidden
+        ? '<span class="material-icons">groups</span> Crear Partido Dobles'
+        : '<span class="material-icons">close</span> Cancelar';
+
+    if (!isHidden && !isDoublesLoaderInitialized) {
+        setupDoublesMatchLoader({
+            container: doublesLoaderContainer,
+            allTournaments,
+            allPlayers,
+            allTeams,
+            tournamentPlayersMap,
+            loadInitialData
+        });
+        isDoublesLoaderInitialized = true;
+    }
+});
+
 
 [filterTournamentSelect, filterStatusSelect, filterSedeSelect, filterCanchaSelect, searchInput].forEach(el => {
     if (el) el.addEventListener('input', applyFiltersAndSort);

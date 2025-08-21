@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Club de Tenis - Marcador por Equipos</title>
+    <link rel="icon" href="/logo_2021_02.png" type="image/png">
+    <link rel="stylesheet" href="../common/styles.css">
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"/>
+    <style>
+        .scoreboard-container {
+            display: grid;
+            gap: 2px;
+            background-color: #4a4a4a; /* Borde entre celdas */
+            border-radius: 8px;
+            overflow: hidden;
+            border: 2px solid #4a4a4a;
+        }
+        .scoreboard-container > div {
+            background-color: #18191b;
+            padding: 6px 4px;
+        }
+
+        /* --- Cabecera de Equipos --- */
+        .grid-corner { background-color: #000 !important; }
+        .team-header-cell {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 1.1rem;
+            line-height: 1.2;
+            padding: 12px 8px;
+        }
+        .team-pos { font-size: 0.8rem; opacity: 0.8; }
+        .team-name { font-size: 1.2rem; }
+
+        /* --- Sub-cabeceras (Singles, Dobles, TOTAL) --- */
+        .sub-header-label {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: #000;
+            font-weight: bold;
+            font-size: 0.8rem;
+        }
+        .sub-header-group {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr); /* <-- CAMBIO: de 4 a 3 */
+            gap: 1px;
+            padding: 0;
+            background-color: #4a4a4a;
+            font-size: 0.7rem; /* Un poco más grande para mejor lectura */
+            font-weight: 600;
+            color: #9ca3af;
+            text-transform: uppercase;
+        }
+        .sub-header-group > span {
+            background-color: #000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 4px 2px;
+        }
+        
+        /* --- Celdas de Datos y Fechas --- */
+        .date-label-cell {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: #000;
+            font-weight: bold;
+            color: #facc15;
+            font-size: 0.8rem;
+        }
+        .data-cell-group {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr); /* <-- CAMBIO: de 4 a 3 */
+            width: 100%;
+            padding: 0;
+            background-color: #4a4a4a;
+            font-size: 0.9rem; /* Números más grandes */
+            text-align: center;
+            gap: 1px;
+        }
+        .data-cell-group > span {
+            background-color: #222222;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 8px 2px; /* Más espacio vertical */
+        }
+        .data-cell-group > span.total-col {
+            font-weight: 700;
+            color: #f3f4f6;
+            background-color: #111;
+        }
+        
+        /* --- Filas del pie de tabla (Totales) --- */
+        .footer-label, .footer-cell {
+             display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+        .footer-label { background-color: #000; font-size: 0.85rem; }
+        .footer-cell { font-size: 1.2rem; }
+        .footer-label.total { color: #facc15; font-size: 1rem; }
+        .footer-cell.total { font-size: 1.5rem; color: #facc15; }
+    </style>
+</head>
+<body class="bg-black text-gray-200">
+    <header id="header"></header>
+    <main class="flex-1 py-8">
+        <div class="content-container max-w-7xl mx-auto space-y-8">
+            <h1 class="text-3xl font-bold text-gray-100">Marcador General por Equipos</h1>
+
+            <div class="bg-[#222222] p-6 rounded-xl shadow-lg">
+                <div class="max-w-md">
+                    <label for="tournament-filter" class="block text-sm font-medium text-gray-300 mb-2">Seleccionar Torneo de Equipos</label>
+                    <select id="tournament-filter" class="input-field dark-input"></select>
+                </div>
+            </div>
+
+            <div id="scoreboard-container">
+                </div>
+        </div>
+    </main>
+    <script type="module" src="team-scoreboard.js"></script>
+</body>
+</html>

@@ -45,7 +45,13 @@
               <label for="tournament-name" class="block text-sm font-medium text-gray-300">Nombre del Torneo</label>
               <input type="text" id="tournament-name" class="input-field dark-input mt-1 block w-full" required>
             </div>
-            <div>
+            <div class="flex items-end">
+                <label class="flex items-center gap-2 text-sm font-medium text-gray-300 h-full">
+                    <input type="checkbox" id="is-team-tournament" class="form-checkbox h-5 w-5 text-yellow-400 bg-gray-800 border-gray-600 rounded focus:ring-yellow-500">
+                    <span>Torneo por Equipos (Agrupador)</span>
+                </label>
+            </div>
+            <div id="category-container">
               <label for="category-select" class="block text-sm font-medium text-gray-300">Categoría</label>
               <select id="category-select" class="input-field dark-input mt-1 block w-full" required></select>
             </div>
@@ -66,19 +72,8 @@
       </div>
 
       <div class="bg-[#222222] p-6 rounded-xl shadow-lg">
-        <div class="flex justify-between items-center mb-4">
-            <h2 class="text-xl font-semibold text-gray-100">Torneos Existentes</h2>
-            <div>
-                <label for="sort-tournaments" class="text-sm font-medium text-gray-300 mr-2">Ordenar por:</label>
-                <select id="sort-tournaments" class="input-field dark-input !w-auto">
-                    <option value="created_at_desc">Más Nuevos</option>
-                    <option value="created_at_asc">Más Antiguos</option>
-                    <option value="start_date_asc">Próximos a Iniciar</option>
-                    <option value="name_asc">Nombre (A-Z)</option>
-                </select>
-            </div>
-        </div>
-        <div id="tournaments-list" class="space-y-4">
+        <h2 class="text-xl font-semibold text-gray-100 mb-4">Torneos Existentes</h2>
+        <div id="tournaments-list" class="space-y-2">
           </div>
       </div>
 
