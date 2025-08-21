@@ -1,6 +1,7 @@
 import { renderHeader } from '../common/header.js';
 import { requireRole } from '../common/router.js';
 import { supabase } from '../common/supabase.js';
+import { renderTeamScoreboard } from './team-scoreboard.js'; // Importamos la nueva función
 
 requireRole('admin');
 
@@ -8,26 +9,115 @@ requireRole('admin');
 const header = document.getElementById('header');
 const tournamentFilter = document.getElementById('tournament-filter');
 const rankingsContainer = document.getElementById('rankings-container');
+const viewSwitcherContainer = document.getElementById('view-switcher-container');
+const filterLabel = document.getElementById('filter-label');
 
-// --- Lógica Principal de Rankings ---
+// --- Estado Global ---
+let allTournaments = [];
+let currentView = 'category'; // 'category' o 'teams'
 
-async function populateTournamentFilter() {
-    tournamentFilter.innerHTML = '<option value="" disabled selected>Seleccione un torneo...</option>';
-    const { data: tournaments } = await supabase.from('tournaments').select('*');
-    if (tournaments) {
-        // Ordenar torneos numéricamente por nombre (ej: 1°, 2°, ... 11°)
-        tournaments.sort((a, b) => {
-            const numA = parseInt((a.name || '').match(/\d+/)?.[0] || '0', 10);
-            const numB = parseInt((b.name || '').match(/\d+/)?.[0] || '0', 10);
-            return numA - numB;
+// --- Lógica de Puntos ---
+function calculatePoints(match) {
+    let p1_points = 0;
+    let p2_points = 0;
+    if (match.winner_id) {
+        let p1TotalGames = 0, p2TotalGames = 0, p1SetsWon = 0, p2SetsWon = 0;
+        (match.sets || []).forEach(s => {
+            p1TotalGames += s.p1;
+            p2TotalGames += s.p2;
+            if (s.p1 > s.p2) p1SetsWon++; else p2SetsWon++;
         });
-        tournaments.forEach(t => {
-            tournamentFilter.innerHTML += `<option value="${t.id}">${t.name}</option>`;
-        });
+
+        const winnerIsSide1 = match.winner_id === match.player1_id || match.winner_id === match.player3_id;
+
+        if (winnerIsSide1) {
+            p1_points = 2;
+            if (p2TotalGames <= 3) p1_points += 1;
+            p2_points = (p2SetsWon === 1) ? 1 : 0;
+        } else {
+            p2_points = 2;
+            if (p1TotalGames <= 3) p2_points += 1;
+            p1_points = (p1SetsWon === 1) ? 1 : 0;
+        }
     }
+    return { p1_points, p2_points };
 }
 
-async function renderRankings(playerToHighlight = null) {
+// --- Lógica de Vistas y Filtros ---
+
+function setupViewSwitcher() {
+    viewSwitcherContainer.innerHTML = `
+        <div class="flex border-b border-gray-700 mb-4">
+            <button id="btn-view-category" class="btn-view active">Por Categoría</button>
+            <button id="btn-view-teams" class="btn-view">Por Equipos</button>
+        </div>
+        <style>
+            .btn-view { padding: 8px 16px; border-bottom: 2px solid transparent; color: #9ca3af; font-weight: 600; cursor: pointer; }
+            .btn-view.active { color: #facc15; border-bottom-color: #facc15; }
+        </style>
+    `;
+
+    const btnCategory = document.getElementById('btn-view-category');
+    const btnTeams = document.getElementById('btn-view-teams');
+
+    btnCategory.addEventListener('click', () => {
+        if (currentView === 'category') return;
+        currentView = 'category';
+        btnCategory.classList.add('active');
+        btnTeams.classList.remove('active');
+        populateTournamentFilter();
+        rankingsContainer.innerHTML = '';
+    });
+
+    btnTeams.addEventListener('click', () => {
+        if (currentView === 'teams') return;
+        currentView = 'teams';
+        btnTeams.classList.add('active');
+        btnCategory.classList.remove('active');
+        populateTournamentFilter();
+        rankingsContainer.innerHTML = '';
+    });
+}
+
+async function populateTournamentFilter() {
+    if (allTournaments.length === 0) {
+        const { data } = await supabase.from('tournaments').select('*, category:category_id(name)');
+        allTournaments = data || [];
+    }
+
+    let tournamentsToShow = [];
+    if (currentView === 'category') {
+        filterLabel.textContent = 'Seleccionar Torneo Individual';
+        tournamentsToShow = allTournaments.filter(t => t.category && t.category.name !== 'Equipos');
+    } else {
+        filterLabel.textContent = 'Seleccionar Torneo de Equipos';
+        tournamentsToShow = allTournaments.filter(t => t.category && t.category.name === 'Equipos');
+    }
+    
+    tournamentsToShow.sort((a, b) => {
+        const numA = parseInt((a.name || '').match(/\d+/)?.[0] || '0', 10);
+        const numB = parseInt((b.name || '').match(/\d+/)?.[0] || '0', 10);
+        return numA - numB;
+    });
+
+    tournamentFilter.innerHTML = '<option value="" disabled selected>Seleccione un torneo...</option>';
+    tournamentsToShow.forEach(t => {
+        tournamentFilter.innerHTML += `<option value="${t.id}">${t.name}</option>`;
+    });
+}
+
+// --- RANKING POR EQUIPOS ---
+
+function renderTeamRankings() {
+    const tournamentId = tournamentFilter.value;
+    // Llamamos a la función importada para que haga todo el trabajo
+    renderTeamScoreboard(rankingsContainer, tournamentId);
+}
+
+
+// --- RANKING POR CATEGORÍA ---
+
+async function renderCategoryRankings(playerToHighlight = null) {
     const tournamentId = tournamentFilter.value;
     rankingsContainer.innerHTML = '<p class="text-center p-8 text-gray-400">Calculando rankings...</p>';
 
@@ -44,9 +134,9 @@ async function renderRankings(playerToHighlight = null) {
     const playerIds = tournamentPlayersLinks.map(link => link.player_id);
 
     const { data: playersInTournament } = await supabase.from('players').select('*, teams(name, image_url), categories(id, name)').in('id', playerIds);
-    const { data: matchesInTournament } = await supabase.from('matches').select('*').eq('tournament_id', tournamentId).not('winner_id', 'is', null);
+    const { data: matchesInTournament } = await supabase.from('matches').select('*, player1:player1_id(id), player2:player2_id(id), player3:player3_id(id), player4:player4_id(id)').eq('tournament_id', tournamentId).not('winner_id', 'is', null);
 
-    const stats = calculateStats(playersInTournament || [], matchesInTournament || []);
+    const stats = calculateCategoryStats(playersInTournament || [], matchesInTournament || []);
     const categoriesInTournament = [...new Map(playersInTournament.map(p => p && [p.category_id, p.categories]).filter(Boolean)).values()];
 
     rankingsContainer.innerHTML = '';
@@ -65,12 +155,12 @@ async function renderRankings(playerToHighlight = null) {
 
         const tableContainer = document.createElement('div');
         tableContainer.className = 'bg-[#222222] p-6 rounded-xl shadow-lg overflow-x-auto';
-        tableContainer.innerHTML = generateRankingsHTML(categoryStats, playerToHighlight);
+        tableContainer.innerHTML = generateCategoryRankingsHTML(categoryStats, playerToHighlight);
         rankingsContainer.appendChild(tableContainer);
     });
 }
 
-function calculateStats(players, matches) {
+function calculateCategoryStats(players, matches) {
     const stats = players.map(player => ({
         playerId: player.id, name: player.name, categoryId: player.category_id, 
         teamName: player.teams ? player.teams.name : 'N/A',
@@ -88,7 +178,6 @@ function calculateStats(players, matches) {
         
         let p1SetsWon = 0, p2SetsWon = 0;
         let p1TotalGames = 0, p2TotalGames = 0;
-
         (match.sets || []).forEach(set => {
             p1TotalGames += set.p1;
             p2TotalGames += set.p2;
@@ -105,45 +194,23 @@ function calculateStats(players, matches) {
         p2Stat.sg += p2SetsWon; 
         p2Stat.sp += p1SetsWon;
         
-        // --- INICIO DE LA CORRECCIÓN DE PUNTOS ---
-        let p1_points_match = 0;
-        let p2_points_match = 0;
+        const { p1_points, p2_points } = calculatePoints(match);
+        p1Stat.puntos += p1_points;
+        p2Stat.puntos += p2_points;
 
-        if (match.winner_id === p1Stat.playerId) {
+        const winnerIsSide1 = match.winner_id === match.player1_id || match.winner_id === match.player3_id;
+
+        if (winnerIsSide1) {
             p1Stat.pg++; 
             p2Stat.pp++;
-            p1_points_match = 2; // Puntos base para el ganador
-
-            // Bonus Ganador (para jugador 1)
-            if (p2TotalGames <= 3) {
-                p1_points_match += 1;
-                p1Stat.bonus += 1;
-            }
-            // Bonus Perdedor (para jugador 2)
-            if (p2SetsWon === 1) {
-                p2_points_match += 1;
-                p2Stat.bonus += 1;
-            }
+            if (p2TotalGames <= 3) p1Stat.bonus++;
+            if (p2SetsWon === 1) p2Stat.bonus++;
         } else {
             p2Stat.pg++; 
             p1Stat.pp++;
-            p2_points_match = 2; // Puntos base para el ganador
-
-            // Bonus Ganador (para jugador 2)
-            if (p1TotalGames <= 3) {
-                p2_points_match += 1;
-                p2Stat.bonus += 1;
-            }
-            // Bonus Perdedor (para jugador 1)
-            if (p1SetsWon === 1) {
-                p1_points_match += 1;
-                p1Stat.bonus += 1;
-            }
+            if (p1TotalGames <= 3) p2Stat.bonus++;
+            if (p1SetsWon === 1) p1Stat.bonus++;
         }
-        
-        p1Stat.puntos += p1_points_match;
-        p2Stat.puntos += p2_points_match;
-        // --- FIN DE LA CORRECCIÓN DE PUNTOS ---
     });
 
     stats.forEach(s => {
@@ -162,18 +229,13 @@ function calculateStats(players, matches) {
         if (b.difP !== a.difP) return b.difP - a.difP;
         if (b.difS !== a.difS) return b.difS - a.difS;
         if (b.difG !== a.difG) return b.difG - a.difG;
-        // Criterio extra: Partido disputado entre ambos (requeriría una consulta adicional, se omite por simplicidad aquí)
-        // Criterio extra: Mayor cantidad de partidos jugados
-        if (b.pj !== a.pj) return b.pj - a.pj;
-        // Fallback a puntos si todo lo demás es igual
         return b.puntos - a.puntos;
     });
 
     return stats;
 }
 
-
-function generateRankingsHTML(stats, playerToHighlight = null) {
+function generateCategoryRankingsHTML(stats, playerToHighlight = null) {
     let tableHTML = `
         <table class="min-w-full text-sm text-gray-200">
             <thead class="bg-black">
@@ -239,10 +301,10 @@ function generateRankingsHTML(stats, playerToHighlight = null) {
     return tableHTML;
 }
 
-
-// --- Event Listeners ---
+// --- INICIALIZACIÓN Y EVENTOS ---
 document.addEventListener('DOMContentLoaded', async () => {
     header.innerHTML = renderHeader();
+    setupViewSwitcher();
     await populateTournamentFilter();
     
     const urlParams = new URLSearchParams(window.location.search);
@@ -251,10 +313,20 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if (tournamentIdToSelect) {
         tournamentFilter.value = tournamentIdToSelect;
-        await renderRankings(playerToHighlight);
+        const selectedTournament = allTournaments.find(t => t.id == tournamentIdToSelect);
+        if (selectedTournament?.category?.name === 'Equipos') {
+            document.getElementById('btn-view-teams').click();
+        }
+        await (currentView === 'category' ? renderCategoryRankings(playerToHighlight) : renderTeamRankings());
     } else {
         rankingsContainer.innerHTML = '<div class="bg-[#222222] p-8 rounded-xl"><p class="text-center text-gray-400">Seleccione un torneo para ver los rankings.</p></div>';
     }
 });
 
-tournamentFilter.addEventListener('change', () => renderRankings(null));
+tournamentFilter.addEventListener('change', () => {
+    if (currentView === 'category') {
+        renderCategoryRankings(null);
+    } else {
+        renderTeamRankings();
+    }
+});

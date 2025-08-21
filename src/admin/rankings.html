@@ -11,14 +11,13 @@
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"/>
     <style>
-      /* Estilos para los filtros en modo oscuro (igual que en matches.html) */
       .dark-input {
-        background-color: #374151; /* gray-700 */
-        border-color: #4b5563; /* gray-600 */
-        color: #e5e7eb; /* gray-200 */
+        background-color: #374151;
+        border-color: #4b5563;
+        color: #e5e7eb;
       }
       .dark-input:focus {
-        border-color: #fbbF24; /* amber-400 */
+        border-color: #fbbF24;
         box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.3);
       }
     </style>
@@ -30,8 +29,10 @@
             <h1 class="text-3xl font-bold text-gray-100">Ranking del Torneo</h1>
 
             <div class="bg-[#222222] p-6 rounded-xl shadow-lg">
+                <div id="view-switcher-container" class="mb-4">
+                    </div>
                 <div class="max-w-xs">
-                    <label for="tournament-filter" class="block text-sm font-medium text-gray-300 mb-2">Seleccionar Categoría</label>
+                    <label id="filter-label" for="tournament-filter" class="block text-sm font-medium text-gray-300 mb-2">Seleccionar Torneo</label>
                     <select id="tournament-filter" class="input-field dark-input"></select>
                 </div>
             </div>

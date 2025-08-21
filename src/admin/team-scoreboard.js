@@ -1,60 +1,30 @@
-import { renderHeader } from '../common/header.js';
-import { requireRole } from '../common/router.js';
 import { supabase } from '../common/supabase.js';
 import { calculatePoints } from './calculatePoints.js';
 
-requireRole('admin');
-
-// --- Elementos del DOM ---
-const header = document.getElementById('header');
-const tournamentFilter = document.getElementById('tournament-filter');
-const scoreboardContainer = document.getElementById('scoreboard-container');
 const TEAM_CATEGORY_NAME = "Equipos";
 
-// --- Lógica Principal ---
-async function initialize() {
-    header.innerHTML = renderHeader();
-    await populateTournamentFilter();
-
-    const urlParams = new URLSearchParams(window.location.search);
-    const tournamentId = urlParams.get('id');
-    if (tournamentId) {
-        tournamentFilter.value = tournamentId;
-        renderScoreboard();
-    }
-}
-
-async function populateTournamentFilter() {
-    const { data: category } = await supabase.from('categories').select('id').eq('name', TEAM_CATEGORY_NAME).single();
-    if (!category) return;
-
-    const { data: teamTournaments } = await supabase.from('tournaments').select('id, name').eq('category_id', category.id);
-    if (!teamTournaments) return;
-
-    tournamentFilter.innerHTML = '<option value="">Seleccione un torneo...</option>';
-    teamTournaments.forEach(t => {
-        tournamentFilter.innerHTML += `<option value="${t.id}">${t.name}</option>`;
-    });
-}
-
-async function renderScoreboard() {
-    const teamTournamentId = tournamentFilter.value;
-    if (!teamTournamentId) {
-        scoreboardContainer.innerHTML = '';
+/**
+ * Función principal y exportada. Renderiza el marcador completo de un torneo de equipos
+ * dentro de un contenedor HTML proporcionado.
+ * @param {HTMLElement} container - El elemento del DOM donde se renderizará el scoreboard.
+ * @param {string} teamTournamentId - El ID del torneo de equipos a mostrar.
+ */
+export async function renderTeamScoreboard(container, teamTournamentId) {
+    if (!container || !teamTournamentId) {
+        if(container) container.innerHTML = '';
         return;
     }
     
-    scoreboardContainer.innerHTML = '<p class="text-center p-8 text-gray-400">Calculando marcador de equipos...</p>';
+    container.innerHTML = '<p class="text-center p-8 text-gray-400">Calculando marcador de equipos...</p>';
 
     // --- 1. Obtener datos ---
     const { data: linked } = await supabase.from('linked_tournaments').select('source_tournament_id').eq('team_tournament_id', teamTournamentId);
     if (!linked) {
-        scoreboardContainer.innerHTML = '<div class="bg-[#222222] p-8 rounded-xl"><p class="text-center text-gray-400">Error al cargar los torneos vinculados.</p></div>';
+        container.innerHTML = '<div class="bg-[#222222] p-8 rounded-xl"><p class="text-center text-gray-400">Error al cargar los torneos vinculados.</p></div>';
         return;
     }
     
     const sourceTournamentIds = linked.map(l => l.source_tournament_id);
-    // Añadir el ID del propio torneo de equipos para incluir sus partidos de dobles
     if (!sourceTournamentIds.includes(parseInt(teamTournamentId))) {
         sourceTournamentIds.push(parseInt(teamTournamentId));
     }
@@ -65,7 +35,7 @@ async function renderScoreboard() {
     ]);
 
     if (!matches || !teams) {
-        scoreboardContainer.innerHTML = '<p class="text-red-500">Error al cargar datos de partidos o equipos.</p>';
+        container.innerHTML = '<p class="text-red-500">Error al cargar datos de partidos o equipos.</p>';
         return;
     }
 
@@ -109,7 +79,6 @@ async function renderScoreboard() {
         const team1_id = match.player1?.team_id;
         const team2_id = match.player2?.team_id;
 
-        // Asignar puntos al equipo del Lado 1
         if (team1_id && teamStats[team1_id]) {
             const team = teamStats[team1_id];
             if (!team.byFortnight[fortnightLabel]) team.byFortnight[fortnightLabel] = { singles: 0, doubles: 0, total: 0 };
@@ -118,7 +87,6 @@ async function renderScoreboard() {
             else team.byFortnight[fortnightLabel].singles += p1_points;
         }
 
-        // Asignar puntos al equipo del Lado 2
         if (team2_id && teamStats[team2_id]) {
             const team = teamStats[team2_id];
             if (!team.byFortnight[fortnightLabel]) team.byFortnight[fortnightLabel] = { singles: 0, doubles: 0, total: 0 };
@@ -141,10 +109,37 @@ async function renderScoreboard() {
     const sortedTeams = Object.values(teamStats).sort((a, b) => b.totalPoints - a.totalPoints);
 
     // --- 3. Renderizar el HTML ---
-    let gridHTML = '';
+    container.innerHTML = generateScoreboardHTML(sortedTeams, fortnights);
+}
+
+function generateScoreboardHTML(sortedTeams, fortnights) {
+    let gridHTML = `
+        <style>
+            .scoreboard-container { display: grid; gap: 2px; background-color: #4a4a4a; border-radius: 8px; overflow: hidden; border: 2px solid #4a4a4a; }
+            .scoreboard-container > div { background-color: #18191b; padding: 6px 4px; }
+            .grid-corner { background-color: #000 !important; }
+            .team-header-cell { display: flex; flex-direction: column; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 1.1rem; line-height: 1.2; padding: 12px 8px; text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.6); }
+            .team-pos { font-size: 0.8rem; opacity: 0.8; }
+            .team-name { font-size: 1.2rem; }
+            .sub-header-label { display: flex; align-items: center; justify-content: center; background-color: #000; font-weight: bold; font-size: 0.8rem; }
+            .sub-header-group { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; padding: 0; background-color: #4a4a4a; font-size: 0.7rem; font-weight: 600; color: #9ca3af; text-transform: uppercase; }
+            .sub-header-group > span { background-color: #000; display: flex; align-items: center; justify-content: center; padding: 4px 2px; }
+            .date-label-cell { display: flex; align-items: center; justify-content: center; background-color: #000; font-weight: bold; color: #facc15; font-size: 0.8rem; }
+            .data-cell-group { display: grid; grid-template-columns: repeat(3, 1fr); width: 100%; padding: 0; background-color: #4a4a4a; font-size: 0.9rem; text-align: center; gap: 1px; }
+            .data-cell-group > span { background-color: #222222; display: flex; align-items: center; justify-content: center; padding: 8px 2px; }
+            .data-cell-group > span.total-col { font-weight: 700; color: #f3f4f6; background-color: #111; }
+            .footer-label, .footer-cell { display: flex; align-items: center; justify-content: center; font-weight: bold; }
+            .footer-label { background-color: #000; font-size: 0.85rem; }
+            .footer-cell { font-size: 1.2rem; }
+            .footer-label.total { color: #facc15; font-size: 1rem; }
+            .footer-cell.total { font-size: 1.5rem; color: #facc15; }
+        </style>
+        <div class="scoreboard-container" style="grid-template-columns: 120px repeat(${sortedTeams.length}, 1fr);">
+    `;
+    
     gridHTML += `<div class="grid-corner"></div>`;
     sortedTeams.forEach((team, index) => {
-        gridHTML += `<div class="team-header-cell" style="background-color: ${team.color || '#333'}; text-shadow: 1px 1px 3px rgba(0,0,0,0.6);"><span class="team-pos">Pos. ${index + 1}</span><span class="team-name">${team.name}</span></div>`;
+        gridHTML += `<div class="team-header-cell" style="background-color: ${team.color || '#333'};"><span class="team-pos">Pos. ${index + 1}</span><span class="team-name">${team.name}</span></div>`;
     });
 
     gridHTML += `<div class="sub-header-label">Fechas</div>`;
@@ -167,9 +162,6 @@ async function renderScoreboard() {
     gridHTML += `<div class="footer-label total">TOTAL</div>`;
     sortedTeams.forEach(team => gridHTML += `<div class="footer-cell total">${team.totalPoints}</div>`);
 
-    scoreboardContainer.innerHTML = `<div class="scoreboard-container" style="grid-template-columns: 120px repeat(${sortedTeams.length}, 1fr);">${gridHTML}</div>`;
+    gridHTML += `</div>`;
+    return gridHTML;
 }
-
-// --- Event Listeners ---
-document.addEventListener('DOMContentLoaded', initialize);
-tournamentFilter.addEventListener('change', renderScoreboard);
