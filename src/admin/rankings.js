@@ -190,3 +190,40 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 tournamentFilter.addEventListener('change', () => renderRankings(null));
+
+// --- Render Rankings Function ---
+async function renderRankings(playerToHighlight = null) {
+    const tournamentId = tournamentFilter.value;
+    if (!tournamentId) {
+        rankingsContainer.innerHTML = '<div class="bg-[#222222] p-8 rounded-xl"><p class="text-center text-gray-400">Seleccione un torneo para ver los rankings.</p></div>';
+        return;
+    }
+
+    // Fetch players for the selected tournament
+    const { data: players, error: playersError } = await supabase
+        .from('players')
+        .select('*, teams(*)')
+        .eq('tournament_id', tournamentId);
+    if (playersError || !players) {
+        rankingsContainer.innerHTML = '<div class="bg-[#222222] p-8 rounded-xl"><p class="text-center text-red-400">Error al cargar jugadores.</p></div>';
+        return;
+    }
+
+    // Fetch matches for the selected tournament
+    const { data: matches, error: matchesError } = await supabase
+        .from('matches')
+        .select('*')
+        .eq('tournament_id', tournamentId);
+    if (matchesError || !matches) {
+        rankingsContainer.innerHTML = '<div class="bg-[#222222] p-8 rounded-xl"><p class="text-center text-red-400">Error al cargar partidos.</p></div>';
+        return;
+    }
+
+    // Calculate stats and render table
+    const stats = calculateStats(players, matches);
+    rankingsContainer.innerHTML = `
+        <div class="bg-[#222222] p-4 md:p-8 rounded-xl overflow-x-auto">
+            ${generateRankingsHTML(stats, playerToHighlight)}
+        </div>
+    `;
+}
