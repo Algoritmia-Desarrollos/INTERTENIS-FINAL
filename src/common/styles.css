@@ -10,10 +10,16 @@
   --container-bg: #222222;      /* Fondo de contenedores y tarjetas */
 }
 
+
 body {
-  font-family: 'Inter', sans-serif, system-ui;
+  font-family: 'Calibri Bold', Calibri, Arial, sans-serif;
   background-color: var(--background-color);
   color: var(--text-primary);
+}
+
+/* Fuente para todas las tablas */
+table, th, td {
+  font-family: 'Calibri Bold', Calibri, Arial, sans-serif !important;
 }
 
 .content-container {
