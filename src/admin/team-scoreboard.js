@@ -54,12 +54,10 @@ async function renderScoreboard() {
     }
     const sourceTournamentIds = linked.map(l => l.source_tournament_id);
 
-    // *** INICIO DE LA CORRECCIÓN 1: Obtener datos de equipo para TODOS los jugadores ***
     const [{ data: matches }, { data: teams }] = await Promise.all([
         supabase.from('matches').select('*, player1:player1_id(team_id), player2:player2_id(team_id), player3:player3_id(team_id), player4:player4_id(team_id)').in('tournament_id', sourceTournamentIds).not('winner_id', 'is', null),
         supabase.from('teams').select('*')
     ]);
-    // *** FIN DE LA CORRECCIÓN 1 ***
 
     if (!matches || !teams) {
         scoreboardContainer.innerHTML = '<p class="text-red-500">Error al cargar datos.</p>';
@@ -95,7 +93,6 @@ async function renderScoreboard() {
         }
     }
 
-    // *** INICIO DE LA CORRECCIÓN 2: Lógica de asignación de puntos ***
     matches.forEach(match => {
         const matchDate = new Date(match.match_date);
         const fortnightLabel = Object.keys(fortnights).find(label => matchDate >= fortnights[label].start && matchDate <= fortnights[label].end);
@@ -128,8 +125,6 @@ async function renderScoreboard() {
             else team.byFortnight[fortnightLabel].singles += p2_points;
         }
     });
-    // *** FIN DE LA CORRECCIÓN 2 ***
-
 
     Object.values(teamStats).forEach(team => {
         let subTotal = 0;

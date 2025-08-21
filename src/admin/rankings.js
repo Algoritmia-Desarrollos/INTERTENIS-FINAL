@@ -87,34 +87,66 @@ function calculateStats(players, matches) {
         p2Stat.pj++;
         
         let p1SetsWon = 0, p2SetsWon = 0;
+        let p1TotalGames = 0, p2TotalGames = 0;
+
         (match.sets || []).forEach(set => {
-            p1Stat.gg += set.p1; 
-            p1Stat.gp += set.p2;
-            p2Stat.gg += set.p2; 
-            p2Stat.gp += set.p1;
+            p1TotalGames += set.p1;
+            p2TotalGames += set.p2;
             if(set.p1 > set.p2) p1SetsWon++; else p2SetsWon++;
         });
+
+        p1Stat.gg += p1TotalGames;
+        p1Stat.gp += p2TotalGames;
+        p2Stat.gg += p2TotalGames;
+        p2Stat.gp += p1TotalGames;
 
         p1Stat.sg += p1SetsWon; 
         p1Stat.sp += p2SetsWon;
         p2Stat.sg += p2SetsWon; 
         p2Stat.sp += p1SetsWon;
+        
+        // --- INICIO DE LA CORRECCIÓN DE PUNTOS ---
+        let p1_points_match = 0;
+        let p2_points_match = 0;
 
         if (match.winner_id === p1Stat.playerId) {
             p1Stat.pg++; 
-            p2Stat.pp++; 
-            p1Stat.puntos += 2;
-            if (match.bonus_loser) p2Stat.bonus += 1;
+            p2Stat.pp++;
+            p1_points_match = 2; // Puntos base para el ganador
+
+            // Bonus Ganador (para jugador 1)
+            if (p2TotalGames <= 3) {
+                p1_points_match += 1;
+                p1Stat.bonus += 1;
+            }
+            // Bonus Perdedor (para jugador 2)
+            if (p2SetsWon === 1) {
+                p2_points_match += 1;
+                p2Stat.bonus += 1;
+            }
         } else {
             p2Stat.pg++; 
-            p1Stat.pp++; 
-            p2Stat.puntos += 2;
-            if (match.bonus_loser) p1Stat.bonus += 1;
+            p1Stat.pp++;
+            p2_points_match = 2; // Puntos base para el ganador
+
+            // Bonus Ganador (para jugador 2)
+            if (p1TotalGames <= 3) {
+                p2_points_match += 1;
+                p2Stat.bonus += 1;
+            }
+            // Bonus Perdedor (para jugador 1)
+            if (p1SetsWon === 1) {
+                p1_points_match += 1;
+                p1Stat.bonus += 1;
+            }
         }
+        
+        p1Stat.puntos += p1_points_match;
+        p2Stat.puntos += p2_points_match;
+        // --- FIN DE LA CORRECCIÓN DE PUNTOS ---
     });
 
     stats.forEach(s => {
-        s.puntos += s.bonus; 
         s.difP = s.pg - s.pp;
         s.difS = s.sg - s.sp;
         s.difG = s.gg - s.gp;
@@ -130,11 +162,16 @@ function calculateStats(players, matches) {
         if (b.difP !== a.difP) return b.difP - a.difP;
         if (b.difS !== a.difS) return b.difS - a.difS;
         if (b.difG !== a.difG) return b.difG - a.difG;
+        // Criterio extra: Partido disputado entre ambos (requeriría una consulta adicional, se omite por simplicidad aquí)
+        // Criterio extra: Mayor cantidad de partidos jugados
+        if (b.pj !== a.pj) return b.pj - a.pj;
+        // Fallback a puntos si todo lo demás es igual
         return b.puntos - a.puntos;
     });
 
     return stats;
 }
+
 
 function generateRankingsHTML(stats, playerToHighlight = null) {
     let tableHTML = `

@@ -1,30 +1,193 @@
 import { supabase } from './src/common/supabase.js';
-import { renderPublicHeader } from './public/public-header.js'; // Importación corregida
+import { renderPublicHeader } from './public/public-header.js';
 
 // --- Elementos del DOM ---
 const header = document.getElementById('header');
 const tournamentFilter = document.getElementById('tournament-filter');
 const rankingsContainer = document.getElementById('rankings-container');
+const viewSwitcherContainer = document.getElementById('view-switcher-container');
+const filterLabel = document.getElementById('filter-label');
 
-// --- Lógica Principal de Rankings ---
+// --- Estado Global ---
+let allTournaments = [];
+let currentView = 'category'; // 'category' o 'teams'
 
-async function populateTournamentFilter() {
-    tournamentFilter.innerHTML = '<option value="" disabled selected>Seleccione un torneo...</option>';
-    const { data: tournaments } = await supabase.from('tournaments').select('*');
-    if (tournaments) {
-        // Ordenar torneos numéricamente por nombre (ej: 1°, 2°, ... 11°)
-        tournaments.sort((a, b) => {
-            const numA = parseInt((a.name || '').match(/\d+/)?.[0] || '0', 10);
-            const numB = parseInt((b.name || '').match(/\d+/)?.[0] || '0', 10);
-            return numA - numB;
+// --- Lógica de Puntos (importada de la versión de admin para consistencia) ---
+function calculatePoints(match) {
+    let p1_points = 0;
+    let p2_points = 0;
+    if (match.winner_id) {
+        let p1TotalGames = 0, p2TotalGames = 0, p1SetsWon = 0, p2SetsWon = 0;
+        (match.sets || []).forEach(s => {
+            p1TotalGames += s.p1;
+            p2TotalGames += s.p2;
+            if (s.p1 > s.p2) p1SetsWon++; else p2SetsWon++;
         });
-        tournaments.forEach(t => {
-            tournamentFilter.innerHTML += `<option value="${t.id}">${t.name}</option>`;
-        });
+
+        if (match.winner_id === match.player1_id) {
+            p1_points = 2;
+            if (p2TotalGames <= 3) p1_points += 1;
+            if (p2SetsWon === 1) p2_points += 1;
+        } else {
+            p2_points = 2;
+            if (p1TotalGames <= 3) p2_points += 1;
+            if (p1SetsWon === 1) p1_points += 1;
+        }
     }
+    return { p1_points, p2_points };
 }
 
-async function renderRankings(playerToHighlight = null) {
+// --- Lógica de Vistas y Filtros ---
+
+function setupViewSwitcher() {
+    viewSwitcherContainer.innerHTML = `
+        <div class="flex border-b border-gray-700 mb-4">
+            <button id="btn-view-category" class="btn-view active">Por Categoría</button>
+            <button id="btn-view-teams" class="btn-view">Por Equipos</button>
+        </div>
+        <style>
+            .btn-view { padding: 8px 16px; border-bottom: 2px solid transparent; color: #9ca3af; font-weight: 600; }
+            .btn-view.active { color: #facc15; border-bottom-color: #facc15; }
+        </style>
+    `;
+
+    const btnCategory = document.getElementById('btn-view-category');
+    const btnTeams = document.getElementById('btn-view-teams');
+
+    btnCategory.addEventListener('click', () => {
+        if (currentView === 'category') return;
+        currentView = 'category';
+        btnCategory.classList.add('active');
+        btnTeams.classList.remove('active');
+        populateTournamentFilter();
+        rankingsContainer.innerHTML = '';
+    });
+
+    btnTeams.addEventListener('click', () => {
+        if (currentView === 'teams') return;
+        currentView = 'teams';
+        btnTeams.classList.add('active');
+        btnCategory.classList.remove('active');
+        populateTournamentFilter();
+        rankingsContainer.innerHTML = '';
+    });
+}
+
+async function populateTournamentFilter() {
+    if (allTournaments.length === 0) {
+        const { data } = await supabase.from('tournaments').select('*, category:category_id(name)');
+        allTournaments = data || [];
+    }
+
+    let tournamentsToShow = [];
+    if (currentView === 'category') {
+        filterLabel.textContent = 'Seleccionar Torneo Individual';
+        tournamentsToShow = allTournaments.filter(t => t.category && t.category.name !== 'Equipos');
+    } else {
+        filterLabel.textContent = 'Seleccionar Torneo de Equipos';
+        tournamentsToShow = allTournaments.filter(t => t.category && t.category.name === 'Equipos');
+    }
+    
+    tournamentsToShow.sort((a, b) => {
+        const numA = parseInt((a.name || '').match(/\d+/)?.[0] || '0', 10);
+        const numB = parseInt((b.name || '').match(/\d+/)?.[0] || '0', 10);
+        return numA - numB;
+    });
+
+    tournamentFilter.innerHTML = '<option value="" disabled selected>Seleccione un torneo...</option>';
+    tournamentsToShow.forEach(t => {
+        tournamentFilter.innerHTML += `<option value="${t.id}">${t.name}</option>`;
+    });
+}
+
+// --- RANKING POR EQUIPOS ---
+
+async function renderTeamRankings() {
+    const teamTournamentId = tournamentFilter.value;
+    rankingsContainer.innerHTML = '<p class="text-center p-8 text-gray-400">Calculando ranking de equipos...</p>';
+    if (!teamTournamentId) {
+        rankingsContainer.innerHTML = '<div class="bg-[#222222] p-8 rounded-xl"><p class="text-center text-gray-400">Seleccione un torneo para ver el ranking.</p></div>';
+        return;
+    }
+
+    const { data: linked } = await supabase.from('linked_tournaments').select('source_tournament_id').eq('team_tournament_id', teamTournamentId);
+    if (!linked || linked.length === 0) {
+        rankingsContainer.innerHTML = '<div class="bg-[#222222] p-8 rounded-xl"><p class="text-center text-gray-400">Este torneo no tiene torneos vinculados.</p></div>';
+        return;
+    }
+    const sourceTournamentIds = linked.map(l => l.source_tournament_id);
+
+    const [{ data: matches }, { data: teams }] = await Promise.all([
+        supabase.from('matches').select('*, player1:player1_id(team_id), player2:player2_id(team_id)').in('tournament_id', sourceTournamentIds).not('winner_id', 'is', null),
+        supabase.from('teams').select('*')
+    ]);
+
+    if (!matches || !teams) {
+        rankingsContainer.innerHTML = '<p class="text-red-500">Error al cargar datos.</p>';
+        return;
+    }
+
+    const teamStats = teams.reduce((acc, team) => {
+        acc[team.id] = { ...team, puntos: 0, pj: 0 };
+        return acc;
+    }, {});
+
+    matches.forEach(match => {
+        const { p1_points, p2_points } = calculatePoints(match);
+        const team1_id = match.player1?.team_id;
+        const team2_id = match.player2?.team_id;
+
+        if (team1_id && teamStats[team1_id]) {
+            teamStats[team1_id].puntos += p1_points;
+            teamStats[team1_id].pj += 1;
+        }
+        if (team2_id && teamStats[team2_id]) {
+            teamStats[team2_id].puntos += p2_points;
+            teamStats[team2_id].pj += 1;
+        }
+    });
+
+    const sortedTeams = Object.values(teamStats).sort((a, b) => b.puntos - a.puntos);
+    rankingsContainer.innerHTML = generateTeamRankingsHTML(sortedTeams);
+}
+
+function generateTeamRankingsHTML(stats) {
+    const tableContainer = document.createElement('div');
+    tableContainer.className = 'bg-[#222222] p-6 rounded-xl shadow-lg overflow-x-auto';
+    let tableHTML = `
+        <table class="min-w-full text-sm text-gray-200">
+            <thead class="bg-black">
+                <tr>
+                    <th class="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase">Pos.</th>
+                    <th class="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase">Equipo</th>
+                    <th class="px-3 py-3 text-center text-xs font-medium text-gray-400 uppercase">PJ</th>
+                    <th class="px-3 py-3 text-center text-xs font-medium text-gray-400 uppercase">Puntos</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-700">`;
+
+    stats.forEach((s, index) => {
+        tableHTML += `
+            <tr>
+                <td class="px-3 py-3 font-bold text-yellow-400 text-base">${index + 1}°</td>
+                <td class="px-3 py-3 whitespace-nowrap">
+                    <div class="flex items-center gap-3">
+                        <img src="${s.image_url || 'https://via.placeholder.com/40'}" alt="${s.name}" class="h-8 w-8 rounded-full object-cover">
+                        <span class="font-bold text-gray-100">${s.name}</span>
+                    </div>
+                </td>
+                <td class="px-3 py-3 text-center">${s.pj}</td>
+                <td class="px-3 py-3 text-center font-bold text-lg text-yellow-300">${s.puntos}</td>
+            </tr>`;
+    });
+    tableHTML += '</tbody></table>';
+    tableContainer.innerHTML = tableHTML;
+    return tableContainer.outerHTML;
+}
+
+// --- RANKING POR CATEGORÍA (código existente movido y renombrado) ---
+
+async function renderCategoryRankings(playerToHighlight = null) {
     const tournamentId = tournamentFilter.value;
     rankingsContainer.innerHTML = '<p class="text-center p-8 text-gray-400">Calculando rankings...</p>';
 
@@ -43,7 +206,7 @@ async function renderRankings(playerToHighlight = null) {
     const { data: playersInTournament } = await supabase.from('players').select('*, teams(name, image_url), categories(id, name)').in('id', playerIds);
     const { data: matchesInTournament } = await supabase.from('matches').select('*').eq('tournament_id', tournamentId).not('winner_id', 'is', null);
 
-    const stats = calculateStats(playersInTournament || [], matchesInTournament || []);
+    const stats = calculateCategoryStats(playersInTournament || [], matchesInTournament || []);
     const categoriesInTournament = [...new Map(playersInTournament.map(p => p && [p.category_id, p.categories]).filter(Boolean)).values()];
 
     rankingsContainer.innerHTML = '';
@@ -62,12 +225,12 @@ async function renderRankings(playerToHighlight = null) {
 
         const tableContainer = document.createElement('div');
         tableContainer.className = 'bg-[#222222] p-6 rounded-xl shadow-lg overflow-x-auto';
-        tableContainer.innerHTML = generateRankingsHTML(categoryStats, playerToHighlight);
+        tableContainer.innerHTML = generateCategoryRankingsHTML(categoryStats, playerToHighlight);
         rankingsContainer.appendChild(tableContainer);
     });
 }
 
-function calculateStats(players, matches) {
+function calculateCategoryStats(players, matches) {
     const stats = players.map(player => ({
         playerId: player.id, name: player.name, categoryId: player.category_id, 
         teamName: player.teams ? player.teams.name : 'N/A',
@@ -84,34 +247,41 @@ function calculateStats(players, matches) {
         p2Stat.pj++;
         
         let p1SetsWon = 0, p2SetsWon = 0;
+        let p1TotalGames = 0, p2TotalGames = 0;
         (match.sets || []).forEach(set => {
-            p1Stat.gg += set.p1; 
-            p1Stat.gp += set.p2;
-            p2Stat.gg += set.p2; 
-            p2Stat.gp += set.p1;
+            p1TotalGames += set.p1;
+            p2TotalGames += set.p2;
             if(set.p1 > set.p2) p1SetsWon++; else p2SetsWon++;
         });
+
+        p1Stat.gg += p1TotalGames;
+        p1Stat.gp += p2TotalGames;
+        p2Stat.gg += p2TotalGames;
+        p2Stat.gp += p1TotalGames;
 
         p1Stat.sg += p1SetsWon; 
         p1Stat.sp += p2SetsWon;
         p2Stat.sg += p2SetsWon; 
         p2Stat.sp += p1SetsWon;
+        
+        const { p1_points, p2_points } = calculatePoints(match);
+        p1Stat.puntos += p1_points;
+        p2Stat.puntos += p2_points;
 
         if (match.winner_id === p1Stat.playerId) {
             p1Stat.pg++; 
-            p2Stat.pp++; 
-            p1Stat.puntos += 2;
-            if (match.bonus_loser) p2Stat.bonus += 1;
+            p2Stat.pp++;
+            if (p2TotalGames <= 3) p1Stat.bonus++;
+            if (p2SetsWon === 1) p2Stat.bonus++;
         } else {
             p2Stat.pg++; 
-            p1Stat.pp++; 
-            p2Stat.puntos += 2;
-            if (match.bonus_loser) p1Stat.bonus += 1;
+            p1Stat.pp++;
+            if (p1TotalGames <= 3) p2Stat.bonus++;
+            if (p1SetsWon === 1) p1Stat.bonus++;
         }
     });
 
     stats.forEach(s => {
-        s.puntos += s.bonus; 
         s.difP = s.pg - s.pp;
         s.difS = s.sg - s.sp;
         s.difG = s.gg - s.gp;
@@ -133,7 +303,7 @@ function calculateStats(players, matches) {
     return stats;
 }
 
-function generateRankingsHTML(stats, playerToHighlight = null) {
+function generateCategoryRankingsHTML(stats, playerToHighlight = null) {
     let tableHTML = `
         <table class="min-w-full text-sm text-gray-200">
             <thead class="bg-black">
@@ -199,9 +369,11 @@ function generateRankingsHTML(stats, playerToHighlight = null) {
     return tableHTML;
 }
 
-// --- Event Listeners ---
+
+// --- INICIALIZACIÓN Y EVENTOS ---
 document.addEventListener('DOMContentLoaded', async () => {
-    header.innerHTML = renderPublicHeader(); // Llamada a la función corregida
+    header.innerHTML = renderPublicHeader();
+    setupViewSwitcher();
     await populateTournamentFilter();
     
     const urlParams = new URLSearchParams(window.location.search);
@@ -210,10 +382,21 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if (tournamentIdToSelect) {
         tournamentFilter.value = tournamentIdToSelect;
-        await renderRankings(playerToHighlight);
+        // Determinar qué ranking mostrar basado en el torneo seleccionado
+        const selectedTournament = allTournaments.find(t => t.id == tournamentIdToSelect);
+        if (selectedTournament?.category?.name === 'Equipos') {
+            document.getElementById('btn-view-teams').click();
+        }
+        await (currentView === 'category' ? renderCategoryRankings(playerToHighlight) : renderTeamRankings());
     } else {
         rankingsContainer.innerHTML = '<div class="bg-[#222222] p-8 rounded-xl"><p class="text-center text-gray-400">Seleccione un torneo para ver los rankings.</p></div>';
     }
 });
 
-tournamentFilter.addEventListener('change', () => renderRankings(null));
+tournamentFilter.addEventListener('change', () => {
+    if (currentView === 'category') {
+        renderCategoryRankings(null);
+    } else {
+        renderTeamRankings();
+    }
+});
