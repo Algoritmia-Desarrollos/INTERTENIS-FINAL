@@ -54,10 +54,12 @@ async function renderScoreboard() {
     }
     const sourceTournamentIds = linked.map(l => l.source_tournament_id);
 
+    // *** INICIO DE LA CORRECCIÓN 1: Obtener datos de equipo para TODOS los jugadores ***
     const [{ data: matches }, { data: teams }] = await Promise.all([
-        supabase.from('matches').select('*, player1:player1_id(team_id), player2:player2_id(team_id)').in('tournament_id', sourceTournamentIds).not('winner_id', 'is', null),
+        supabase.from('matches').select('*, player1:player1_id(team_id), player2:player2_id(team_id), player3:player3_id(team_id), player4:player4_id(team_id)').in('tournament_id', sourceTournamentIds).not('winner_id', 'is', null),
         supabase.from('teams').select('*')
     ]);
+    // *** FIN DE LA CORRECCIÓN 1 ***
 
     if (!matches || !teams) {
         scoreboardContainer.innerHTML = '<p class="text-red-500">Error al cargar datos.</p>';
@@ -84,39 +86,50 @@ async function renderScoreboard() {
             } else {
                 nextFortnightStart = new Date(currentFortnightStart.getFullYear(), currentFortnightStart.getMonth() + 1, 1);
             }
-            
-            // *** INICIO DE LA CORRECCIÓN ***
             const startDateStr = currentFortnightStart.toLocaleDateString('es-AR', {day: 'numeric', month: 'numeric'});
             const endDate = new Date(nextFortnightStart.getTime() - 1);
             const endDateStr = endDate.toLocaleDateString('es-AR', {day: 'numeric', month: 'numeric'});
             const label = `${startDateStr} al ${endDateStr}`;
-            // *** FIN DE LA CORRECCIÓN ***
-
             fortnights[label] = { start: currentFortnightStart, end: endDate };
             currentFortnightStart = nextFortnightStart;
         }
     }
 
+    // *** INICIO DE LA CORRECCIÓN 2: Lógica de asignación de puntos ***
     matches.forEach(match => {
         const matchDate = new Date(match.match_date);
-        let fortnightLabel = Object.keys(fortnights).find(label => matchDate >= fortnights[label].start && matchDate <= fortnights[label].end);
+        const fortnightLabel = Object.keys(fortnights).find(label => matchDate >= fortnights[label].start && matchDate <= fortnights[label].end);
         if (!fortnightLabel) return;
 
         const { p1_points, p2_points } = calculatePoints(match);
-        const isDoubles = match.player3_id && match.player4_id;
-        
-        const processPoints = (player, points) => {
-            if (player && player.team_id && teamStats[player.team_id]) {
-                const team = teamStats[player.team_id];
-                if (!team.byFortnight[fortnightLabel]) team.byFortnight[fortnightLabel] = { singles: 0, doubles: 0, total: 0 };
-                
-                if (isDoubles) team.byFortnight[fortnightLabel].doubles += points;
-                else team.byFortnight[fortnightLabel].singles += points;
-            }
-        };
-        processPoints(match.player1, p1_points);
-        processPoints(match.player2, p2_points);
+        const isDoubles = !!(match.player3_id && match.player4_id);
+
+        const team1_id = match.player1?.team_id;
+        const team2_id = match.player2?.team_id;
+
+        const winning_team_id = match.winner_id === match.player1_id ? team1_id : team2_id;
+        const losing_team_id = match.winner_id === match.player1_id ? team2_id : team1_id;
+
+        // Asignar puntos al equipo ganador
+        if (winning_team_id && teamStats[winning_team_id]) {
+            const team = teamStats[winning_team_id];
+            if (!team.byFortnight[fortnightLabel]) team.byFortnight[fortnightLabel] = { singles: 0, doubles: 0, total: 0 };
+            
+            if (isDoubles) team.byFortnight[fortnightLabel].doubles += p1_points;
+            else team.byFortnight[fortnightLabel].singles += p1_points;
+        }
+
+        // Asignar puntos al equipo perdedor
+        if (losing_team_id && teamStats[losing_team_id]) {
+            const team = teamStats[losing_team_id];
+            if (!team.byFortnight[fortnightLabel]) team.byFortnight[fortnightLabel] = { singles: 0, doubles: 0, total: 0 };
+
+            if (isDoubles) team.byFortnight[fortnightLabel].doubles += p2_points;
+            else team.byFortnight[fortnightLabel].singles += p2_points;
+        }
     });
+    // *** FIN DE LA CORRECCIÓN 2 ***
+
 
     Object.values(teamStats).forEach(team => {
         let subTotal = 0;
@@ -134,7 +147,7 @@ async function renderScoreboard() {
     let gridHTML = '';
     gridHTML += `<div class="grid-corner"></div>`;
     sortedTeams.forEach((team, index) => {
-        gridHTML += `<div class="team-header-cell" style="background-color: ${team.color || '#333'};"><span class="team-pos">Pos. ${index + 1}</span><span class="team-name">${team.name}</span></div>`;
+        gridHTML += `<div class="team-header-cell" style="background-color: ${team.color || '#333'}; text-shadow: 1px 1px 3px rgba(0,0,0,0.6);"><span class="team-pos">Pos. ${index + 1}</span><span class="team-name">${team.name}</span></div>`;
     });
 
     gridHTML += `<div class="sub-header-label">Fechas</div>`;
@@ -143,7 +156,6 @@ async function renderScoreboard() {
     });
 
     Object.keys(fortnights).forEach(label => {
-        // *** CORRECCIÓN: Usamos directamente la nueva etiqueta (label) ***
         gridHTML += `<div class="date-label-cell">${label}</div>`;
         sortedTeams.forEach(team => {
             const data = team.byFortnight[label] || { singles: 0, doubles: 0, total: 0 };

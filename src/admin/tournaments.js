@@ -140,7 +140,7 @@ function tournamentCardTemplate(t) {
             </div>
             <div class="flex items-center gap-2">
                 ${isTeamTournament 
-                    ? `<a href="team-rankings.html?id=${t.id}" class="btn btn-primary !text-xs !py-1 !px-2"><span class="material-icons !text-sm">leaderboard</span>Ver Ranking Equipos</a>`
+                    ? `<a href="team-scoreboard.html?id=${t.id}" class="btn btn-primary !text-xs !py-1 !px-2"><span class="material-icons !text-sm">leaderboard</span>Ver Ranking Equipos</a>`
                     : `<a href="rankings.html?tournamentId=${t.id}" class="btn btn-secondary !text-xs !py-1 !px-2"><span class="material-icons !text-sm">leaderboard</span>Ver Ranking</a>`
                 }
                 <button data-action="toggle" data-tournament-id="${t.id}" class="p-2 rounded-full hover:bg-gray-800">

@@ -4,7 +4,7 @@ import { requireRole } from '../common/router.js';
 import { supabase } from '../common/supabase.js';
 import { importMatchesFromFile } from '../common/excel-importer.js';
 import { setupMassMatchLoader } from './mass-match-loader.js';
-import { setupDoublesMatchLoader } from './doubles-match-loader.js'; // Importar el nuevo cargador
+import { setupDoublesMatchLoader } from './doubles-match-loader.js';
 
 requireRole('admin');
 
@@ -655,13 +655,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 });
 
+// *** INICIO DE LA CORRECCIÓN ***
 btnShowSinglesForm.addEventListener('click', () => {
-    doublesLoaderContainer.classList.add('hidden'); // Ocultar el otro cargador
+    // 1. Ocultar el formulario de dobles y resetear su botón
+    doublesLoaderContainer.classList.add('hidden');
+    btnShowDoublesForm.innerHTML = '<span class="material-icons">groups</span> Crear Partido Dobles';
+
+    // 2. Alternar la visibilidad del formulario de individuales y actualizar su propio botón
     const isHidden = massLoaderContainer.classList.toggle('hidden');
     btnShowSinglesForm.innerHTML = isHidden
         ? '<span class="material-icons">person_add</span> Crear Partido Individual'
         : '<span class="material-icons">close</span> Cancelar';
 
+    // 3. Inicializar el cargador si es la primera vez que se abre
     if (!isHidden && !isSinglesLoaderInitialized) {
         setupMassMatchLoader({
             container: massLoaderContainer,
@@ -675,24 +681,29 @@ btnShowSinglesForm.addEventListener('click', () => {
 });
 
 btnShowDoublesForm.addEventListener('click', () => {
-    massLoaderContainer.classList.add('hidden'); // Ocultar el otro cargador
+    // 1. Ocultar el formulario de individuales y resetear su botón
+    massLoaderContainer.classList.add('hidden');
+    btnShowSinglesForm.innerHTML = '<span class="material-icons">person_add</span> Crear Partido Individual';
+
+    // 2. Alternar la visibilidad del formulario de dobles y actualizar su propio botón
     const isHidden = doublesLoaderContainer.classList.toggle('hidden');
     btnShowDoublesForm.innerHTML = isHidden
         ? '<span class="material-icons">groups</span> Crear Partido Dobles'
         : '<span class="material-icons">close</span> Cancelar';
 
+    // 3. Inicializar el cargador si es la primera vez que se abre
     if (!isHidden && !isDoublesLoaderInitialized) {
         setupDoublesMatchLoader({
             container: doublesLoaderContainer,
             allTournaments,
             allPlayers,
             allTeams,
-            tournamentPlayersMap,
-            loadInitialData
+            loadInitialData // Asegúrate de que esta función esté disponible aquí
         });
         isDoublesLoaderInitialized = true;
     }
 });
+// *** FIN DE LA CORRECCIÓN ***
 
 
 [filterTournamentSelect, filterStatusSelect, filterSedeSelect, filterCanchaSelect, searchInput].forEach(el => {
