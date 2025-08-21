@@ -348,7 +348,7 @@ function renderMatches(matchesToRender) {
 
                 tableHTML += `
                     <tr class="clickable-row data-row" data-match-id="${match.id}">
-                        <td style="padding: 4px; background-color: #1a1a1a;"><input type="checkbox" class="match-checkbox" data-id="${match.id}" ${selectedMatches.has(match.id) ? 'checked' : ''} style="transform: scale(1.2);"></td>
+                        <td style="padding: 4px; background-color: #1a1a1a;"><input type="checkbox" id="match-checkbox-${match.id}" class="match-checkbox" data-id="${match.id}" ${selectedMatches.has(match.id) ? 'checked' : ''} style="transform: scale(1.2);"></td>
                         <td style="background-color: ${canchaBackgroundColor} !important; color: ${canchaTextColor} !important; font-weight: bold;">${cancha}</td>
                         <td style="background:#000;color:#fff;">${hora}</td>
                         <td class="player-name player-name-right ${team1_class}" style='background:#000;color:#fff;${team1NameStyle};font-size:${isDoubles ? '10pt' : '12pt'};'>${team1_names}</td>
