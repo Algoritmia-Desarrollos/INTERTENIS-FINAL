@@ -84,8 +84,15 @@ async function renderScoreboard() {
             } else {
                 nextFortnightStart = new Date(currentFortnightStart.getFullYear(), currentFortnightStart.getMonth() + 1, 1);
             }
-            const label = `Quincena del ${currentFortnightStart.toLocaleDateString('es-AR', {day: '2-digit', month: '2-digit'})}`;
-            fortnights[label] = { start: currentFortnightStart, end: new Date(nextFortnightStart.getTime() - 1) };
+            
+            // *** INICIO DE LA CORRECCIÓN ***
+            const startDateStr = currentFortnightStart.toLocaleDateString('es-AR', {day: 'numeric', month: 'numeric'});
+            const endDate = new Date(nextFortnightStart.getTime() - 1);
+            const endDateStr = endDate.toLocaleDateString('es-AR', {day: 'numeric', month: 'numeric'});
+            const label = `${startDateStr} al ${endDateStr}`;
+            // *** FIN DE LA CORRECCIÓN ***
+
+            fortnights[label] = { start: currentFortnightStart, end: endDate };
             currentFortnightStart = nextFortnightStart;
         }
     }
@@ -125,28 +132,25 @@ async function renderScoreboard() {
 
     // --- 3. Renderizar el HTML ---
     let gridHTML = '';
-    // Fila 1: Vacío + Cabeceras de Equipos
     gridHTML += `<div class="grid-corner"></div>`;
     sortedTeams.forEach((team, index) => {
         gridHTML += `<div class="team-header-cell" style="background-color: ${team.color || '#333'};"><span class="team-pos">Pos. ${index + 1}</span><span class="team-name">${team.name}</span></div>`;
     });
 
-    // Fila 2: "Fechas" + Sub-cabeceras
     gridHTML += `<div class="sub-header-label">Fechas</div>`;
     sortedTeams.forEach(() => {
         gridHTML += `<div class="sub-header-group"><span>Singles</span><span>Dobles</span><span class="total-col">TOTAL</span></div>`;
     });
 
-    // Filas de Datos
     Object.keys(fortnights).forEach(label => {
-        gridHTML += `<div class="date-label-cell">${label.replace('Quincena del ', '')}</div>`;
+        // *** CORRECCIÓN: Usamos directamente la nueva etiqueta (label) ***
+        gridHTML += `<div class="date-label-cell">${label}</div>`;
         sortedTeams.forEach(team => {
             const data = team.byFortnight[label] || { singles: 0, doubles: 0, total: 0 };
             gridHTML += `<div class="data-cell-group"><span>${data.singles}</span><span>${data.doubles}</span><span class="total-col font-bold">${data.total}</span></div>`;
         });
     });
 
-    // Filas de Totales
     gridHTML += `<div class="footer-label">Sub Total</div>`;
     sortedTeams.forEach(team => gridHTML += `<div class="footer-cell subtotal">${team.subTotal}</div>`);
     gridHTML += `<div class="footer-label">Pts. Extras</div>`;
@@ -154,7 +158,7 @@ async function renderScoreboard() {
     gridHTML += `<div class="footer-label total">TOTAL</div>`;
     sortedTeams.forEach(team => gridHTML += `<div class="footer-cell total">${team.totalPoints}</div>`);
 
-    scoreboardContainer.innerHTML = `<div class="scoreboard-container" style="grid-template-columns: 100px repeat(${sortedTeams.length}, 1fr);">${gridHTML}</div>`;
+    scoreboardContainer.innerHTML = `<div class="scoreboard-container" style="grid-template-columns: 120px repeat(${sortedTeams.length}, 1fr);">${gridHTML}</div>`;
 }
 
 // --- Event Listeners ---

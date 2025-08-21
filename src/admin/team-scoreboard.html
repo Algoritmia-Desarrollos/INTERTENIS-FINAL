@@ -34,6 +34,9 @@
             font-size: 1.1rem;
             line-height: 1.2;
             padding: 12px 8px;
+            /* *** INICIO DE LA CORRECCIÓN *** */
+            text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.6); /* Sombra para legibilidad */
+            /* *** FIN DE LA CORRECCIÓN *** */
         }
         .team-pos { font-size: 0.8rem; opacity: 0.8; }
         .team-name { font-size: 1.2rem; }
@@ -49,11 +52,11 @@
         }
         .sub-header-group {
             display: grid;
-            grid-template-columns: repeat(3, 1fr); /* <-- CAMBIO: de 4 a 3 */
+            grid-template-columns: repeat(3, 1fr);
             gap: 1px;
             padding: 0;
             background-color: #4a4a4a;
-            font-size: 0.7rem; /* Un poco más grande para mejor lectura */
+            font-size: 0.7rem;
             font-weight: 600;
             color: #9ca3af;
             text-transform: uppercase;
@@ -78,11 +81,11 @@
         }
         .data-cell-group {
             display: grid;
-            grid-template-columns: repeat(3, 1fr); /* <-- CAMBIO: de 4 a 3 */
+            grid-template-columns: repeat(3, 1fr);
             width: 100%;
             padding: 0;
             background-color: #4a4a4a;
-            font-size: 0.9rem; /* Números más grandes */
+            font-size: 0.9rem;
             text-align: center;
             gap: 1px;
         }
@@ -91,7 +94,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 8px 2px; /* Más espacio vertical */
+            padding: 8px 2px;
         }
         .data-cell-group > span.total-col {
             font-weight: 700;
