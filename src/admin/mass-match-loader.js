@@ -1,6 +1,14 @@
 import { supabase } from '../common/supabase.js';
 
-export function setupMassMatchLoader({ container, allTournaments, allPlayers, tournamentPlayersMap, loadInitialData }) {
+export function setupMassMatchLoader({
+  container,
+  btnAddRow,
+  btnSave,
+  allTournaments,
+  allPlayers,
+  tournamentPlayersMap,
+  loadInitialData
+}) {
 
   // --- ESTADO CENTRAL ---
   let matchesData = [];
@@ -169,8 +177,8 @@ export function setupMassMatchLoader({ container, allTournaments, allPlayers, to
 
 
   // --- OPCIONES CACHEADAS ---
-    const individualTournaments = allTournaments.filter(t => t.category && t.category.name !== 'Equipos');
-    const tournamentOptionsHTML = `<option value="">Seleccionar Torneo</option>` + individualTournaments.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+  const individualTournaments = allTournaments.filter(t => t.category && t.category.name !== 'Equipos');
+  const tournamentOptionsHTML = `<option value="">Seleccionar Torneo</option>` + individualTournaments.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
   
   const sedeOptionsHTML = `<option value="">Seleccionar</option>` + ['Funes', 'Centro'].map(s => `<option value="${s}">${s}</option>`).join('');
   const canchaOptionsHTML = `<option value="">Seleccionar</option>` + [1, 2, 3, 4, 5, 6].map(n => `<option value="Cancha ${n}">Cancha ${n}</option>`).join('');
