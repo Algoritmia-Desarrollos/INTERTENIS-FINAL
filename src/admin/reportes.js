@@ -17,7 +17,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const btnCancelEdit = document.getElementById('btn-cancel-edit');
     
     async function fetchAllPlayers() {
-        const { data, error } = await supabase.from('players').select('id, name, category_id').order('name');
+        const { data, error } = await supabase.from('players').select('id, name, category_id, team_id').order('name');
         if (error) {
             console.error("Error al obtener los jugadores:", error);
             return [];
@@ -46,7 +46,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                     points: p1_points ?? '',
                     isWinner: match.winner_id === match.player1_id || (isDoubles && match.winner_id === match.player3_id),
                     teamColor: match.player1?.team?.color,
-                    teamImage: match.player1?.team?.image_url
+                    teamImage: match.player1?.team?.image_url,
+                    team_id: match.player1?.team_id
                 },
                 player2: {
                     id: match.player2?.id,
@@ -54,10 +55,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                     points: p2_points ?? '',
                     isWinner: match.winner_id === match.player2_id || (isDoubles && match.winner_id === match.player4_id),
                     teamColor: match.player2?.team?.color,
-                    teamImage: match.player2?.team?.image_url
+                    teamImage: match.player2?.team?.image_url,
+                    team_id: match.player2?.team_id
                 },
-                player3: isDoubles ? { id: match.player3?.id, name: match.player3?.name || '' } : null,
-                player4: isDoubles ? { id: match.player4?.id, name: match.player4?.name || '' } : null,
+                player3: isDoubles ? { id: match.player3?.id, name: match.player3?.name || '', team_id: match.player3?.team_id } : null,
+                player4: isDoubles ? { id: match.player4?.id, name: match.player4?.name || '', team_id: match.player4?.team_id } : null,
                 sets: match.sets || [],
             };
         });
@@ -169,9 +171,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                     let player1Content, player2Content;
                     
                     if (isEditMode && !played) {
-                        const availablePlayers = match.category === 'Equipos' ? allPlayers : allPlayers.filter(p => p.category_id === match.category_id);
-                        
-                        const createPlayerSelect = (playerNumber, selectedPlayerId, opponentIds) => {
+                        const createPlayerSelect = (playerNumber, selectedPlayerId, opponentIds, teamId) => {
+                            let availablePlayers = allPlayers;
+                            if (match.category === 'Equipos') {
+                                availablePlayers = allPlayers.filter(p => p.team_id === teamId);
+                            } else {
+                                availablePlayers = allPlayers.filter(p => p.category_id === match.category_id);
+                            }
+
                             let options = availablePlayers
                                 .filter(p => !opponentIds.includes(p.id)) 
                                 .map(p => `<option value="${p.id}" ${p.id === selectedPlayerId ? 'selected' : ''}>${p.name}</option>`)
@@ -185,21 +192,20 @@ document.addEventListener('DOMContentLoaded', async () => {
                             const team1_opponents = [match.player2.id, match.player4.id];
                             const team2_opponents = [match.player1.id, match.player3.id];
                             player1Content = `
-                                <div>${createPlayerSelect(1, match.player1.id, [match.player3.id, ...team1_opponents])}</div>
-                                <div>${createPlayerSelect(3, match.player3.id, [match.player1.id, ...team1_opponents])}</div>
+                                <div>${createPlayerSelect(1, match.player1.id, [match.player3.id, ...team1_opponents], match.player1.team_id)}</div>
+                                <div>${createPlayerSelect(3, match.player3.id, [match.player1.id, ...team1_opponents], match.player1.team_id)}</div>
                             `;
                             player2Content = `
-                                <div>${createPlayerSelect(2, match.player2.id, [match.player4.id, ...team2_opponents])}</div>
-                                <div>${createPlayerSelect(4, match.player4.id, [match.player2.id, ...team2_opponents])}</div>
+                                <div>${createPlayerSelect(2, match.player2.id, [match.player4.id, ...team2_opponents], match.player2.team_id)}</div>
+                                <div>${createPlayerSelect(4, match.player4.id, [match.player2.id, ...team2_opponents], match.player2.team_id)}</div>
                             `;
                         } else {
-                            player1Content = createPlayerSelect(1, match.player1.id, [match.player2.id]);
-                            player2Content = createPlayerSelect(2, match.player2.id, [match.player1.id]);
+                            player1Content = createPlayerSelect(1, match.player1.id, [match.player2.id], match.player1.team_id);
+                            player2Content = createPlayerSelect(2, match.player2.id, [match.player1.id], match.player2.team_id);
                         }
 
                     } else {
                          if (match.isDoubles) {
-                            // --- CORRECCIÓN: Se mantiene el font-weight por defecto (bold) ---
                             player1Content = `<div style="line-height: 1.2;"><div>${match.player1.name}</div><div>${match.player3.name}</div></div>`;
                             player2Content = `<div style="line-height: 1.2;"><div>${match.player2.name}</div><div>${match.player4.name}</div></div>`;
                         } else {
