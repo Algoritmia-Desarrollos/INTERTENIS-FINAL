@@ -113,29 +113,44 @@ export async function renderTeamScoreboard(container, teamTournamentId) {
 }
 
 function generateScoreboardHTML(sortedTeams, fortnights) {
+    // Definimos un ancho mínimo para cada columna de equipo para asegurar que el scroll funcione bien.
+    const teamColumnWidth = 140; 
+    const totalMinWidth = 120 + (sortedTeams.length * teamColumnWidth);
+
+    // Envolvemos todo en un div con overflow-x: auto.
     let gridHTML = `
-        <style>
-            .scoreboard-container { display: grid; gap: 2px; background-color: #4a4a4a; border-radius: 8px; overflow: hidden; border: 2px solid #4a4a4a; }
-            .scoreboard-container > div { background-color: #18191b; padding: 6px 4px; }
-            .grid-corner { background-color: #000 !important; }
-            .team-header-cell { display: flex; flex-direction: column; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 1.1rem; line-height: 1.2; padding: 12px 8px; text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.6); }
-            .team-pos { font-size: 0.8rem; opacity: 0.8; }
-            .team-name { font-size: 1.2rem; }
-            .sub-header-label { display: flex; align-items: center; justify-content: center; background-color: #000; font-weight: bold; font-size: 0.8rem; }
-            .sub-header-group { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; padding: 0; background-color: #4a4a4a; font-size: 0.7rem; font-weight: 600; color: #9ca3af; text-transform: uppercase; }
-            .sub-header-group > span { background-color: #000; display: flex; align-items: center; justify-content: center; padding: 4px 2px; }
-            .date-label-cell { display: flex; align-items: center; justify-content: center; background-color: #000; font-weight: bold; color: #facc15; font-size: 0.8rem; }
-            .data-cell-group { display: grid; grid-template-columns: repeat(3, 1fr); width: 100%; padding: 0; background-color: #4a4a4a; font-size: 0.9rem; text-align: center; gap: 1px; }
-            .data-cell-group > span { background-color: #222222; display: flex; align-items: center; justify-content: center; padding: 8px 2px; }
-            .data-cell-group > span.total-col { font-weight: 700; color: #f3f4f6; background-color: #111; }
-            .footer-label, .footer-cell { display: flex; align-items: center; justify-content: center; font-weight: bold; }
-            .footer-label { background-color: #000; font-size: 0.85rem; }
-            .footer-cell { font-size: 1.2rem; }
-            .footer-label.total { color: #facc15; font-size: 1rem; }
-            .footer-cell.total { font-size: 1.5rem; color: #facc15; }
-        </style>
-        <div class="scoreboard-container" style="grid-template-columns: 120px repeat(${sortedTeams.length}, 1fr);">
-    `;
+        <div class="bg-[#222222] p-6 rounded-xl shadow-lg overflow-x-auto">
+            <style>
+                /* Eliminamos 'overflow: hidden' del contenedor principal */
+                .scoreboard-container { 
+                    display: grid; 
+                    gap: 2px; 
+                    background-color: #4a4a4a; 
+                    border-radius: 8px; 
+                    border: 2px solid #4a4a4a;
+                    /* Agregamos un ancho mínimo para que la tabla se expanda */
+                    min-width: ${totalMinWidth}px;
+                }
+                .scoreboard-container > div { background-color: #18191b; padding: 6px 4px; }
+                .grid-corner { background-color: #000 !important; }
+                .team-header-cell { display: flex; flex-direction: column; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 1.1rem; line-height: 1.2; padding: 12px 8px; text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.6); }
+                .team-pos { font-size: 0.8rem; opacity: 0.8; }
+                .team-name { font-size: 1.2rem; }
+                .sub-header-label { display: flex; align-items: center; justify-content: center; background-color: #000; font-weight: bold; font-size: 0.8rem; }
+                .sub-header-group { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; padding: 0; background-color: #4a4a4a; font-size: 0.7rem; font-weight: 600; color: #9ca3af; text-transform: uppercase; }
+                .sub-header-group > span { background-color: #000; display: flex; align-items: center; justify-content: center; padding: 4px 2px; }
+                .date-label-cell { display: flex; align-items: center; justify-content: center; background-color: #000; font-weight: bold; color: #facc15; font-size: 0.8rem; }
+                .data-cell-group { display: grid; grid-template-columns: repeat(3, 1fr); width: 100%; padding: 0; background-color: #4a4a4a; font-size: 0.9rem; text-align: center; gap: 1px; }
+                .data-cell-group > span { background-color: #222222; display: flex; align-items: center; justify-content: center; padding: 8px 2px; }
+                .data-cell-group > span.total-col { font-weight: 700; color: #f3f4f6; background-color: #111; }
+                .footer-label, .footer-cell { display: flex; align-items: center; justify-content: center; font-weight: bold; }
+                .footer-label { background-color: #000; font-size: 0.85rem; }
+                .footer-cell { font-size: 1.2rem; }
+                .footer-label.total { color: #facc15; font-size: 1rem; }
+                .footer-cell.total { font-size: 1.5rem; color: #facc15; }
+            </style>
+            <div class="scoreboard-container" style="grid-template-columns: 120px repeat(${sortedTeams.length}, 1fr);">
+        `;
     
     gridHTML += `<div class="grid-corner"></div>`;
     sortedTeams.forEach((team, index) => {
@@ -162,6 +177,6 @@ function generateScoreboardHTML(sortedTeams, fortnights) {
     gridHTML += `<div class="footer-label total">TOTAL</div>`;
     sortedTeams.forEach(team => gridHTML += `<div class="footer-cell total">${team.totalPoints}</div>`);
 
-    gridHTML += `</div>`;
+    gridHTML += `</div></div>`; // Cerramos el scoreboard-container y el div con overflow
     return gridHTML;
 }

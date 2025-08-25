@@ -3,18 +3,63 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>InterTenis - Perfil de Jugador</title>
+    <title>InterTenis - Dashboard del Jugador</title>
     <link rel="icon" href="/logo_2021_02.png" type="image/png">
     <link rel="stylesheet" href="/src/common/styles.css">
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"/>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-    </head>
+    <style>
+        /* Estilos idénticos a los de public-report-view para consistencia */
+        .matches-report-style {
+            width: 100%;
+            min-width: 700px;
+            border-collapse: separate;
+            border-spacing: 0;
+            overflow: hidden;
+        }
+        .matches-report-style .suspended-row td {
+            text-decoration: none !important;
+            color: #ff4d4f !important;
+            background: #2a1a1a !important;
+            opacity: 0.85;
+            font-weight: 700;
+        }
+        .matches-report-style td {
+            padding: 8px 4px;
+            font-size: 10pt;
+            border-bottom: 1px solid #4a4a4a;
+            text-align: center;
+            vertical-align: middle;
+            background: #222222;
+            color: #ffffff;
+        }
+        .matches-report-style tr:first-child td {
+             border-top: 1px solid #4a4a4a;
+        }
+        .matches-report-style .winner {
+            font-weight: 700 !important;
+            color: #f4ec05 !important;
+        }
+        .matches-report-style .player-name { font-weight: 700; }
+        .matches-report-style .player-name-right { text-align: right; padding-right: 8px;}
+        .matches-report-style .player-name-left { text-align: left; padding-left: 8px;}
+        .matches-report-style .font-mono { 
+            font-family: 'Consolas', 'Menlo', 'Courier New', monospace;
+            font-size: 11pt;
+        }
+        .matches-report-style .pts-col { font-weight: 700; text-align: center; }
+        .matches-report-style .cat-col {
+            font-family: 'Segoe UI Black', 'Arial Black', sans-serif;
+            font-weight: 900;
+            font-size: 10pt;
+            text-align: center;
+        }
+    </style>
+</head>
 <body class="bg-black text-gray-200">
     <div id="header-container"></div>
     <main class="flex-1 py-8">
-        <div id="player-dashboard-container" class="content-container max-w-5xl mx-auto space-y-8">
+        <div id="player-dashboard-container" class="content-container max-w-7xl mx-auto space-y-10">
             </div>
     </main>
     <script type="module" src="/public/public-player-dashboard.js"></script>

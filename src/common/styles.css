@@ -1,3 +1,29 @@
+/* --- ESTILOS DE TIPOGRAFÍA RESPONSIVE (Añadir al final) --- */
+h1 {
+  font-size: 2rem; /* 32px */
+}
+h2 {
+  font-size: 1.5rem; /* 24px */
+}
+
+@media screen and (max-width: 768px) {
+  h1 {
+    font-size: 1.75rem; /* 28px */
+  }
+  h2 {
+    font-size: 1.25rem; /* 20px */
+  }
+  .content-container {
+    padding: 0 0.75rem; /* Menos padding lateral en móvil */
+  }
+  main {
+    padding-top: 1rem;
+    padding-bottom: 1rem;
+  }
+}
+
+
+
 /* --- Paleta de Colores y Estilos Base (TEMA OSCURO) --- */
 :root {
   --primary-color: #facc15;      /* Amarillo Principal (yellow-400) */
@@ -190,4 +216,41 @@ td.is-editing {
 
 .custom-file-input:hover {
   border-color: #facc15; /* yellow-400 */
+}
+
+/* --- ESTILOS PARA TABLAS RESPONSIVE (Añadir al final) --- */
+@media screen and (max-width: 768px) {
+  .responsive-table {
+    border: none;
+    display: block;
+    width: 100%;
+  }
+  .responsive-table thead {
+    display: none; /* Ocultamos los encabezados de la tabla */
+  }
+  .responsive-table tr {
+    display: block;
+    margin-bottom: 1rem;
+    border: 1px solid var(--border-color);
+    border-radius: 0.5rem;
+    overflow: hidden;
+  }
+  .responsive-table td {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    text-align: right;
+    border-bottom: 1px solid #374151; /* gray-700 */
+  }
+  .responsive-table td:last-child {
+    border-bottom: none;
+  }
+  .responsive-table td::before {
+    content: attr(data-label);
+    font-weight: 600;
+    text-align: left;
+    margin-right: 1rem;
+    color: var(--text-secondary);
+  }
 }

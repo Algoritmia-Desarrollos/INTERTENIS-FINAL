@@ -106,11 +106,9 @@ async function populateTournamentFilter() {
 }
 
 // --- RANKING POR EQUIPOS ---
-function renderTeamRankings() {
+function renderTeamRankings(teamToHighlight = null) {
     const tournamentId = tournamentFilter.value;
-    // --- INICIO DE LA MODIFICACIÓN: Usamos el módulo importado ---
-    renderTeamScoreboard(rankingsContainer, tournamentId);
-    // --- FIN DE LA MODIFICACIÓN ---
+    renderTeamScoreboard(rankingsContainer, tournamentId, teamToHighlight);
 }
 
 
@@ -310,14 +308,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     const urlParams = new URLSearchParams(window.location.search);
     const tournamentIdToSelect = urlParams.get('tournamentId');
     const playerToHighlight = urlParams.get('highlightPlayerId');
+    const teamToHighlight = urlParams.get('highlightTeamId'); // <-- LEEMOS EL NUEVO PARÁMETRO
 
     if (tournamentIdToSelect) {
         tournamentFilter.value = tournamentIdToSelect;
         const selectedTournament = allTournaments.find(t => t.id == tournamentIdToSelect);
         if (selectedTournament?.category?.name === 'Equipos') {
             document.getElementById('btn-view-teams').click();
+            await renderTeamRankings(teamToHighlight); // <-- LO PASAMOS A LA FUNCIÓN
+        } else {
+             await renderCategoryRankings(playerToHighlight);
         }
-        await (currentView === 'category' ? renderCategoryRankings(playerToHighlight) : renderTeamRankings());
     } else {
         rankingsContainer.innerHTML = '<div class="bg-[#222222] p-8 rounded-xl"><p class="text-center text-gray-400">Seleccione un torneo para ver los rankings.</p></div>';
     }
@@ -325,8 +326,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 tournamentFilter.addEventListener('change', () => {
     if (currentView === 'category') {
-        renderCategoryRankings(null);
+        renderCategoryRankings();
     } else {
-        renderTeamRankings();
+        renderTeamRankings(); // No hay equipo para resaltar en un cambio manual
     }
 });
