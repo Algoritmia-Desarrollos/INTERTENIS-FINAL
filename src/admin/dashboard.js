@@ -141,7 +141,12 @@ function renderLastMatches(matchesToRender) {
                 const p1_class = match.player1.id === match.winner_id ? 'winner' : '';
                 const p2_class = match.player2.id === match.winner_id ? 'winner' : '';
                 let hora = match.match_time ? match.match_time.substring(0, 5) : 'HH:MM';
-                const setsDisplay = (match.sets || []).map(s => `${s.p1}/${s.p2}`).join(' ');
+                let resultadoDisplay = '';
+                if (match.status === 'suspendido') {
+                    resultadoDisplay = '<span style="color:#fff;font-weight:700;text-decoration:none !important;">Suspendido</span>';
+                } else {
+                    resultadoDisplay = (match.sets || []).map(s => `${s.p1}/${s.p2}`).join(' ');
+                }
                 const p1TeamColor = match.player1.team?.color;
                 const p2TeamColor = match.player2.team?.color;
                 const p1TextColor = isColorLight(p1TeamColor) ? '#222' : '#fff';
@@ -175,18 +180,32 @@ function renderLastMatches(matchesToRender) {
                 const canchaBackgroundColor = sede.toLowerCase() === 'centro' ? '#222222' : '#ffc000';
                 const canchaTextColor = sede.toLowerCase() === 'centro' ? '#ffc000' : '#222';
 
+                const suspendedClass = match.status === 'suspendido' ? 'suspended-row' : '';
                 tableHTML += `
-                    <tr class="clickable-row data-row" data-match-id="${match.id}">
+                    <tr class="clickable-row data-row ${suspendedClass}" data-match-id="${match.id}">
                         <td style="background-color: ${canchaBackgroundColor} !important; color: ${canchaTextColor} !important; font-weight: bold;">${cancha}</td>
                         <td style="background:#000;color:#fff;">${hora}</td>
                         <td class="player-name player-name-right ${p1_class}" style='background:#000;color:#fff;${p1NameStyle};font-size:12pt;'>${match.player1.name}</td>
                         <td class="pts-col" style='background:${p1TeamColor || '#3a3838'};color:${p1TextColor};'>${p1CellContent}</td>
-                        <td class="font-mono" style="background:#000;color:#fff;">${setsDisplay}</td>
+                        <td class="font-mono" style="background:#000;color:#fff;">${resultadoDisplay}</td>
                         <td class="pts-col" style='background:${p2TeamColor || '#3a3838'};color:${p2TextColor};'>${p2CellContent}</td>
                         <td class="player-name player-name-left ${p2_class}" style='background:#000;color:#fff;${p2NameStyle};font-size:12pt;'>${match.player2.name}</td>
                         <td class="cat-col" style="background:#000;color:${match.category?.color || '#b45309'};">${match.category?.name || 'N/A'}</td>
                         <td class="action-cell" style="background:#000;"><button class="p-1 rounded-full hover:bg-gray-700" data-action="edit" title="Editar / Cargar Resultado"><span class="material-icons text-base" style="color:#fff;">edit</span></button></td>
                     </tr>`;
+    // Agregar estilos para la fila suspendida igual que en reportes.js
+    const style = document.createElement('style');
+    style.innerHTML = `.suspended-row td, .suspended-row .font-mono, .suspended-row .pts-col, .suspended-row .cat-col, .suspended-row .player-name, .suspended-row .player-name-right, .suspended-row .player-name-left {
+        color: #ff4444 !important;
+        text-decoration: none !important;
+    }
+    .suspended-row td.font-mono {
+        color: #fff !important;
+        text-decoration: none !important;
+        font-weight: 700;
+        background: #222 !important;
+    }`;
+    document.head.appendChild(style);
             }
         }
     }

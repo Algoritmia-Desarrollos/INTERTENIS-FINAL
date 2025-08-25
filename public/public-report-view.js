@@ -14,10 +14,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         return matches.map(match => {
             const { p1_points, p2_points } = calculatePoints(match);
             const isDoubles = !!(match.player3 && match.player4);
-            
             return {
                 id: match.id,
                 isDoubles: isDoubles,
+                status: match.status || '',
                 date: match.match_date ? match.match_date.split('T')[0] : '',
                 time: match.match_time || '',
                 location: match.location || '',
@@ -143,10 +143,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 
                 for (const match of matches) {
                     const row = tbody.insertRow();
-                    row.className = 'data-row';
+                    row.className = 'data-row' + (match.status === 'suspendido' ? ' suspended-row' : '');
                     const played = Array.isArray(match.sets) && match.sets.length > 0;
                     let player1Content, player2Content;
-                    
                     if (match.isDoubles) {
                         player1Content = `<div style="line-height: 1.2;"><div>${match.player1.name}</div><div>${match.player3.name}</div></div>`;
                         player2Content = `<div style="line-height: 1.2;"><div>${match.player2.name}</div><div>${match.player4.name}</div></div>`;
@@ -154,13 +153,17 @@ document.addEventListener('DOMContentLoaded', async () => {
                         player1Content = match.player1.name;
                         player2Content = match.player2.name;
                     }
-
                     let cancha = match.location ? match.location.split(' - ')[1] : 'N/A';
                     if(cancha.match(/\d+/)) cancha = cancha.match(/\d+/)[0];
                     const p1_class = match.player1.isWinner ? 'winner' : '';
                     const p2_class = match.player2.isWinner ? 'winner' : '';
                     let hora = match.time?.substring(0, 5) || '';
-                    const setsDisplay = played ? match.sets.map(s => `${s.p1}/${s.p2}`).join(' ') : '';
+                    let setsDisplay = '';
+                    if (match.status === 'suspendido') {
+                        setsDisplay = `<span style=\"color:#fff;font-weight:700;text-decoration:none !important;\">Suspendido</span>`;
+                    } else {
+                        setsDisplay = played ? match.sets.map(s => `${s.p1}/${s.p2}`).join(' ') : '';
+                    }
                     function isColorLight(hex) { if (!hex) return false; let c = hex.replace('#', ''); if (c.length === 3) c = c.split('').map(x => x + x).join(''); const r = parseInt(c.substr(0,2),16), g = parseInt(c.substr(2,2),16), b = parseInt(c.substr(4,2),16); return (0.299*r + 0.587*g + 0.114*b) > 186; }
                     const p1TeamColor = match.player1.teamColor, p2TeamColor = match.player2.teamColor;
                     const p1TextColor = isColorLight(p1TeamColor) ? '#222' : '#fff', p2TextColor = isColorLight(p2TeamColor) ? '#222' : '#fff';
@@ -171,17 +174,29 @@ document.addEventListener('DOMContentLoaded', async () => {
                     const canchaBackgroundColor = sede.toLowerCase().trim() === 'centro' ? '#222222' : '#ffc000';
                     const canchaTextColor = sede.toLowerCase().trim() === 'centro' ? '#ffc000' : '#222';
                     const categoryDisplay = match.category === 'Equipos' ? '' : match.category;
-
                     row.innerHTML = `
                         <td style="background-color: ${canchaBackgroundColor} !important; color: ${canchaTextColor} !important; font-weight: bold;">${cancha}</td>
                         <td class="text-center">${hora}</td>
                         <td class="text-right font-bold ${p1_class}" style='${p1NameStyle}'>${player1Content}</td>
                         <td class="pts-col" style='text-align:center;background:${p1TeamColor || '#3a3838'};color:${p1TextColor};font-weight:700;'>${p1PointsDisplay}</td>
-                        <td style='text-align:center;' class="font-mono">${setsDisplay}</td>
+                        <td style='text-align:center; background:#222 !important; color:#fff !important; text-decoration:none !important; font-weight:700;' class="font-mono">${setsDisplay}</td>
                         <td class="pts-col" style='text-align:center;background:${p2TeamColor || '#3a3838'};color:${p2TextColor};font-weight:700;'>${p2PointsDisplay}</td>
                         <td class="font-bold ${p2_class}" style='${p2NameStyle}'>${player2Content}</td>
                         <td class="cat-col" style="color:${match.category_color || '#b45309'};font-family:'Segoe UI Black',Arial,sans-serif;font-weight:900;">${categoryDisplay}</td>
                     `;
+        // Agregar estilos para la fila suspendida: solo color rojo, sin tachado
+        const style = document.createElement('style');
+        style.innerHTML = `.suspended-row td, .suspended-row .font-mono, .suspended-row .pts-col, .suspended-row .cat-col, .suspended-row .player-name, .suspended-row .player-name-right, .suspended-row .player-name-left {
+            color: #ff4444 !important;
+            text-decoration: none !important;
+        }
+        .suspended-row td.font-mono {
+            color: #fff !important;
+            text-decoration: none !important;
+            font-weight: 700;
+            background: #222 !important;
+        }`;
+        document.head.appendChild(style);
                     currentHeight += ROW_HEIGHT_MM;
                 }
             }

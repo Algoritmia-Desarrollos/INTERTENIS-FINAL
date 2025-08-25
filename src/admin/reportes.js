@@ -66,6 +66,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     async function renderReport() {
+        // Agregar estilos para la fila suspendida: solo color rojo, sin tachado
+        if (!document.getElementById('suspended-row-style')) {
+            const style = document.createElement('style');
+            style.id = 'suspended-row-style';
+            style.innerHTML = `.suspended-row td, .suspended-row .font-mono, .suspended-row .pts-col, .suspended-row .cat-col, .suspended-row .player-name, .suspended-row .player-name-right, .suspended-row .player-name-left {
+                color: #ff4444 !important;
+                text-decoration: none !important;
+            }
+            .suspended-row td.font-mono {
+                color: #fff !important;
+                text-decoration: none !important;
+                font-weight: 700;
+                background: #222 !important;
+            }`;
+            document.head.appendChild(style);
+        }
         pagesContainer.innerHTML = '';
         if (reportData.length === 0) {
             pagesContainer.innerHTML = '<p class="text-center text-gray-500 py-10">No hay partidos para el reporte.</p>';
@@ -221,7 +237,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     let hora = match.time?.substring(0, 5) || '';
                     let setsDisplay = '';
                     if (match.status === 'suspendido') {
-                        setsDisplay = `<span style="color:#fff;font-weight:700;text-decoration:none !important;">Suspendido</span>`;
+                        setsDisplay = `<span style=\"color:#fff;font-weight:700;text-decoration:none !important;\">Suspendido</span>`;
                     } else {
                         setsDisplay = played ? match.sets.map(s => `${s.p1}/${s.p2}`).join(' ') : '';
                     }
