@@ -25,6 +25,7 @@ const searchInput = document.getElementById('search-player');
 let allPlayers = [];
 let allCategories = [];
 let allTeams = [];
+let allTournaments = []; // Almacenaremos los torneos para la nueva lógica
 
 // --- Función Auxiliar para Búsqueda sin Acentos ---
 function normalizeText(text) {
@@ -37,16 +38,19 @@ async function loadInitialData() {
     const [
         { data: categories },
         { data: teams },
-        { data: players }
+        { data: players },
+        { data: tournaments } // Cargamos los torneos también
     ] = await Promise.all([
         supabase.from('categories').select('*').order('name'),
         supabase.from('teams').select('*').order('name'),
-        supabase.from('players').select(`*, category:category_id(name), team:team_id(name, image_url)`).order('created_at', { ascending: false })
+        supabase.from('players').select(`*, category:category_id(name), team:team_id(name, image_url)`).order('created_at', { ascending: false }),
+        supabase.from('tournaments').select('id, name, category_id')
     ]);
 
     allCategories = categories || [];
     allTeams = teams || [];
     allPlayers = players || [];
+    allTournaments = tournaments || []; // Guardamos los torneos
 
     // Poblar selects del formulario
     categorySelect.innerHTML = '<option value="">Sin categoría</option>';
@@ -63,20 +67,17 @@ async function loadInitialData() {
     applyFiltersAndSort();
 }
 
-// --- Renderizado, Filtros y Ordenamiento ---
+// --- Renderizado y Lógica de UI (sin cambios) ---
 function applyFiltersAndSort() {
     let processedPlayers = [...allPlayers];
-
     const teamFilter = filterTeamSelect.value;
     const categoryFilter = filterCategorySelect.value;
     const sortBy = sortSelect.value;
     const searchTerm = normalizeText(searchInput.value.toLowerCase());
 
-    // Aplicar filtro de búsqueda por nombre (ignorando acentos)
     if (searchTerm) {
         processedPlayers = processedPlayers.filter(p => normalizeText(p.name.toLowerCase()).includes(searchTerm));
     }
-    // Aplicar filtros de select
     if (teamFilter) {
         processedPlayers = processedPlayers.filter(p => p.team_id == teamFilter);
     }
@@ -84,13 +85,11 @@ function applyFiltersAndSort() {
         processedPlayers = processedPlayers.filter(p => p.category_id == categoryFilter);
     }
 
-    // Aplicar ordenamiento
     switch(sortBy) {
         case 'created_at_desc': processedPlayers.sort((a, b) => new Date(b.created_at) - new Date(a.created_at)); break;
         case 'created_at_asc': processedPlayers.sort((a, b) => new Date(a.created_at) - new Date(b.created_at)); break;
         case 'name_asc': default: processedPlayers.sort((a, b) => a.name.localeCompare(b.name)); break;
     }
-
     renderPlayers(processedPlayers);
 }
 
@@ -99,7 +98,6 @@ function renderPlayers(playersToRender) {
         playersList.innerHTML = '<p class="text-center text-gray-400 py-8">No hay jugadores que coincidan con la búsqueda o los filtros.</p>';
         return;
     }
-
     playersList.innerHTML = playersToRender.map(player => `
         <div class="player-row grid grid-cols-[auto,1fr,auto] items-center gap-4 px-3 py-2 rounded-lg hover:bg-black border-b border-gray-800 last:border-b-0 transition-colors duration-200 cursor-pointer" data-player-id="${player.id}">
             <img src="${player.team?.image_url || 'https://via.placeholder.com/40'}" alt="Logo" class="h-8 w-8 rounded-full object-cover bg-gray-700">
@@ -115,7 +113,6 @@ function renderPlayers(playersToRender) {
     `).join('');
 }
 
-
 // --- Lógica de Formulario ---
 function resetForm() {
     form.reset();
@@ -126,33 +123,69 @@ function resetForm() {
     btnShowForm.innerHTML = '<span class="material-icons">add</span> Crear Nuevo Jugador';
 }
 
+// --- INICIO DE LA MODIFICACIÓN: Lógica de guardado mejorada ---
 async function handleFormSubmit(e) {
     e.preventDefault();
     const id = playerIdInput.value;
     const name = playerNameInput.value.trim();
-    const category_id = categorySelect.value || null;
-    const team_id = teamSelect.value || null;
+    const category_id = categorySelect.value ? Number(categorySelect.value) : null;
+    const team_id = teamSelect.value ? Number(teamSelect.value) : null;
 
     if (!name) {
         alert("El nombre del jugador es obligatorio.");
         return;
     }
-    const playerData = { name, category_id, team_id };
 
-    const { error } = id
-        ? await supabase.from('players').update(playerData).eq('id', id)
-        : await supabase.from('players').insert([playerData]);
+    const originalPlayer = id ? allPlayers.find(p => p.id == id) : null;
+    const playerData = { name, category_id, team_id };
     
+    let savedPlayer, error;
+
+    if (id) { // --- MODO EDICIÓN ---
+        const { data, error: updateError } = await supabase.from('players').update(playerData).eq('id', id).select().single();
+        savedPlayer = data;
+        error = updateError;
+    } else { // --- MODO CREACIÓN ---
+        const { data, error: insertError } = await supabase.from('players').insert([playerData]).select().single();
+        savedPlayer = data;
+        error = insertError;
+    }
+
     if (error) {
         alert(`Error al guardar el jugador: ${error.message}`);
-    } else {
-        resetForm();
-        await loadInitialData();
+        return;
     }
+
+    // --- LÓGICA DE INSCRIPCIÓN A TORNEO ---
+    const categoryChanged = originalPlayer && originalPlayer.category_id !== savedPlayer.category_id;
+    const isNewPlayer = !originalPlayer;
+
+    if ((isNewPlayer && savedPlayer.category_id) || categoryChanged) {
+        const relevantTournaments = allTournaments.filter(t => t.category_id === savedPlayer.category_id);
+
+        if (relevantTournaments.length > 0) {
+            const newTournament = relevantTournaments[0];
+            const message = isNewPlayer
+                ? `Jugador "${savedPlayer.name}" creado con éxito.\n\n¿Quieres inscribirlo en el torneo "${newTournament.name}"?`
+                : `Has cambiado la categoría del jugador.\n\n¿Quieres inscribirlo en el torneo "${newTournament.name}" y eliminarlo de sus torneos anteriores?`;
+
+            if (confirm(message)) {
+                if (categoryChanged) {
+                    await supabase.from('tournament_players').delete().eq('player_id', savedPlayer.id);
+                }
+                await supabase.from('tournament_players').insert({ player_id: savedPlayer.id, tournament_id: newTournament.id });
+                alert(`${savedPlayer.name} ha sido inscrito en ${newTournament.name}.`);
+            }
+        }
+    }
+
+    resetForm();
+    await loadInitialData();
 }
+// --- FIN DE LA MODIFICACIÓN ---
 
 
-// --- Event Listeners ---
+// --- Event Listeners (sin cambios) ---
 document.addEventListener('DOMContentLoaded', async () => {
     header.innerHTML = renderHeader();
     await loadInitialData();
@@ -172,18 +205,15 @@ btnShowForm.addEventListener('click', () => {
     }
 });
 
-// Listeners para los filtros y búsqueda
 [sortSelect, filterTeamSelect, filterCategorySelect].forEach(el => {
     el.addEventListener('change', applyFiltersAndSort);
 });
 searchInput.addEventListener('input', applyFiltersAndSort);
 
-// Listener principal para la lista de jugadores
 playersList.addEventListener('click', async (e) => {
     const row = e.target.closest('.player-row');
     if (!row) return;
 
-    // Si se hizo clic en los botones de acción, no navegar
     if (e.target.closest('[data-no-navigate]')) {
         const button = e.target.closest('button[data-action]');
         if (!button) return;
@@ -204,9 +234,7 @@ playersList.addEventListener('click', async (e) => {
         } else if (action === 'delete') {
             const id = button.dataset.id;
             if (confirm('¿Está seguro de que desea eliminar este jugador?')) {
-                // Primero eliminar referencias en tournament_players
                 await supabase.from('tournament_players').delete().eq('player_id', id);
-                // Luego eliminar al jugador
                 const { error } = await supabase.from('players').delete().eq('id', id);
 
                 if (error) {
@@ -217,7 +245,6 @@ playersList.addEventListener('click', async (e) => {
             }
         }
     } else {
-        // Si se hizo clic en cualquier otra parte de la fila, navegar al dashboard
         const playerId = row.dataset.playerId;
         window.location.href = `player-dashboard.html?id=${playerId}`;
     }
