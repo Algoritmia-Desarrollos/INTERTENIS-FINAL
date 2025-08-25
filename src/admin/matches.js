@@ -311,7 +311,12 @@ function renderMatches(matchesToRender) {
 
                 let hora = match.match_time ? match.match_time.substring(0, 5) : 'HH:MM';
                 const setsDisplay = (match.sets || []).map(s => `${s.p1}/${s.p2}`).join(' ');
-
+                let resultadoDisplay = '';
+                if (match.status === 'suspendido') {
+                    resultadoDisplay = '<span style="color:#fff;font-weight:700;text-decoration:none !important;">Suspendido</span>';
+                } else {
+                    resultadoDisplay = setsDisplay;
+                }
                 const p1TeamColor = match.player1.team?.color;
                 const p2TeamColor = match.player2.team?.color;
                 const p1TextColor = isColorLight(p1TeamColor) ? '#222' : '#fff';
@@ -346,14 +351,16 @@ function renderMatches(matchesToRender) {
                 const canchaBackgroundColor = sede.toLowerCase() === 'centro' ? '#222222' : '#ffc000';
                 const canchaTextColor = sede.toLowerCase() === 'centro' ? '#ffc000' : '#222';
 
+                const suspendedClass = match.status === 'suspendido' ? 'suspended-row' : '';
+
                 tableHTML += `
-                    <tr class="clickable-row data-row" data-match-id="${match.id}">
+                    <tr class="clickable-row data-row ${suspendedClass}" data-match-id="${match.id}">
                         <td style="padding: 4px; background-color: #1a1a1a;"><input type="checkbox" id="match-checkbox-${match.id}" class="match-checkbox" data-id="${match.id}" ${selectedMatches.has(match.id) ? 'checked' : ''} style="transform: scale(1.2);"></td>
                         <td style="background-color: ${canchaBackgroundColor} !important; color: ${canchaTextColor} !important; font-weight: bold;">${cancha}</td>
                         <td style="background:#000;color:#fff;">${hora}</td>
                         <td class="player-name player-name-right ${team1_class}" style='background:#000;color:#fff;${team1NameStyle};font-size:${isDoubles ? '10pt' : '12pt'};'>${team1_names}</td>
                         <td class="pts-col" style='background:${p1TeamColor || '#3a3838'};color:${p1TextColor};'>${team1PointsDisplay}</td>
-                        <td class="font-mono" style="background:#000;color:#fff;">${setsDisplay}</td>
+                        <td class="font-mono" style="background:#000;color:#fff;">${resultadoDisplay}</td>
                         <td class="pts-col" style='background:${p2TeamColor || '#3a3838'};color:${p2TextColor};'>${team2PointsDisplay}</td>
                         <td class="player-name player-name-left ${team2_class}" style='background:#000;color:#fff;${team2NameStyle};font-size:${isDoubles ? '10pt' : '12pt'};'>${team2_names}</td>
                         <td class="cat-col" style="background:#000;color:${match.category?.color || '#b45309'};">${match.category?.name || 'N/A'}</td>
@@ -409,19 +416,27 @@ function openScoreModal(match) {
     }
     const isDoubles = match.player3_id && match.player4_id;
 
+    // Parse location
+    let sede = '';
+    let cancha = '';
+    if (match.location) {
+        const parts = match.location.split(' - ');
+        sede = parts[0]?.trim() || '';
+        cancha = parts[1]?.trim() || '';
+    }
+    
+    // Prepare options for selects
+    const sedeOptions = ['Centro', 'Funes'].map(s => `<option value="${s}" ${sede === s ? 'selected' : ''}>${s}</option>`).join('');
+    const canchaOptions = [1, 2, 3, 4, 5, 6].map(c => `<option value="Cancha ${c}" ${cancha === `Cancha ${c}` ? 'selected' : ''}>Cancha ${c}</option>`).join('');
+
     modalContainer.innerHTML = `
         <div id="score-modal-overlay" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-2 z-50">
-            <div id="score-modal-content" class="bg-[#232323] rounded-xl shadow-lg w-full max-w-lg border border-[#444] mx-2 sm:mx-0">
+            <div id="score-modal-content" class="bg-[#232323] rounded-xl shadow-lg w-full max-w-2xl border border-[#444] mx-2 sm:mx-0">
                 <div class="p-6 border-b border-[#333]">
                     <h3 class="text-xl font-bold text-yellow-400">Editar Partido / Resultado</h3>
-                    <div class="mt-2">
-                        <label class="flex items-center">
-                            <input type="checkbox" id="doubles-toggle" class="form-checkbox h-5 w-5 text-yellow-400 bg-gray-700 border-gray-600 rounded" ${isDoubles ? 'checked' : ''} ${isPlayed ? 'disabled' : ''}>
-                            <span class="ml-2 text-gray-300">Partido de Dobles</span>
-                        </label>
-                    </div>
                 </div>
-                <form id="score-form" class="p-6 space-y-4">
+                <form id="score-form" class="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
+                    
                     <div class="grid grid-cols-2 gap-4">
                         <div>
                             <label class="block text-sm font-medium text-gray-300">Jugador A1</label>
@@ -436,7 +451,8 @@ function openScoreModal(match) {
                             </select>
                         </div>
                     </div>
-                    <div id="doubles-players-container" class="grid grid-cols-2 gap-4 ${isDoubles ? '' : 'hidden'}">
+                    ${isDoubles ? `
+                    <div id="doubles-players-container" class="grid grid-cols-2 gap-4">
                         <div>
                             <label class="block text-sm font-medium text-gray-300">Jugador A2</label>
                             <select id="player3-select-modal" class="input-field mt-1 bg-[#181818] text-gray-100 border-[#444]" ${isPlayed ? 'disabled' : ''}>
@@ -449,11 +465,37 @@ function openScoreModal(match) {
                                 ${playersInTournament.map(p => `<option value="${p.id}" ${p.id === match.player4_id ? 'selected' : ''}>${p.name}</option>`).join('')}
                             </select>
                         </div>
+                    </div>` : ''}
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-gray-700 mt-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300">Fecha</label>
+                            <input type="date" id="match-date-modal" class="input-field mt-1 bg-[#181818] text-gray-100 border-[#444]" value="${match.match_date || ''}">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300">Hora</label>
+                            <input type="time" id="match-time-modal" class="input-field mt-1 bg-[#181818] text-gray-100 border-[#444]" value="${match.match_time ? match.match_time.substring(0, 5) : ''}">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300">Sede</label>
+                            <select id="match-sede-modal" class="input-field mt-1 bg-[#181818] text-gray-100 border-[#444]">
+                                <option value="">Seleccionar Sede</option>
+                                ${sedeOptions}
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300">Cancha</label>
+                             <select id="match-cancha-modal" class="input-field mt-1 bg-[#181818] text-gray-100 border-[#444]">
+                                <option value="">Seleccionar Cancha</option>
+                                ${canchaOptions}
+                            </select>
+                        </div>
                     </div>
-                    <div class="grid grid-cols-3 gap-4 items-center pt-4">
+
+                    <div class="grid grid-cols-3 gap-4 items-center pt-4 border-t border-gray-700 mt-4">
                         <span class="font-semibold text-gray-200">SET</span>
-                        <span class="font-semibold text-center text-gray-200" style="font-size:14px;" id="teamA-name">${isDoubles ? `${match.player1.name} / ${match.player3.name}` : match.player1.name}</span>
-                        <span class="font-semibold text-center text-gray-200" style="font-size:14px;" id="teamB-name">${isDoubles ? `${match.player2.name} / ${match.player4.name}` : match.player2.name}</span>
+                        <span class="font-semibold text-center text-gray-200" style="font-size:14px;" id="teamA-name">${isDoubles ? `${match.player1.name} / ${match.player3?.name || '...'}` : match.player1.name}</span>
+                        <span class="font-semibold text-center text-gray-200" style="font-size:14px;" id="teamB-name">${isDoubles ? `${match.player2.name} / ${match.player4?.name || '...'}` : match.player2.name}</span>
                     </div>
                     ${[1, 2, 3].map(i => `
                         <div class="grid grid-cols-3 gap-4 items-center">
@@ -467,7 +509,6 @@ function openScoreModal(match) {
                     <div class="flex flex-row flex-wrap items-center gap-2 justify-center sm:justify-start mb-2 sm:mb-0">
                         <button id="btn-delete-match" class="btn btn-secondary !p-2" title="Eliminar Partido"><span class="material-icons !text-red-600">delete_forever</span></button>
                         ${isPlayed ? `<button id="btn-clear-score" class="btn btn-secondary !p-2" title="Limpiar Resultado"><span class="material-icons !text-yellow-600">cleaning_services</span></button>` : ''}
-                        <button id="btn-suspend-match" class="btn btn-secondary !p-2" title="Marcar como Suspendido"><span class="material-icons !text-red-500">cancel</span></button>
                     </div>
                     <div class="flex flex-row flex-wrap gap-2 justify-center sm:justify-end">
                         <button id="btn-cancel-modal" class="btn btn-secondary w-full sm:w-auto">Cancelar</button>
@@ -477,44 +518,37 @@ function openScoreModal(match) {
             </div>
         </div>
     `;
-
-    document.getElementById('doubles-toggle').addEventListener('change', (e) => {
-        document.getElementById('doubles-players-container').classList.toggle('hidden', !e.target.checked);
-        updateTeamNamesInModal();
-    });
     
-    document.getElementById('player1-select-modal').addEventListener('change', updateTeamNamesInModal);
-    document.getElementById('player2-select-modal').addEventListener('change', updateTeamNamesInModal);
-    document.getElementById('player3-select-modal').addEventListener('change', updateTeamNamesInModal);
-    document.getElementById('player4-select-modal').addEventListener('change', updateTeamNamesInModal);
+    document.getElementById('player1-select-modal').addEventListener('change', () => updateTeamNamesInModal(isDoubles));
+    document.getElementById('player2-select-modal').addEventListener('change', () => updateTeamNamesInModal(isDoubles));
+    if (isDoubles) {
+        document.getElementById('player3-select-modal').addEventListener('change', () => updateTeamNamesInModal(isDoubles));
+        document.getElementById('player4-select-modal').addEventListener('change', () => updateTeamNamesInModal(isDoubles));
+    }
 
-
-    document.getElementById('btn-save-score').onclick = () => saveScores(match.id);
+    document.getElementById('btn-save-score').onclick = () => saveScores(match);
     document.getElementById('btn-cancel-modal').onclick = closeModal;
     document.getElementById('btn-delete-match').onclick = () => deleteMatch(match.id);
-    document.getElementById('btn-suspend-match').onclick = () => suspendMatch(match.id);
     if (isPlayed) document.getElementById('btn-clear-score').onclick = () => clearScore(match.id);
     document.getElementById('score-modal-overlay').onclick = (e) => { if (e.target.id === 'score-modal-overlay') closeModal(); };
 }
 
 
-function updateTeamNamesInModal() {
-    const isDoubles = document.getElementById('doubles-toggle').checked;
-    
+function updateTeamNamesInModal(isDoubles) {
     const p1Select = document.getElementById('player1-select-modal');
     const p2Select = document.getElementById('player2-select-modal');
-    const p3Select = document.getElementById('player3-select-modal');
-    const p4Select = document.getElementById('player4-select-modal');
-
+    
     const p1Name = p1Select.options[p1Select.selectedIndex].text;
     const p2Name = p2Select.options[p2Select.selectedIndex].text;
-    const p3Name = p3Select.options[p3Select.selectedIndex].text;
-    const p4Name = p4Select.options[p4Select.selectedIndex].text;
 
     let teamAName = p1Name;
     let teamBName = p2Name;
 
     if (isDoubles) {
+        const p3Select = document.getElementById('player3-select-modal');
+        const p4Select = document.getElementById('player4-select-modal');
+        const p3Name = p3Select.options[p3Select.selectedIndex].text;
+        const p4Name = p4Select.options[p4Select.selectedIndex].text;
         teamAName += ` / ${p3Name}`;
         teamBName += ` / ${p4Name}`;
     }
@@ -528,8 +562,10 @@ function closeModal() {
     modalContainer.innerHTML = '';
 }
 
-async function saveScores(matchId) {
-    const isDoubles = document.getElementById('doubles-toggle').checked;
+async function saveScores(match) {
+    const matchId = match.id;
+    const isDoubles = !!(match.player3_id && match.player4_id);
+
     const sets = [];
     let p1SetsWon = 0, p2SetsWon = 0;
     
@@ -550,7 +586,7 @@ async function saveScores(matchId) {
     const p3_id = isDoubles ? document.getElementById('player3-select-modal').value : null;
     const p4_id = isDoubles ? document.getElementById('player4-select-modal').value : null;
 
-    if (p1_id === p2_id || p1_id === p3_id || p1_id === p4_id || p2_id === p3_id || p2_id === p4_id || (isDoubles && p3_id === p4_id)) {
+    if (p1_id === p2_id || (isDoubles && (p1_id === p3_id || p1_id === p4_id || p2_id === p3_id || p2_id === p4_id || p3_id === p4_id))) {
         return alert("Los jugadores no pueden repetirse.");
     }
     
@@ -560,6 +596,12 @@ async function saveScores(matchId) {
         winner_id = p1SetsWon > p2SetsWon ? p1_id : p2_id;
     }
 
+    const newDate = document.getElementById('match-date-modal').value;
+    const newTime = document.getElementById('match-time-modal').value;
+    const newSede = document.getElementById('match-sede-modal').value;
+    const newCancha = document.getElementById('match-cancha-modal').value;
+    const newLocation = newSede && newCancha ? `${newSede} - ${newCancha}` : (newSede || newCancha || '');
+
     const matchData = { 
         sets: sets.length > 0 ? sets : null, 
         winner_id, 
@@ -568,7 +610,10 @@ async function saveScores(matchId) {
         player3_id: p3_id,
         player4_id: p4_id,
         status: winner_id ? 'completado' : 'programado',
-        bonus_loser: (p1SetsWon === 1 && winner_id == p2_id) || (p2SetsWon === 1 && winner_id == p1_id)
+        bonus_loser: (p1SetsWon === 1 && winner_id == p2_id) || (p2SetsWon === 1 && winner_id == p1_id),
+        match_date: newDate || null,
+        match_time: newTime || null,
+        location: newLocation || null
     };
     
     const { error } = await supabase.from('matches').update(matchData).eq('id', matchId);
@@ -593,15 +638,6 @@ async function deleteMatch(matchId) {
     }
 }
 
-async function suspendMatch(matchId) {
-    if (confirm("¿Marcar este partido como suspendido?")) {
-        const { error } = await supabase.from('matches').update({ status: 'suspendido', sets: null, winner_id: null }).eq('id', matchId);
-        if (error) alert("Error: " + error.message);
-        else { closeModal(); await loadInitialData(); }
-    }
-}
-
-
 function updateBulkActionBar() {
     selectedCountSpan.textContent = selectedMatches.size;
     bulkActionBar.classList.toggle('translate-y-24', selectedMatches.size === 0);
@@ -617,16 +653,29 @@ async function handleBulkDelete() {
     }
 }
 
+async function handleBulkSuspend() {
+    if (selectedMatches.size === 0) return;
+    if (confirm(`¿Marcar ${selectedMatches.size} partidos seleccionados como suspendidos?`)) {
+        const { error } = await supabase.from('matches')
+            .update({ status: 'suspendido', sets: null, winner_id: null, bonus_loser: false })
+            .in('id', Array.from(selectedMatches));
+
+        if (error) {
+            alert("Error al suspender los partidos: " + error.message);
+        } else {
+            selectedMatches.clear();
+            await loadInitialData();
+        }
+    }
+}
+
 function handleBulkReport() {
     if (selectedMatches.size === 0) {
         alert("No hay partidos seleccionados.");
         return;
     }
     const matchIds = Array.from(selectedMatches);
-    // *** INICIO DE LA CORRECCIÓN ***
-    // Se utiliza sessionStorage para que los datos persistan en la sesión del navegador
     sessionStorage.setItem('reportMatchIds', JSON.stringify(matchIds));
-    // *** FIN DE LA CORRECCIÓN ***
     window.open('reportes.html', '_blank');
 }
 
@@ -741,6 +790,7 @@ matchesContainer.addEventListener('click', (e) => {
 
 document.getElementById('bulk-delete').addEventListener('click', handleBulkDelete);
 document.getElementById('bulk-report').addEventListener('click', handleBulkReport);
+document.getElementById('bulk-suspend').addEventListener('click', handleBulkSuspend);
 document.getElementById('btn-import-excel').addEventListener('click', () => {
     importMatchesFromFile(allPlayers, allTournaments, []).then(success => { if (success) loadInitialData(); });
 });

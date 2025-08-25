@@ -25,6 +25,13 @@
         border-radius: 8px;
         overflow: hidden;
     }
+  .matches-report-style .suspended-row td, .matches-report-style .suspended-row {
+    text-decoration: line-through !important;
+    color: #ff4d4f !important;
+    background: #2a1a1a !important;
+    opacity: 0.85;
+    font-weight: 700;
+  }
     .matches-report-style th,
     .matches-report-style td {
         padding: 6px 4px;
@@ -179,6 +186,11 @@
         
         <div class="h-6 border-l border-gray-600"></div>
         
+        <button id="bulk-suspend" class="flex items-center gap-2 text-sm text-orange-400 hover:text-orange-300" title="Suspender Seleccionados">
+            <span class="material-icons">cancel</span>
+            <span class="hidden sm:inline">Suspender</span>
+        </button>
+
         <button id="bulk-delete" class="flex items-center gap-2 text-sm text-red-400 hover:text-red-300" title="Eliminar">
             <span class="material-icons">delete</span>
             <span class="hidden sm:inline">Eliminar</span>

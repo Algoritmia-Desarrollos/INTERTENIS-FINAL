@@ -30,10 +30,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         return matches.map(match => {
             const { p1_points, p2_points } = calculatePoints(match);
             const isDoubles = !!(match.player3 && match.player4);
-            
             return {
                 id: match.id,
                 isDoubles: isDoubles,
+                status: match.status || '',
                 date: match.match_date ? match.match_date.split('T')[0] : '',
                 time: match.match_time || '',
                 location: match.location || '',
@@ -166,7 +166,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 
                 for (const match of matches) {
                     const row = tbody.insertRow();
-                    row.className = 'data-row';
+                    row.className = 'data-row' + (match.status === 'suspendido' ? ' suspended-row' : '');
                     const played = Array.isArray(match.sets) && match.sets.length > 0;
                     let player1Content, player2Content;
                     
@@ -219,7 +219,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                     const p1_class = match.player1.isWinner ? 'winner' : '';
                     const p2_class = match.player2.isWinner ? 'winner' : '';
                     let hora = match.time?.substring(0, 5) || '';
-                    const setsDisplay = played ? match.sets.map(s => `${s.p1}/${s.p2}`).join(' ') : '';
+                    let setsDisplay = '';
+                    if (match.status === 'suspendido') {
+                        setsDisplay = `<span style="color:#fff;font-weight:700;text-decoration:none !important;">Suspendido</span>`;
+                    } else {
+                        setsDisplay = played ? match.sets.map(s => `${s.p1}/${s.p2}`).join(' ') : '';
+                    }
                     function isColorLight(hex) { if (!hex) return false; let c = hex.replace('#', ''); if (c.length === 3) c = c.split('').map(x => x + x).join(''); const r = parseInt(c.substr(0,2),16), g = parseInt(c.substr(2,2),16), b = parseInt(c.substr(4,2),16); return (0.299*r + 0.587*g + 0.114*b) > 186; }
                     const p1TeamColor = match.player1.teamColor, p2TeamColor = match.player2.teamColor;
                     const p1TextColor = isColorLight(p1TeamColor) ? '#222' : '#fff', p2TextColor = isColorLight(p2TeamColor) ? '#222' : '#fff';
