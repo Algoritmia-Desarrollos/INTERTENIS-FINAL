@@ -66,13 +66,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     async function renderReport() {
-        // Agregar estilos para la fila suspendida: solo color rojo, sin tachado
+        // Estilos para la fila suspendida: color rojo, sin tachado.
         if (!document.getElementById('suspended-row-style')) {
             const style = document.createElement('style');
             style.id = 'suspended-row-style';
             style.innerHTML = `.suspended-row td, .suspended-row .font-mono, .suspended-row .pts-col, .suspended-row .cat-col, .suspended-row .player-name, .suspended-row .player-name-right, .suspended-row .player-name-left {
                 color: #ff4444 !important;
-                text-decoration: none !important;
+                text-decoration: none !important; /* Eliminado el tachado */
             }
             .suspended-row td.font-mono {
                 color: #fff !important;
@@ -237,7 +237,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     let hora = match.time?.substring(0, 5) || '';
                     let setsDisplay = '';
                     if (match.status === 'suspendido') {
-                        setsDisplay = `<span style=\"color:#fff;font-weight:700;text-decoration:none !important;\">Suspendido</span>`;
+                        setsDisplay = `<span style="color:#fff;font-weight:700;text-decoration:none !important;">Suspendido</span>`;
                     } else {
                         setsDisplay = played ? match.sets.map(s => `${s.p1}/${s.p2}`).join(' ') : '';
                     }
@@ -247,7 +247,18 @@ document.addEventListener('DOMContentLoaded', async () => {
                     let p1NameStyle = played && !match.player1.isWinner ? 'color:#6b716f;' : '';
                     let p2NameStyle = played && !match.player2.isWinner ? 'color:#6b716f;' : '';
                     let p1PointsDisplay = '', p2PointsDisplay = '';
-                    if (played) { p1PointsDisplay = match.player1.points ?? ''; if(p1PointsDisplay===0) p1PointsDisplay='0'; p2PointsDisplay = match.player2.points ?? ''; if(p2PointsDisplay===0) p2PointsDisplay='0'; } else { if (match.player1.teamImage) p1PointsDisplay = `<img src="${match.player1.teamImage}" alt="" style="height: 20px; object-fit: contain; margin: auto; display: block;">`; if (match.player2.teamImage) p2PointsDisplay = `<img src="${match.player2.teamImage}" alt="" style="height: 20px; object-fit: contain; margin: auto; display: block;">`; }
+                    
+                    // MODIFICACIÓN: Mostrar logo para partidos no jugados o suspendidos
+                    if (played) { 
+                        p1PointsDisplay = match.player1.points ?? ''; 
+                        if(p1PointsDisplay===0) p1PointsDisplay='0'; 
+                        p2PointsDisplay = match.player2.points ?? ''; 
+                        if(p2PointsDisplay===0) p2PointsDisplay='0'; 
+                    } else { 
+                        if (match.player1.teamImage) p1PointsDisplay = `<img src="${match.player1.teamImage}" alt="" style="height: 35px; width: 100%; object-fit: contain; margin: auto; display: block;">`; 
+                        if (match.player2.teamImage) p2PointsDisplay = `<img src="${match.player2.teamImage}" alt="" style="height: 35px; width: 100%; object-fit: contain; margin: auto; display: block;">`; 
+                    }
+
                     const canchaBackgroundColor = sede.toLowerCase().trim() === 'centro' ? '#222222' : '#ffc000';
                     const canchaTextColor = sede.toLowerCase().trim() === 'centro' ? '#ffc000' : '#222';
                     const categoryDisplay = match.category === 'Equipos' ? '' : match.category;
