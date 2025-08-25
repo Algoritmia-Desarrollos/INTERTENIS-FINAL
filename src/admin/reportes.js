@@ -199,7 +199,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                     } else {
                          if (match.isDoubles) {
-                            // --- CORRECCIÓN: Se elimina font-weight: normal ---
+                            // --- CORRECCIÓN: Se mantiene el font-weight por defecto (bold) ---
                             player1Content = `<div style="line-height: 1.2;"><div>${match.player1.name}</div><div>${match.player3.name}</div></div>`;
                             player2Content = `<div style="line-height: 1.2;"><div>${match.player2.name}</div><div>${match.player4.name}</div></div>`;
                         } else {
@@ -334,7 +334,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             btnEditReport.onclick = () => {
                 if (!isEditMode) {
                     isEditMode = true;
-                    // --- CORRECCIÓN: Texto del botón acortado ---
                     btnEditReport.innerHTML = `<span class="material-icons">save</span> Guardar`;
                     btnEditReport.classList.remove('btn-secondary');
                     btnEditReport.classList.add('btn-primary');
