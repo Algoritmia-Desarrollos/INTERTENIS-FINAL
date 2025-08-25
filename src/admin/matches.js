@@ -792,7 +792,14 @@ document.getElementById('bulk-delete').addEventListener('click', handleBulkDelet
 document.getElementById('bulk-report').addEventListener('click', handleBulkReport);
 document.getElementById('bulk-suspend').addEventListener('click', handleBulkSuspend);
 document.getElementById('btn-import-excel').addEventListener('click', () => {
-    importMatchesFromFile(allPlayers, allTournaments, []).then(success => { if (success) loadInitialData(); });
+    // AHORA PASAMOS EL tournamentPlayersMap A LA FUNCIÓN
+    importMatchesFromFile(allPlayers, allTournaments, tournamentPlayersMap)
+        .then(success => {
+            if (success) {
+                // Si la importación fue exitosa, recargamos todos los datos
+                loadInitialData();
+            }
+        });
 });
 document.getElementById('bulk-deselect').addEventListener('click', () => {
     selectedMatches.clear();
