@@ -6,194 +6,186 @@ document.addEventListener('DOMContentLoaded', async () => {
     // --- ELEMENTOS DEL DOM ---
     const headerContainer = document.getElementById('header-container');
     const reportTitleEl = document.getElementById('report-title');
-    const reportContainer = document.getElementById('report-container');
+    const pagesContainer = document.getElementById('report-pages-container');
+    let reportData = [];
 
-    // --- FUNCIONES AUXILIARES ---
-    function isColorLight(hex) {
-        if (!hex) return false;
-        let c = hex.replace('#', '');
-        if (c.length === 3) c = c.split('').map(x => x + x).join('');
-        const r = parseInt(c.substr(0, 2), 16),
-              g = parseInt(c.substr(2, 2), 16),
-              b = parseInt(c.substr(4, 2), 16);
-        return ((0.299 * r + 0.587 * g + 0.114 * b) > 150);
-    }
-
-    // Procesa los datos crudos de Supabase al formato que necesita el reporte.
     function processMatchesForReport(matches) {
         if (!matches) return [];
         return matches.map(match => {
             const { p1_points, p2_points } = calculatePoints(match);
+            const isDoubles = !!(match.player3 && match.player4);
+            
             return {
                 id: match.id,
+                isDoubles: isDoubles,
                 date: match.match_date ? match.match_date.split('T')[0] : '',
                 time: match.match_time || '',
                 location: match.location || '',
+                category: match.category?.name || '',
+                category_color: match.category?.color || '#e5e7eb',
                 player1: {
-                    name: match.player1?.name || 'N/A',
-                    isWinner: match.winner_id === match.player1_id,
+                    name: match.player1?.name || '',
+                    points: p1_points ?? '',
+                    isWinner: match.winner_id === match.player1_id || (isDoubles && match.winner_id === match.player3_id),
                     teamColor: match.player1?.team?.color,
-                    teamImage: match.player1?.team?.image_url,
-                    points: p1_points
+                    teamImage: match.player1?.team?.image_url
                 },
                 player2: {
-                    name: match.player2?.name || 'N/A',
-                    isWinner: match.winner_id === match.player2_id,
+                    name: match.player2?.name || '',
+                    points: p2_points ?? '',
+                    isWinner: match.winner_id === match.player2_id || (isDoubles && match.winner_id === match.player4_id),
                     teamColor: match.player2?.team?.color,
-                    teamImage: match.player2?.team?.image_url,
-                    points: p2_points
+                    teamImage: match.player2?.team?.image_url
                 },
+                player3: isDoubles ? { name: match.player3?.name || '' } : null,
+                player4: isDoubles ? { name: match.player4?.name || '' } : null,
                 sets: match.sets || [],
-                category: match.category?.name || '',
-                category_color: match.category?.color || '#a0a0a0',
             };
         });
     }
 
-    // Renderiza el reporte con el estilo de matches.js
-    async function renderReport(reportData) {
-        if (!reportData || reportData.length === 0) {
-            reportContainer.innerHTML = '<p class="text-center text-gray-400 py-10">Este reporte no contiene partidos.</p>';
+    async function renderReport() {
+        pagesContainer.innerHTML = '';
+        if (reportData.length === 0) {
+            pagesContainer.innerHTML = '<p class="text-center text-gray-500 py-10">No hay partidos para el reporte.</p>';
             return;
         }
 
-        const groupedByDate = reportData.reduce((acc, match) => {
-            const date = match.date || 'Sin fecha';
-            if (!acc[date]) acc[date] = [];
-            acc[date].push(match);
+        async function fetchWeatherData() {
+            const locations = { centro: { lat: -32.95, lon: -60.64 }, funes: { lat: -32.92, lon: -60.81 } };
+            const weatherCache = { centro: {}, funes: {} };
+            try {
+                for (const key in locations) {
+                    const loc = locations[key];
+                    const url = `https://api.open-meteo.com/v1/forecast?latitude=${loc.lat}&longitude=${loc.lon}&daily=weather_code,temperature_2m_max,temperature_2m_min,wind_speed_10m_max&timezone=auto&forecast_days=16`;
+                    const response = await fetch(url);
+                    if (!response.ok) continue;
+                    const data = await response.json();
+                    data.daily.time.forEach((date, index) => {
+                        weatherCache[key][date] = { maxTemp: Math.round(data.daily.temperature_2m_max[index]), minTemp: Math.round(data.daily.temperature_2m_min[index]), windSpeed: Math.round(data.daily.wind_speed_10m_max[index]), weatherCode: data.daily.weather_code[index] };
+                    });
+                }
+            } catch (error) { console.error("Error al obtener clima:", error); }
+            return weatherCache;
+        }
+        const weatherData = await fetchWeatherData();
+
+        const groupedMatches = reportData.reduce((acc, match) => {
+            const date = match.date;
+            const sede = match.location ? match.location.split(' - ')[0] : 'Sede no definida';
+            if (!acc[date]) acc[date] = {};
+            if (!acc[date][sede]) acc[date][sede] = [];
+            acc[date][sede].push(match);
             return acc;
         }, {});
-
-        const sortedDates = Object.keys(groupedByDate).sort((a, b) => new Date(a) - new Date(b));
+        const sortedDates = Object.keys(groupedMatches).sort((a, b) => new Date(a) - new Date(b));
+        const A4_PAGE_HEIGHT_MM = 297, PADDING_MM = 30, PAGE_HEADER_HEIGHT_MM = 25, HEADER_ROW_HEIGHT_MM = 12, ROW_HEIGHT_MM = 10, SPACER_HEIGHT_MM = 5;
+        const maxContentHeight = A4_PAGE_HEIGHT_MM - PADDING_MM - PAGE_HEADER_HEIGHT_MM;
+        let pageCount = 1, currentHeight = 0;
         
-        let tableBodyHTML = '';
-        let isFirstTable = true;
-
-        for (const date of sortedDates) {
-            const groupedBySede = groupedByDate[date].reduce((acc, match) => {
-                const sede = (match.location ? match.location.split(' - ')[0] : 'Sede no definida').trim();
-                if(!acc[sede]) acc[sede] = [];
-                acc[sede].push(match);
-                return acc;
-            }, {});
-
-            for(const sede in groupedBySede) {
-                if (!isFirstTable) {
-                    tableBodyHTML += `<tr><td colspan="8" style="height: 15px; background: #000; border: none;"></td></tr>`;
-                }
-
-                const matchesInSede = groupedBySede[sede];
-                const dateObj = new Date(date + 'T00:00:00');
-                const formattedDate = new Intl.DateTimeFormat('es-AR', { weekday: 'long', day: 'numeric', month: 'long' }).format(dateObj);
-                const headerBgColor = sede.toLowerCase() === 'centro' ? '#222222' : '#fdc100';
-                const headerTextColor = sede.toLowerCase() === 'centro' ? '#ffc000' : '#000000';
-
-                tableBodyHTML += `
-                    <tr>
-                        <td colspan="2" class="sede-fecha" style="background-color: ${headerBgColor}; color: ${headerTextColor}; font-weight: 700; text-align: center; vertical-align: middle; padding: 10px 0; border-right: none;">
-                            ${sede.toUpperCase()}
-                        </td>
-                        <td colspan="6" class="sede-fecha" style="background-color: ${headerBgColor}; color: ${headerTextColor}; font-weight: 700; text-align: center; vertical-align: middle; padding: 10px 0; border-left: none;">
-                            ${formattedDate}
-                        </td>
-                    </tr>`;
-
-                for (const match of matchesInSede) {
-                    const p1_class = match.player1.isWinner ? 'winner' : '';
-                    const p2_class = match.player2.isWinner ? 'winner' : '';
-                    let hora = match.time ? match.time.substring(0, 5) : 'HH:MM';
-                    const setsDisplay = (match.sets || []).map(s => `${s.p1}/${s.p2}`).join(' ');
-                    const p1TeamColor = match.player1.teamColor;
-                    const p2TeamColor = match.player2.teamColor;
-                    const p1TextColor = isColorLight(p1TeamColor) ? '#222' : '#fff';
-                    const p2TextColor = isColorLight(p2TeamColor) ? '#222' : '#fff';
-                    const played = !!(match.sets && match.sets.length > 0);
-                    let p1NameStyle = played && !p1_class ? 'color:#888;' : '';
-                    let p2NameStyle = played && !p2_class ? 'color:#888;' : '';
-                    let p1PointsDisplay = '';
-                    let p2PointsDisplay = '';
-
-                    if (played) {
-                        p1PointsDisplay = (typeof match.player1.points !== 'undefined' && match.player1.points !== null) ? match.player1.points : '';
-                        p2PointsDisplay = (typeof match.player2.points !== 'undefined' && match.player2.points !== null) ? match.player2.points : '';
-                    } else {
-                        if (match.player1.teamImage) p1PointsDisplay = `<img src="${match.player1.teamImage}" alt="" style="height: 18px; object-fit: contain; margin: auto; display: block;">`;
-                        if (match.player2.teamImage) p2PointsDisplay = `<img src="${match.player2.teamImage}" alt="" style="height: 18px; object-fit: contain; margin: auto; display: block;">`;
-                    }
-
-                    let cancha = 'N/A';
-                    if (match.location) {
-                        const parts = match.location.split(' - ');
-                        cancha = parts[1] || parts[0];
-                    }
-                    const matchNum = cancha.match(/\d+/);
-                    if (matchNum) cancha = matchNum[0];
-                    const canchaBackgroundColor = sede.toLowerCase() === 'centro' ? '#222222' : '#ffc000';
-                    const canchaTextColor = sede.toLowerCase() === 'centro' ? '#ffc000' : '#222';
-
-                    tableBodyHTML += `
-                        <tr class="data-row">
-                            <td style="background-color: ${canchaBackgroundColor} !important; color: ${canchaTextColor} !important; font-weight: bold; font-size: 8pt;">${cancha}</td>
-                            <td style="background:#000;color:#fff; font-size: 8pt;">${hora}</td>
-                            <td class="player-name player-name-right ${p1_class}" style='background:#000;color:#fff;${p1NameStyle};'>${match.player1.name}</td>
-                            <td class="pts-col" style='background:${p1TeamColor || '#3a3838'};color:${p1TextColor};'>${p1PointsDisplay}</td>
-                            <td class="font-mono" style="background:#000;color:#fff; font-size: 9pt;">${setsDisplay}</td>
-                            <td class="pts-col" style='background:${p2TeamColor || '#3a3838'};color:${p2TextColor};'>${p2PointsDisplay}</td>
-                            <td class="player-name player-name-left ${p2_class}" style='background:#000;color:#fff;${p2NameStyle};'>${match.player2.name}</td>
-                            <td class="cat-col" style="background:#000;color:${match.category_color || '#b45309'};">${match.category || 'N/A'}</td>
-                        </tr>`;
-                }
-                isFirstTable = false;
-            }
+        function createNewPage() {
+            const page = document.createElement('div');
+            page.className = 'page';
+            page.innerHTML = `<div class="page-header flex justify-between items-center"><h1 class="text-2xl font-bold">Reporte de Partidos</h1><p class="text-sm text-gray-500">Página ${pageCount}</p></div><div class="page-content"></div>`;
+            pagesContainer.appendChild(page);
+            currentHeight = 0;
+            return page.querySelector('.page-content');
         }
         
-        reportContainer.innerHTML = `
-        <div class="bg-[#18191b] p-4 rounded-xl shadow-lg overflow-x-auto">
-            <style>
-                /* Estilos por defecto (Móvil) */
-                .responsive-table .player-name { 
-                    font-size: 9pt;
-                    white-space: nowrap;
-                    overflow: hidden;
-                    text-overflow: ellipsis;
-                    max-width: 1px; /* Truco para que text-overflow funcione en tablas */
+        function createTable(container) {
+            const table = document.createElement('table');
+            table.className = 'report-table';
+            table.style.tableLayout = 'fixed'; 
+            table.innerHTML = `<colgroup><col style="width: 6%"><col style="width: 9%"><col style="width: 25%"><col style="width: 6%"><col style="width: 18%"><col style="width: 6%"><col style="width: 25%"><col style="width: 5%"></colgroup>`;
+            container.appendChild(table);
+            return table;
+        }
+
+        function createHeaderRow(tbody, sede, date, formattedDate) {
+             const headerRow = tbody.insertRow();
+            headerRow.className = 'date-header-row';
+            let bgColor, textColor;
+            if (sede.toLowerCase().trim() === 'centro') { bgColor = '#222222'; textColor = '#ffc000'; } else { bgColor = '#fdc100'; textColor = '#000000'; }
+            function weatherCodeToEmoji(code) { const icons = { 0: '☀️', 1: '🌤️', 2: '⛅️', 3: '🌥️', 45: '🌫️', 48: '🌫️', 51: '🌦️', 53: '🌦️', 55: '🌦️', 61: '🌧️', 63: '🌧️', 65: '🌧️', 80: '⛈️', 81: '⛈️', 82: '⛈️', 95: '🌩️' }; return icons[code] || '🌐'; }
+            let weatherHTML = '';
+            const weather = weatherData[sede.toLowerCase().trim()]?.[date];
+            if (weather) { weatherHTML = `<div style="display: flex; align-items: center; gap: 15px; font-size: 0.9em;"><div style="text-align: right;"><div>${weather.maxTemp}° / ${weather.minTemp}°</div><div style="font-size: 0.8em; opacity: 0.9;">${weather.windSpeed} km/h</div></div><div style="font-size: 1.8em;">${weatherCodeToEmoji(weather.weatherCode)}</div></div>`; }
+            const headerCell = headerRow.insertCell();
+            headerCell.colSpan = 8;
+            headerCell.style.cssText = `background-color: ${bgColor}; color: ${textColor}; font-weight: 700; font-size: 11pt; padding: 8px 15px;`;
+            headerCell.innerHTML = `<div style="display: flex; justify-content: space-between; align-items: center; width: 100%;"><span style="text-align: left;">${sede.toUpperCase()}</span><span style="text-align: center; flex-grow: 1; display: inline-block; padding-top:2px; padding-bottom:2px; font-size: 13pt;">${formattedDate}</span><span style="text-align: right;">${weatherHTML}</span></div>`;
+        }
+        
+        let container = createNewPage();
+        for (const date of sortedDates) {
+            const sedes = groupedMatches[date];
+            const formattedDate = new Date(date + 'T00:00:00').toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' });
+            for (const sede in sedes) {
+                const matches = sedes[sede];
+                const tableHeight = HEADER_ROW_HEIGHT_MM + (matches.length * ROW_HEIGHT_MM);
+                const spacerHeight = (currentHeight > 0) ? SPACER_HEIGHT_MM : 0;
+
+                if (currentHeight + spacerHeight + tableHeight > maxContentHeight) {
+                    pageCount++; container = createNewPage(); currentHeight = 0;
                 }
-                .responsive-table .sede-fecha { font-size: 11pt; }
-                .responsive-table th:nth-child(1), .responsive-table td:nth-child(1) { width: 8%; }
-                .responsive-table th:nth-child(2), .responsive-table td:nth-child(2) { width: 12%; }
-                .responsive-table th:nth-child(3), .responsive-table td:nth-child(3) { width: 20%; } /* Jugador 1 más angosto */
-                .responsive-table th:nth-child(4), .responsive-table td:nth-child(4) { width: 8%; }
-                .responsive-table th:nth-child(5), .responsive-table td:nth-child(5) { width: 14%; }
-                .responsive-table th:nth-child(6), .responsive-table td:nth-child(6) { width: 8%; }
-                .responsive-table th:nth-child(7), .responsive-table td:nth-child(7) { width: 20%; } /* Jugador 2 más angosto */
-                .responsive-table th:nth-child(8), .responsive-table td:nth-child(8) { width: 10%; }
                 
-                /* Estilos para pantallas grandes (Desktop) a partir de 768px */
-                @media (min-width: 768px) {
-                    .responsive-table .player-name { 
-                        font-size: 11pt;
-                        white-space: normal; /* Permite que el texto se ajuste en varias líneas si es necesario */
-                        overflow: visible;
-                        text-overflow: clip;
-                    }
-                    .responsive-table .sede-fecha { font-size: 1.35rem; }
-                    .responsive-table th:nth-child(1), .responsive-table td:nth-child(1) { width: 5%; }
-                    .responsive-table th:nth-child(2), .responsive-table td:nth-child(2) { width: 8%; }
-                    .responsive-table th:nth-child(3), .responsive-table td:nth-child(3) { width: 28%; } /* Jugador 1 más ancho */
-                    .responsive-table th:nth-child(4), .responsive-table td:nth-child(4) { width: 5%; }
-                    .responsive-table th:nth-child(5), .responsive-table td:nth-child(5) { width: 12%; }
-                    .responsive-table th:nth-child(6), .responsive-table td:nth-child(6) { width: 5%; }
-                    .responsive-table th:nth-child(7), .responsive-table td:nth-child(7) { width: 28%; } /* Jugador 2 más ancho */
-                    .responsive-table th:nth-child(8), .responsive-table td:nth-child(8) { width: 9%; }
+                if (currentHeight > 0) {
+                    const spacer = document.createElement('div');
+                    spacer.style.height = `${SPACER_HEIGHT_MM}mm`;
+                    container.appendChild(spacer);
+                    currentHeight += SPACER_HEIGHT_MM;
                 }
-            </style>
-            <table class="matches-report-style responsive-table">
-                <thead><tr>
-                    <th>Cancha</th><th>Hora</th><th style="text-align: right; padding-right: 8px;">Jugador 1</th><th>Pts</th><th>Resultado</th><th>Pts</th><th style="text-align: left; padding-left: 8px;">Jugador 2</th><th>Cat.</th>
-                </tr></thead>
-                <tbody>${tableBodyHTML}</tbody>
-            </table>
-        </div>`;
+
+                const table = createTable(container);
+                let tbody = table.createTBody();
+                createHeaderRow(tbody, sede, date, formattedDate);
+                currentHeight += HEADER_ROW_HEIGHT_MM;
+                
+                for (const match of matches) {
+                    const row = tbody.insertRow();
+                    row.className = 'data-row';
+                    const played = Array.isArray(match.sets) && match.sets.length > 0;
+                    let player1Content, player2Content;
+                    
+                    if (match.isDoubles) {
+                        player1Content = `<div style="line-height: 1.2;"><div>${match.player1.name}</div><div>${match.player3.name}</div></div>`;
+                        player2Content = `<div style="line-height: 1.2;"><div>${match.player2.name}</div><div>${match.player4.name}</div></div>`;
+                    } else {
+                        player1Content = match.player1.name;
+                        player2Content = match.player2.name;
+                    }
+
+                    let cancha = match.location ? match.location.split(' - ')[1] : 'N/A';
+                    if(cancha.match(/\d+/)) cancha = cancha.match(/\d+/)[0];
+                    const p1_class = match.player1.isWinner ? 'winner' : '';
+                    const p2_class = match.player2.isWinner ? 'winner' : '';
+                    let hora = match.time?.substring(0, 5) || '';
+                    const setsDisplay = played ? match.sets.map(s => `${s.p1}/${s.p2}`).join(' ') : '';
+                    function isColorLight(hex) { if (!hex) return false; let c = hex.replace('#', ''); if (c.length === 3) c = c.split('').map(x => x + x).join(''); const r = parseInt(c.substr(0,2),16), g = parseInt(c.substr(2,2),16), b = parseInt(c.substr(4,2),16); return (0.299*r + 0.587*g + 0.114*b) > 186; }
+                    const p1TeamColor = match.player1.teamColor, p2TeamColor = match.player2.teamColor;
+                    const p1TextColor = isColorLight(p1TeamColor) ? '#222' : '#fff', p2TextColor = isColorLight(p2TeamColor) ? '#222' : '#fff';
+                    let p1NameStyle = played && !match.player1.isWinner ? 'color:#6b716f;' : '';
+                    let p2NameStyle = played && !match.player2.isWinner ? 'color:#6b716f;' : '';
+                    let p1PointsDisplay = '', p2PointsDisplay = '';
+                    if (played) { p1PointsDisplay = match.player1.points ?? ''; if(p1PointsDisplay===0) p1PointsDisplay='0'; p2PointsDisplay = match.player2.points ?? ''; if(p2PointsDisplay===0) p2PointsDisplay='0'; } else { if (match.player1.teamImage) p1PointsDisplay = `<img src="${match.player1.teamImage}" alt="" style="height: 20px; object-fit: contain; margin: auto; display: block;">`; if (match.player2.teamImage) p2PointsDisplay = `<img src="${match.player2.teamImage}" alt="" style="height: 20px; object-fit: contain; margin: auto; display: block;">`; }
+                    const canchaBackgroundColor = sede.toLowerCase().trim() === 'centro' ? '#222222' : '#ffc000';
+                    const canchaTextColor = sede.toLowerCase().trim() === 'centro' ? '#ffc000' : '#222';
+                    const categoryDisplay = match.category === 'Equipos' ? '' : match.category;
+
+                    row.innerHTML = `
+                        <td style="background-color: ${canchaBackgroundColor} !important; color: ${canchaTextColor} !important; font-weight: bold;">${cancha}</td>
+                        <td class="text-center">${hora}</td>
+                        <td class="text-right font-bold ${p1_class}" style='${p1NameStyle}'>${player1Content}</td>
+                        <td class="pts-col" style='text-align:center;background:${p1TeamColor || '#3a3838'};color:${p1TextColor};font-weight:700;'>${p1PointsDisplay}</td>
+                        <td style='text-align:center;' class="font-mono">${setsDisplay}</td>
+                        <td class="pts-col" style='text-align:center;background:${p2TeamColor || '#3a3838'};color:${p2TextColor};font-weight:700;'>${p2PointsDisplay}</td>
+                        <td class="font-bold ${p2_class}" style='${p2NameStyle}'>${player2Content}</td>
+                        <td class="cat-col" style="color:${match.category_color || '#b45309'};font-family:'Segoe UI Black',Arial,sans-serif;font-weight:900;">${categoryDisplay}</td>
+                    `;
+                    currentHeight += ROW_HEIGHT_MM;
+                }
+            }
+        }
     }
 
     async function loadReportData() {
@@ -223,7 +215,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const matchIds = savedReport.report_data || [];
 
         if (matchIds.length === 0) {
-            reportContainer.innerHTML = '<p class="text-center text-gray-400 py-10">Este reporte no contiene partidos.</p>';
+            pagesContainer.innerHTML = '<p class="text-center text-gray-400 py-10">Este reporte no contiene partidos.</p>';
             return;
         }
 
@@ -232,7 +224,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             .select(`*, 
                 category:category_id(id, name, color), 
                 player1:player1_id(*, team:team_id(name, image_url, color)), 
-                player2:player2_id(*, team:team_id(name, image_url, color)), 
+                player2:player2_id(*, team:team_id(name, image_url, color)),
+                player3:player3_id(*, team:team_id(name, image_url, color)),
+                player4:player4_id(*, team:team_id(name, image_url, color)),
                 winner:winner_id(name)`)
             .in('id', matchIds);
 
@@ -241,8 +235,25 @@ document.addEventListener('DOMContentLoaded', async () => {
             return;
         }
         
-        const reportData = processMatchesForReport(freshMatches);
-        await renderReport(reportData);
+        reportData = processMatchesForReport(freshMatches);
+        
+        document.getElementById('btn-save-pdf').addEventListener('click', () => {
+            const element = document.getElementById('report-pages-container'); 
+            html2pdf().set({ 
+                margin: 0, 
+                filename: `reporte_${savedReport.title.replace(/\s+/g, '_')}.pdf`, 
+                image: { type: 'jpeg', quality: 0.98 }, 
+                html2canvas: { scale: 2, useCORS: true }, 
+                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } 
+            }).from(element).toPdf().get('pdf').then(function (pdf) { 
+                const totalPages = pdf.internal.getNumberOfPages(); 
+                if (totalPages > 1) { 
+                    pdf.deletePage(totalPages); 
+                } 
+            }).save();
+        });
+
+        await renderReport();
     }
 
     loadReportData();

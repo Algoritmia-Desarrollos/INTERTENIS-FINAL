@@ -11,77 +11,45 @@
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"/>
     <style>
-        /* Estilos de la tabla tomados de admin/matches.html para una apariencia idéntica */
-        .matches-report-style {
-            width: 100%;
-            border-collapse: separate;
-            border-spacing: 0;
-            border-radius: 8px;
-            overflow: hidden;
-            min-width: 800px; /* Ancho mínimo para forzar el scroll en pantallas chicas */
-        }
-        .matches-report-style th,
-        .matches-report-style td {
-            padding: 6px 4px;
-            font-size: 9pt;
-            border-bottom: 1px solid #4a4a4a;
-            text-align: center;
-            vertical-align: middle;
-            background: #222222;
-            color: #ffffff;
-        }
-        .matches-report-style tr td {
-          border-right: 1px solid #4a4a4a;
-        }
-        .matches-report-style tr td:first-child {
-           border-left: 1px solid #4a4a4a;
-        }
-        .matches-report-style tbody tr:last-child td {
-          border-bottom: none;
-        }
-        .matches-report-style thead th {
-            font-size: 8pt;
-            color: #a0a0a0;
-            text-transform: uppercase;
-            font-weight: 600;
-            padding-top: 8px;
-            padding-bottom: 8px;
-            border: none;
-            background: #000;
-        }
-        .matches-report-style .winner {
-            font-weight: 700 !important;
-            color: #f4ec05 !important;
-        }
-        .matches-report-style .player-name { font-weight: 700; }
-        .matches-report-style .player-name-right { text-align: right; padding-right: 8px;}
-        .matches-report-style .player-name-left { text-align: left; padding-left: 8px;}
-        .matches-report-style .font-mono { 
-            font-family: 'Consolas', 'Menlo', 'Courier New', monospace;
-            font-size: 10pt;
-        }
-        .matches-report-style .pts-col { font-weight: 700; text-align: center; }
-        .matches-report-style .cat-col {
-            font-family: 'Segoe UI Black', 'Arial Black', sans-serif;
-            font-weight: 900;
-            font-size: 10pt;
-            text-align: center;
+        body { background-color: #000; }
+        main { max-width: 210mm; margin: 20px auto; }
+        .page { background: white; width: 210mm; min-height: 297mm; padding: 15mm; box-shadow: 0 0 15px rgba(0,0,0,0.5); box-sizing: border-box; display: flex; flex-direction: column; margin-bottom: 20px; }
+        .page-header { border-bottom: 2px solid #ccc; padding-bottom: 10px; margin-bottom: 15px; flex-shrink: 0; color: #333; }
+        .page-content { flex-grow: 1; }
+        .report-table { width: 100%; border-collapse: collapse; }
+        .report-table th, .report-table td { padding: 6px 4px; font-size: 9pt; border: 1px solid #888888; text-align: center; vertical-align: middle; background: #111; color: #fff; }
+        .report-table tr.data-row td:first-child { background: #ffc000 !important; color: #222 !important; font-weight: bold; }
+        .winner { font-weight: 700 !important; color: #f4ec05 !important; }
+        
+        @media print {
+            body { background: none; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            main { margin: 0; width: 100%; }
+            .no-print { display: none !important; }
+            .page { box-shadow: none; margin: 0; width: 100%; height: auto !important; min-height: 297mm; padding: 15mm; background: #fff !important; }
+            .page:last-child { margin-bottom: 0; }
         }
     </style>
 </head>
 <body class="bg-black text-gray-200">
-    <div id="header-container"></div>
+    <div id="header-container" class="no-print"></div>
 
-    <main class="py-8">
-        <div class="content-container max-w-6xl mx-auto space-y-6">
-            <div id="report-title-container" class="text-center">
-                <h1 id="report-title" class="text-3xl font-bold text-gray-100 mb-4">Cargando Reporte...</h1>
-            </div>
-            <div id="report-container">
+    <main id="report-main-container">
+        <div class="no-print content-container max-w-[210mm] mx-auto p-4 bg-[#222222] mb-4 rounded-b-xl shadow-lg">
+            <div class="flex flex-wrap justify-between items-center gap-4">
+                <h1 id="report-title" class="text-3xl font-bold text-gray-100">Cargando Reporte...</h1>
+                <div class="flex gap-2">
+                    <button id="btn-save-pdf" class="btn btn-primary">
+                        <span class="material-icons">download</span>
+                        Descargar PDF
+                    </button>
                 </div>
+            </div>
         </div>
+        <div id="report-pages-container">
+            </div>
     </main>
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script type="module" src="/public/public-report-view.js"></script>
 </body>
 </html>

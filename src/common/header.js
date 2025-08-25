@@ -20,12 +20,12 @@ export function renderHeader() {
     navLinks = `
         <a class="${getLinkClasses('dashboard.html')}" href="/src/admin/dashboard.html">Dashboard</a>
         <a class="${getLinkClasses('matches.html')}" href="/src/admin/matches.html">Partidos</a>
+                <a class="${getLinkClasses('reportes-historicos.html')}" href="/src/admin/reportes-historicos.html">Reportes</a>
         <a class="${getLinkClasses('rankings.html')}" href="/src/admin/rankings.html">Ranking</a>
         <a class="${getLinkClasses('players.html')}" href="/src/admin/players.html">Jugadores</a>
         <a class="${getLinkClasses('tournaments.html')}" href="/src/admin/tournaments.html">Torneos</a>
         <a class="${getLinkClasses('teams.html')}" href="/src/admin/teams.html">Equipos</a>
         <a class="${getLinkClasses('categories.html')}" href="/src/admin/categories.html">Categorías</a>
-        <a class="${getLinkClasses('reportes-historicos.html')}" href="/src/admin/reportes-historicos.html">Reportes</a>
     `;
   }
   
