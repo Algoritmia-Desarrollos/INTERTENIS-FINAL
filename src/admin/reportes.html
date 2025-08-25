@@ -13,13 +13,19 @@
     <style>
         body { background-color: #000; } /* Fondo negro principal */
         main { max-width: 210mm; margin: 20px auto; }
-        .page { background: white; width: 210mm; min-height: 297mm; padding: 15mm; box-shadow: 0 0 15px rgba(0,0,0,0.5); box-sizing: border-box; display: flex; flex-direction: column; margin-bottom: 00px; }
+        .page { background: white; width: 210mm; min-height: 297mm; padding: 15mm; box-shadow: 0 0 15px rgba(0,0,0,0.5); box-sizing: border-box; display: flex; flex-direction: column; margin-bottom: 20px; }
         .page-header { border-bottom: 2px solid #ccc; padding-bottom: 10px; margin-bottom: 15px; flex-shrink: 0; color: #333; }
         .page-content { flex-grow: 1; }
         .report-table { width: 100%; border-collapse: collapse; }
         .report-table th, .report-table td { padding: 6px 4px; font-size: 9pt; border: 1px solid #888888; text-align: center; vertical-align: middle; background: #111; color: #fff; }
         .report-table tr.data-row td:first-child { background: #ffc000 !important; color: #222 !important; font-weight: bold; }
-        .winner { font-weight: 700; color: #f4ec05 !important; }
+        
+        .winner {
+            font-weight: 700 !important;
+            background-color: #facc15 !important; /* Amarillo */
+            color: #000000 !important; /* Texto Negro */
+            border-radius: 4px;
+        }
         
         @media print {
             body { background: none; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
@@ -44,6 +50,10 @@
                     <button id="btn-edit-report" class="btn btn-secondary">
                         <span class="material-icons">edit</span>
                         Editar Reporte
+                    </button>
+                    <button id="btn-cancel-edit" class="btn btn-secondary hidden">
+                        <span class="material-icons">cancel</span>
+                        Cancelar
                     </button>
                     <button id="btn-save-report" class="btn btn-secondary">
                         <span class="material-icons">save</span>

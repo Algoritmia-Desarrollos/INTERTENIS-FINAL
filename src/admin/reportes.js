@@ -4,15 +4,17 @@ import { calculatePoints } from './calculatePoints.js';
 
 document.addEventListener('DOMContentLoaded', async () => {
     // --- ESTADO Y DATOS GLOBALES ---
-    let reportData = []; // Contendrá los objetos de partido completos y actualizados.
-    let matchIdsForReport = []; // Guardará los IDs que definen el reporte actual.
+    let reportData = [];
+    let matchIdsForReport = [];
     let allPlayers = [];
     let isEditMode = false;
+    let pristineMatchesData = []; // Copia de los datos originales para poder cancelar
     
     // --- ELEMENTOS DEL DOM ---
     const header = document.getElementById('header');
     const pagesContainer = document.getElementById('report-pages-container');
     const btnEditReport = document.getElementById('btn-edit-report');
+    const btnCancelEdit = document.getElementById('btn-cancel-edit');
     
     async function fetchAllPlayers() {
         const { data, error } = await supabase.from('players').select('id, name, category_id').order('name');
@@ -23,13 +25,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         return data;
     }
 
-    // Procesa los datos crudos de Supabase al formato que necesita renderReport.
     function processMatchesForReport(matches) {
         if (!matches) return [];
         return matches.map(match => {
             const { p1_points, p2_points } = calculatePoints(match);
+            const isDoubles = !!(match.player3 && match.player4);
+            
             return {
                 id: match.id,
+                isDoubles: isDoubles,
                 date: match.match_date ? match.match_date.split('T')[0] : '',
                 time: match.match_time || '',
                 location: match.location || '',
@@ -40,7 +44,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     id: match.player1?.id,
                     name: match.player1?.name || '',
                     points: p1_points ?? '',
-                    isWinner: match.winner_id === match.player1_id,
+                    isWinner: match.winner_id === match.player1_id || (isDoubles && match.winner_id === match.player3_id),
                     teamColor: match.player1?.team?.color,
                     teamImage: match.player1?.team?.image_url
                 },
@@ -48,10 +52,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                     id: match.player2?.id,
                     name: match.player2?.name || '',
                     points: p2_points ?? '',
-                    isWinner: match.winner_id === match.player2_id,
+                    isWinner: match.winner_id === match.player2_id || (isDoubles && match.winner_id === match.player4_id),
                     teamColor: match.player2?.team?.color,
                     teamImage: match.player2?.team?.image_url
                 },
+                player3: isDoubles ? { id: match.player3?.id, name: match.player3?.name || '' } : null,
+                player4: isDoubles ? { id: match.player4?.id, name: match.player4?.name || '' } : null,
                 sets: match.sets || [],
             };
         });
@@ -163,24 +169,43 @@ document.addEventListener('DOMContentLoaded', async () => {
                     let player1Content, player2Content;
                     
                     if (isEditMode && !played) {
-                        const categoryPlayers = allPlayers.filter(p => p.category_id === match.category_id);
+                        const availablePlayers = match.category === 'Equipos' ? allPlayers : allPlayers.filter(p => p.category_id === match.category_id);
                         
-                        const createPlayerSelect = (playerNumber, selectedPlayerId, opponentPlayerId) => {
-                            let options = categoryPlayers
-                                .filter(p => p.id !== opponentPlayerId) 
+                        const createPlayerSelect = (playerNumber, selectedPlayerId, opponentIds) => {
+                            let options = availablePlayers
+                                .filter(p => !opponentIds.includes(p.id)) 
                                 .map(p => `<option value="${p.id}" ${p.id === selectedPlayerId ? 'selected' : ''}>${p.name}</option>`)
                                 .join('');
                             
-                            const style = `width: 100%; border: 1px solid #ccc; background: #f3f4f6; color: #111; font-size: 9pt; padding: 4px; border-radius: 4px; font-weight: 600;`;
-                            return `<select data-report-index="${match.reportIndex}" data-player-number="${playerNumber}" class="player-select" style="${style}">${options}</select>`;
+                            const style = `width: 100%; border: 1px solid #ccc; background: #f3f4f6; color: #111; font-size: 9pt; padding: 4px; border-radius: 4px; font-weight: 600; margin-bottom: 2px;`;
+                            return `<select data-report-index="${match.reportIndex}" data-player-number="${playerNumber}" class="player-select" style="${style}"><option value="">Seleccionar</option>${options}</select>`;
                         };
-                        
-                        player1Content = createPlayerSelect(1, match.player1.id, match.player2.id);
-                        player2Content = createPlayerSelect(2, match.player2.id, match.player1.id);
+
+                        if (match.isDoubles) {
+                            const team1_opponents = [match.player2.id, match.player4.id];
+                            const team2_opponents = [match.player1.id, match.player3.id];
+                            player1Content = `
+                                <div>${createPlayerSelect(1, match.player1.id, [match.player3.id, ...team1_opponents])}</div>
+                                <div>${createPlayerSelect(3, match.player3.id, [match.player1.id, ...team1_opponents])}</div>
+                            `;
+                            player2Content = `
+                                <div>${createPlayerSelect(2, match.player2.id, [match.player4.id, ...team2_opponents])}</div>
+                                <div>${createPlayerSelect(4, match.player4.id, [match.player2.id, ...team2_opponents])}</div>
+                            `;
+                        } else {
+                            player1Content = createPlayerSelect(1, match.player1.id, [match.player2.id]);
+                            player2Content = createPlayerSelect(2, match.player2.id, [match.player1.id]);
+                        }
 
                     } else {
-                        player1Content = match.player1.name;
-                        player2Content = match.player2.name;
+                         if (match.isDoubles) {
+                            // --- CORRECCIÓN: Se elimina font-weight: normal ---
+                            player1Content = `<div style="line-height: 1.2;"><div>${match.player1.name}</div><div>${match.player3.name}</div></div>`;
+                            player2Content = `<div style="line-height: 1.2;"><div>${match.player2.name}</div><div>${match.player4.name}</div></div>`;
+                        } else {
+                            player1Content = match.player1.name;
+                            player2Content = match.player2.name;
+                        }
                     }
 
                     let cancha = match.location ? match.location.split(' - ')[1] : 'N/A';
@@ -198,6 +223,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     if (played) { p1PointsDisplay = match.player1.points ?? ''; if(p1PointsDisplay===0) p1PointsDisplay='0'; p2PointsDisplay = match.player2.points ?? ''; if(p2PointsDisplay===0) p2PointsDisplay='0'; } else { if (match.player1.teamImage) p1PointsDisplay = `<img src="${match.player1.teamImage}" alt="" style="height: 20px; object-fit: contain; margin: auto; display: block;">`; if (match.player2.teamImage) p2PointsDisplay = `<img src="${match.player2.teamImage}" alt="" style="height: 20px; object-fit: contain; margin: auto; display: block;">`; }
                     const canchaBackgroundColor = sede.toLowerCase().trim() === 'centro' ? '#222222' : '#ffc000';
                     const canchaTextColor = sede.toLowerCase().trim() === 'centro' ? '#ffc000' : '#222';
+                    const categoryDisplay = match.category === 'Equipos' ? '' : match.category;
 
                     row.innerHTML = `
                         <td style="background-color: ${canchaBackgroundColor} !important; color: ${canchaTextColor} !important; font-weight: bold;">${cancha}</td>
@@ -207,7 +233,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         <td style='text-align:center;' class="font-mono">${setsDisplay}</td>
                         <td class="pts-col" style='text-align:center;background:${p2TeamColor || '#3a3838'};color:${p2TextColor};font-weight:700;'>${p2PointsDisplay}</td>
                         <td class="font-bold ${p2_class}" style='${p2NameStyle}'>${player2Content}</td>
-                        <td class="cat-col" style="color:${match.category_color || '#b45309'};font-family:'Segoe UI Black',Arial,sans-serif;font-weight:900;">${match.category}</td>
+                        <td class="cat-col" style="color:${match.category_color || '#b45309'};font-family:'Segoe UI Black',Arial,sans-serif;font-weight:900;">${categoryDisplay}</td>
                     `;
                     currentHeight += ROW_HEIGHT_MM;
                 }
@@ -222,73 +248,53 @@ document.addEventListener('DOMContentLoaded', async () => {
             const playerNumber = parseInt(select.dataset.playerNumber, 10);
             const newPlayerId = parseInt(select.value, 10);
             const newPlayer = allPlayers.find(p => p.id === newPlayerId);
+            
             if (newPlayer) {
                 const playerKey = `player${playerNumber}`;
                 reportData[reportIndex][playerKey].name = newPlayer.name;
                 reportData[reportIndex][playerKey].id = newPlayerId;
                 reportData[reportIndex][`${playerKey}_id_new`] = newPlayerId;
-                const row = select.closest('tr');
-                if (row) {
-                    const opponentNumber = playerNumber === 1 ? 2 : 1;
-                    const opponentSelect = row.querySelector(`select[data-player-number='${opponentNumber}']`);
-                    if (opponentSelect) {
-                        const match = reportData[reportIndex];
-                        const categoryPlayers = allPlayers.filter(p => p.category_id === match.category_id);
-                        let options = categoryPlayers
-                            .filter(p => p.id !== newPlayerId)
-                            .map(p => `<option value="${p.id}" ${p.id === match[`player${opponentNumber}`].id ? 'selected' : ''}>${p.name}</option>`)
-                            .join('');
-                        opponentSelect.innerHTML = options;
-                    }
-                }
             }
         }
     });
 
-    async function toggleEditMode() {
-        isEditMode = !isEditMode;
-        if (isEditMode) {
-            btnEditReport.innerHTML = `<span class="material-icons">save</span> Guardar Cambios`;
-            btnEditReport.classList.remove('btn-secondary');
-            btnEditReport.classList.add('btn-primary');
-        } else {
-            let updates = [];
-            for(const match of reportData) {
-                let updateData = {};
-                if (match.player1_id_new) updateData.player1_id = match.player1_id_new;
-                if (match.player2_id_new) updateData.player2_id = match.player2_id_new;
+    async function handleSaveChanges() {
+        let updates = [];
+        for (const match of reportData) {
+            let updateData = {};
+            if (match.player1_id_new) updateData.player1_id = match.player1_id_new;
+            if (match.player2_id_new) updateData.player2_id = match.player2_id_new;
+            if (match.player3_id_new) updateData.player3_id = match.player3_id_new;
+            if (match.player4_id_new) updateData.player4_id = match.player4_id_new;
 
-                if (Object.keys(updateData).length > 0) {
-                    updates.push(supabase.from('matches').update(updateData).eq('id', match.id));
-                }
+            if (Object.keys(updateData).length > 0) {
+                updates.push(supabase.from('matches').update(updateData).eq('id', match.id));
             }
-            
-            if (updates.length > 0) {
-                btnEditReport.disabled = true;
-                btnEditReport.innerHTML = `<span></span> Guardando...`;
-
-                const results = await Promise.all(updates);
-                const errors = results.filter(res => res.error);
-
-                if (errors.length > 0) {
-                    alert(`Hubo un error al actualizar ${errors.length} partido(s).`);
-                    console.error("Errores de actualización:", errors);
-                } else {
-                    alert(`${updates.length} partido(s) actualizados en la base de datos con éxito.`);
-                }
-                btnEditReport.disabled = false;
-            }
-
-            reportData.forEach(m => {
-                delete m.player1_id_new;
-                delete m.player2_id_new;
-            });
-
-            btnEditReport.innerHTML = `<span class="material-icons">edit</span> Editar Reporte`;
-            btnEditReport.classList.remove('btn-primary');
-            btnEditReport.classList.add('btn-secondary');
         }
-        await renderReport();
+        
+        if (updates.length > 0) {
+            btnEditReport.disabled = true;
+            btnEditReport.innerHTML = `<span></span> Guardando...`;
+
+            const results = await Promise.all(updates);
+            const errors = results.filter(res => res.error);
+
+            if (errors.length > 0) {
+                alert(`Hubo un error al actualizar ${errors.length} partido(s).`);
+                console.error("Errores de actualización:", errors);
+            } else {
+                alert(`${updates.length} partido(s) actualizados en la base de datos con éxito.`);
+            }
+        }
+
+        isEditMode = false;
+        btnEditReport.disabled = false;
+        btnEditReport.innerHTML = `<span class="material-icons">edit</span> Editar Reporte`;
+        btnEditReport.classList.add('btn-secondary');
+        btnEditReport.classList.remove('btn-primary');
+        btnCancelEdit.classList.add('hidden');
+        
+        await initialize();
     }
     
     async function initialize() {
@@ -299,25 +305,56 @@ document.addEventListener('DOMContentLoaded', async () => {
         const reportId = urlParams.get('id');
 
         if (reportId) {
-            const { data: savedReport, error } = await supabase
-                .from('reports')
-                .select('report_data')
-                .eq('id', reportId)
-                .single();
-            
+            const { data: savedReport, error } = await supabase.from('reports').select('report_data').eq('id', reportId).single();
             if (error || !savedReport) {
-                pagesContainer.innerHTML = '<p class="text-center text-red-500 py-10">No se pudo cargar el reporte guardado.</p>';
+                pagesContainer.innerHTML = `<p class="text-center text-red-500 py-10">No se pudo cargar el reporte guardado.</p>`;
                 return;
             }
             matchIdsForReport = savedReport.report_data || [];
-
         } else {
-            const idsFromStorage = localStorage.getItem('reportMatchIds');
+            const idsFromStorage = sessionStorage.getItem('reportMatchIds');
             if (idsFromStorage) {
                 matchIdsForReport = JSON.parse(idsFromStorage);
-                localStorage.removeItem('reportMatchIds');
             }
         }
+        
+        if (!reportId) {
+            btnEditReport.disabled = true;
+            btnEditReport.title = 'Guarda el reporte para poder editarlo';
+            btnEditReport.classList.add('cursor-not-allowed', 'opacity-50');
+            btnEditReport.addEventListener('click', () => {
+                if(btnEditReport.disabled) {
+                    alert('Debes guardar el reporte antes de poder editarlo.');
+                }
+            });
+        } else {
+            btnEditReport.disabled = false;
+            btnEditReport.title = 'Editar Reporte';
+            btnEditReport.classList.remove('cursor-not-allowed', 'opacity-50');
+            btnEditReport.onclick = () => {
+                if (!isEditMode) {
+                    isEditMode = true;
+                    // --- CORRECCIÓN: Texto del botón acortado ---
+                    btnEditReport.innerHTML = `<span class="material-icons">save</span> Guardar`;
+                    btnEditReport.classList.remove('btn-secondary');
+                    btnEditReport.classList.add('btn-primary');
+                    btnCancelEdit.classList.remove('hidden');
+                    renderReport();
+                } else {
+                    handleSaveChanges();
+                }
+            };
+        }
+
+        btnCancelEdit.addEventListener('click', () => {
+            isEditMode = false;
+            reportData = processMatchesForReport(pristineMatchesData);
+            btnEditReport.innerHTML = `<span class="material-icons">edit</span> Editar Reporte`;
+            btnEditReport.classList.add('btn-secondary');
+            btnEditReport.classList.remove('btn-primary');
+            btnCancelEdit.classList.add('hidden');
+            renderReport();
+        });
 
         if (matchIdsForReport.length === 0) {
             pagesContainer.innerHTML = '<p class="text-center text-gray-500 py-10">No se especificaron partidos para este reporte.</p>';
@@ -329,18 +366,19 @@ document.addEventListener('DOMContentLoaded', async () => {
             .select(`*, 
                 category:category_id(id, name, color), 
                 player1:player1_id(*, team:team_id(name, image_url, color)), 
-                player2:player2_id(*, team:team_id(name, image_url, color)), 
+                player2:player2_id(*, team:team_id(name, image_url, color)),
+                player3:player3_id(*, team:team_id(name, image_url, color)),
+                player4:player4_id(*, team:team_id(name, image_url, color)),
                 winner:winner_id(name)`)
             .in('id', matchIdsForReport);
 
         if (matchesError) {
-            pagesContainer.innerHTML = '<p class="text-center text-red-500 py-10">Error al buscar los datos actualizados de los partidos.</p>';
+            pagesContainer.innerHTML = `<p class="text-center text-red-500 py-10">Error al buscar los datos actualizados de los partidos.</p>`;
             return;
         }
 
+        pristineMatchesData = freshMatches;
         reportData = processMatchesForReport(freshMatches);
-        
-        btnEditReport.addEventListener('click', toggleEditMode);
         
         document.getElementById('btn-save-pdf').addEventListener('click', () => {
             const element = document.getElementById('report-pages-container'); html2pdf().set({ margin: 0, filename: `reporte_partidos.pdf`, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } }).from(element).toPdf().get('pdf').then(function (pdf) { const totalPages = pdf.internal.getNumberOfPages(); if (totalPages > 1) { pdf.deletePage(totalPages); } }).save();
@@ -351,13 +389,17 @@ document.addEventListener('DOMContentLoaded', async () => {
             const title = prompt('Ingresa un título para guardar este reporte:', 'Reporte de Partidos ' + new Date().toLocaleDateString('es-AR'));
             if (!title) return;
             
-            const { error } = await supabase.from('reports').insert({ title: title, report_data: matchIdsForReport });
+            const { data, error } = await supabase
+                .from('reports')
+                .insert({ title: title, report_data: matchIdsForReport })
+                .select('id')
+                .single();
 
             if (error) {
                 alert('Error al guardar el reporte: ' + error.message);
             } else {
-                alert('Reporte guardado con éxito.');
-                window.location.href = 'reportes-historicos.html';
+                alert('Reporte guardado con éxito. Redirigiendo...');
+                window.location.href = `reportes.html?id=${data.id}`;
             }
         });
 
