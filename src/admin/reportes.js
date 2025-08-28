@@ -183,6 +183,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 for (const match of matches) {
                     const row = tbody.insertRow();
                     row.className = 'data-row' + (match.status === 'suspendido' ? ' suspended-row' : '');
+                    row.style.height = '9mm'; // Uniform row height for all matches
                     const played = Array.isArray(match.sets) && match.sets.length > 0;
                     let player1Content, player2Content;
                     
