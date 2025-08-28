@@ -255,8 +255,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                         p2PointsDisplay = match.player2.points ?? ''; 
                         if(p2PointsDisplay===0) p2PointsDisplay='0'; 
                     } else { 
-                        if (match.player1.teamImage) p1PointsDisplay = `<img src="${match.player1.teamImage}" alt="" style="height: 35px; width: 100%; object-fit: contain; margin: auto; display: block;">`; 
-                        if (match.player2.teamImage) p2PointsDisplay = `<img src="${match.player2.teamImage}" alt="" style="height: 35px; width: 100%; object-fit: contain; margin: auto; display: block;">`; 
+                        if (match.player1.teamImage) p1PointsDisplay = `<img src="${match.player1.teamImage}" alt="" style="height: 25px; width: 100%; object-fit: contain; margin: auto; display: block;">`; 
+                        if (match.player2.teamImage) p2PointsDisplay = `<img src="${match.player2.teamImage}" alt="" style="height: 25px; width: 100%; object-fit: contain; margin: auto; display: block;">`; 
                     }
 
                     const canchaBackgroundColor = sede.toLowerCase().trim() === 'centro' ? '#222222' : '#ffc000';
