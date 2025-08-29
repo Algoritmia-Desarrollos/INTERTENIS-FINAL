@@ -32,10 +32,15 @@
             vertical-align: middle;
             background: #222222;
             color: #ffffff;
+            /* --- INICIO DE LA MODIFICACIÓN --- */
+            border-right: 1px solid #4a4a4a; /* Borde derecho para todas las celdas */
+            /* --- FIN DE LA MODIFICACIÓN --- */
         }
-        .matches-report-style tr:first-child td {
-             border-top: 1px solid #4a4a4a;
+        /* --- INICIO DE LA MODIFICACIÓN --- */
+        .matches-report-style tr td:first-child {
+             border-left: 1px solid #4a4a4a; /* Borde izquierdo solo para la primera celda de la fila */
         }
+        /* --- FIN DE LA MODIFICACIÓN --- */
         .matches-report-style .winner {
             font-weight: 700 !important;
             color: #f4ec05 !important;

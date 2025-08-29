@@ -29,7 +29,7 @@
         }
         .matches-report-style th,
         .matches-report-style td {
-            padding: 6px 4px;
+            padding: 8px 4px;
             font-size: 9pt;
             border-bottom: 3px solid #4a4a4a;
             text-align: center;
@@ -60,8 +60,10 @@
             font-weight: 700 !important;
             color: #f4ec05 !important;
         }
-        .matches-report-style .player-name { font-weight: 700; }
-        .matches-report-style .player-name-right { text-align: right; padding-right: 8px;}
+    /* --- INICIO DE LA MODIFICACIÓN --- */
+    .matches-report-style .player-name { font-weight: 700; font-size: 14px; } /* Aumentado de 14px a 16px */
+    /* --- FIN DE LA MODIFICACIÓN --- */
+        .matches-report-style .player-name-right { text-align: right; padding-right: 8px; }
         .matches-report-style .player-name-left { text-align: left; padding-left: 8px;}
         .matches-report-style .font-mono { 
             font-family: 'Consolas', 'Menlo', 'Courier New', monospace;
@@ -75,17 +77,16 @@
             text-align: center;
         }
         
-        /* --- INICIO DE LA MODIFICACIÓN RESPONSIVE --- */
         @media screen and (max-width: 768px) {
             .matches-report-style .player-name {
-                font-size: 12px !important; /* Se usa !important para sobreescribir estilos en línea */
-                /* Se añaden estas propiedades para cortar el texto si es muy largo */
+                /* --- INICIO DE LA MODIFICACIÓN --- */
+                font-size: 14px !important; /* Aumentado de 12px a 14px */
+                /* --- FIN DE LA MODIFICACIÓN --- */
                 white-space: nowrap;
                 overflow: hidden;
                 text-overflow: ellipsis;
             }
         }
-        /* --- FIN DE LA MODIFICACIÓN RESPONSIVE --- */
     </style>
 </head>
 <body class="bg-black text-gray-200">
