@@ -272,7 +272,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         <td style='text-align:center;' class="font-mono">${setsDisplay}</td>
                         <td class="pts-col" style='text-align:center;background:${p2TeamColor || '#3a3838'};color:${p2TextColor};font-weight:700;'>${p2PointsDisplay}</td>
                         <td class="font-bold ${p2_class}" style='${p2NameStyle}'>${player2Content}</td>
-                        <td class="cat-col" style="color:${match.category_color || '#b45309'};font-family:'Segoe UI Black',Arial,sans-serif;font-weight:900;">${categoryDisplay}</td>
+                        <td class="cat-col" style="color:${match.category_color || '#b45309'};font-family:'Segoe UI Black',Arial,sans-serif;font-weight:900; font-size: 11pt;">${categoryDisplay}</td>
                     `;
                     currentHeight += ROW_HEIGHT_MM;
                 }
