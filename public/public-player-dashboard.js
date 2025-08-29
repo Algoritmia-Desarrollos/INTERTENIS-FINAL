@@ -97,7 +97,6 @@ function renderDashboard(player, stats, pendingMatches, matchHistory, individual
     renderMatchesTable(matchHistory, document.getElementById('history-matches-container'), 'No hay partidos en el historial.');
 }
 
-// ... (El resto del archivo public-player-dashboard.js no necesita cambios)
 function renderMatchesTable(matchesToRender, containerElement, emptyMessage) {
     if (!matchesToRender || matchesToRender.length === 0) {
         containerElement.innerHTML = `<div class="bg-[#222222] p-6 rounded-xl"><p class="text-center text-gray-500 py-4">${emptyMessage}</p></div>`;
@@ -154,14 +153,35 @@ function renderMatchesTable(matchesToRender, containerElement, emptyMessage) {
                 const canchaTextColor = sede.toLowerCase() === 'centro' ? '#ffc000' : '#222';
                 
                 const categoryDisplay = match.category?.name || '';
+                
+                // --- INICIO DE LA MODIFICACIÓN ---
+                const played = !!match.winner_id;
+                let team1PointsDisplay = '';
+                let team2PointsDisplay = '';
+
+                if (played) {
+                    team1PointsDisplay = p1_points ?? '';
+                    if (team1PointsDisplay === 0) team1PointsDisplay = '0';
+                    team2PointsDisplay = p2_points ?? '';
+                    if (team2PointsDisplay === 0) team2PointsDisplay = '0';
+                } else {
+                    if (match.player1.team?.image_url) {
+                        team1PointsDisplay = `<img src="${match.player1.team.image_url}" alt="" style="height: 20px; object-fit: contain; margin: auto; display: block;">`;
+                    }
+                    if (match.player2.team?.image_url) {
+                        team2PointsDisplay = `<img src="${match.player2.team.image_url}" alt="" style="height: 20px; object-fit: contain; margin: auto; display: block;">`;
+                    }
+                }
+                // --- FIN DE LA MODIFICACIÓN ---
+
                 tableHTML += `
                     <tr class="data-row">
-                        <td style="background-color: ${canchaBackgroundColor} !important; color: ${canchaTextColor} !important; font-weight: bold;">${cancha}</td>
+                        <td style="background-color: ${canchaBackgroundColor} !important; color: ${canchaTextColor} !important; font-weight: bold; border-left: 1px solid #4a4a4a;">${cancha}</td>
                         <td style="background:#000;color:#fff;">${hora}</td>
                         <td class="player-name player-name-right ${team1_class}" style='background:#000; font-size:${isDoubles ? '9pt' : '11pt'};'>${team1_names}</td>
-                        <td class="pts-col" style='background:${p1TeamColor || '#3a3838'};'>${p1_points ?? ''}</td>
+                        <td class="pts-col" style='background:${p1TeamColor || '#3a3838'};'>${team1PointsDisplay}</td>
                         <td class="font-mono" style="background:#000;">${setsDisplay}</td>
-                        <td class="pts-col" style='background:${p2TeamColor || '#3a3838'};'>${p2_points ?? ''}</td>
+                        <td class="pts-col" style='background:${p2TeamColor || '#3a3838'};'>${team2PointsDisplay}</td>
                         <td class="player-name player-name-left ${team2_class}" style='background:#000; font-size:${isDoubles ? '9pt' : '11pt'};'>${team2_names}</td>
                         <td class="cat-col" style="background:#000;color:${match.category?.color || '#b45309'};">${categoryDisplay}</td>
                     </tr>`;
