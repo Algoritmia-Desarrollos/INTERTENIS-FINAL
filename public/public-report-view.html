@@ -78,10 +78,11 @@
         /* --- INICIO DE LA MODIFICACIÓN RESPONSIVE --- */
         @media screen and (max-width: 768px) {
             .matches-report-style .player-name {
-                max-width: 150px; /* Ancho máximo para la columna del jugador */
-                font-size: 12px;  /* Tamaño de fuente para el nombre del jugador */
-                white-space: normal; /* Permite que el texto se divida en varias líneas si es necesario */
-                line-height: 1.2; /* Mejora la legibilidad del texto en varias líneas */
+                font-size: 12px !important; /* Se usa !important para sobreescribir estilos en línea */
+                /* Se añaden estas propiedades para cortar el texto si es muy largo */
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
             }
         }
         /* --- FIN DE LA MODIFICACIÓN RESPONSIVE --- */
