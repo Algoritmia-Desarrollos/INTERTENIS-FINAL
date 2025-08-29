@@ -18,8 +18,8 @@ export async function importMatchesFromFile(allPlayers, allTournaments, tourname
         
         const parsedMatches = (jsonData && jsonData.length > 0) 
             ? (sheetType === 'doubles'
-                ? parseDoublesMatches(jsonData, allPlayers, allTournaments)
-                : parseSinglesMatches(jsonData, allPlayers, allTournaments))
+                ? parseDoublesMatches(jsonData, allPlayers, allTournaments, tournamentPlayersMap)
+                : parseSinglesMatches(jsonData, allPlayers, allTournaments, tournamentPlayersMap))
             : [];
         
         const matchesToSave = await showReviewModal(parsedMatches, sheetType, allPlayers, allTournaments, tournamentPlayersMap);
@@ -92,7 +92,7 @@ function detectSheetType(firstRow) {
 
 // --- Funciones de Parseo y Validación ---
 
-const normalize = (text) => text?.toString().trim().toLowerCase() ?? '';
+const normalize = (text) => text?.toString().trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") ?? '';
 const findByName = (list, name) => list.find(item => normalize(item.name) === normalize(name));
 const SEDES = ['Centro', 'Funes'];
 const CANCHAS = ['Cancha 1', 'Cancha 2', 'Cancha 3', 'Cancha 4', 'Cancha 5', 'Cancha 6'];
@@ -131,7 +131,7 @@ function parseCommonFields(raw) {
     return { match_date, match_time, sede: raw.sede, cancha: raw.cancha };
 }
 
-function parseSinglesMatches(jsonData, allPlayers, allTournaments) {
+function parseSinglesMatches(jsonData, allPlayers, allTournaments, tournamentPlayersMap) {
     return jsonData.map((row, index) => {
         const raw = {
             player1: row['Jugador1'] || row['jugador1'],
@@ -147,11 +147,11 @@ function parseSinglesMatches(jsonData, allPlayers, allTournaments) {
             player2: findByName(allPlayers, raw.player2),
             tournament: findByName(allTournaments, raw.tournament),
             ...parseCommonFields(raw) };
-        return validateMatch(match, raw, 'singles');
+        return validateMatch(match, raw, 'singles', tournamentPlayersMap);
     });
 }
 
-function parseDoublesMatches(jsonData, allPlayers, allTournaments) {
+function parseDoublesMatches(jsonData, allPlayers, allTournaments, tournamentPlayersMap) {
     return jsonData.map((row, index) => {
         const raw = {
             player1: row['Jugador A1'] || row['jugador a1'],
@@ -171,40 +171,57 @@ function parseDoublesMatches(jsonData, allPlayers, allTournaments) {
             player4: findByName(allPlayers, raw.player4),
             tournament: findByName(allTournaments, raw.tournament),
             ...parseCommonFields(raw) };
-        return validateMatch(match, raw, 'doubles');
+        return validateMatch(match, raw, 'doubles', tournamentPlayersMap);
     });
 }
 
-function validateMatch(match, raw, type) {
+function validateMatch(match, raw, type, tournamentPlayersMap) {
     match._raw = raw;
     match._errors = [];
 
     const check = (field, value, rawValue, msg) => { if (!rawValue || !value) match._errors.push({ field, message: msg }); };
     
     check('tournament', match.tournament, raw.tournament, 'Torneo no encontrado');
-    check('player1', match.player1, raw.player1, 'Jugador no encontrado');
-    check('player2', match.player2, raw.player2, 'Jugador no encontrado');
-    if (type === 'doubles') {
-        check('player3', match.player3, raw.player3, 'Jugador no encontrado');
-        check('player4', match.player4, raw.player4, 'Jugador no encontrado');
+
+    // --- INICIO DE LA MODIFICACIÓN ---
+    let enrolledPlayerIds = null;
+    if (match.tournament) {
+        enrolledPlayerIds = tournamentPlayersMap.get(match.tournament.id);
     }
+
+    const validatePlayer = (playerField, playerObject, rawPlayerName) => {
+        check(playerField, playerObject, rawPlayerName, 'Jugador no encontrado');
+        if (playerObject && enrolledPlayerIds && !enrolledPlayerIds.has(playerObject.id)) {
+            match._errors.push({
+                field: playerField,
+                message: 'Jugador no inscrito en este torneo'
+            });
+        }
+    };
+    
+    validatePlayer('player1', match.player1, raw.player1);
+    validatePlayer('player2', match.player2, raw.player2);
+    if (type === 'doubles') {
+        validatePlayer('player3', match.player3, raw.player3);
+        validatePlayer('player4', match.player4, raw.player4);
+    }
+    // --- FIN DE LA MODIFICACIÓN ---
+    
     if (!match.match_date) match._errors.push({ field: 'match_date', message: 'Fecha no válida' });
     if (raw.sede && !SEDES.includes(raw.sede)) match._errors.push({ field: 'sede', message: 'Sede no válida' });
     if (raw.cancha && !CANCHAS.includes(raw.cancha)) match._errors.push({ field: 'cancha', message: 'Cancha no válida' });
     
-    // Validar jugadores duplicados
     const playerFields = type === 'doubles' ? ['player1', 'player2', 'player3', 'player4'] : ['player1', 'player2'];
-    const playerIds = playerFields.map(f => match[f]?.id).filter(id => id); // Filtra nulos
+    const playerIds = playerFields.map(f => match[f]?.id).filter(id => id);
     if (new Set(playerIds).size !== playerIds.length) {
-        match._errors.push({ field: 'player_duplicate', message: 'Un jugador no puede ocupar dos puestos en el mismo partido.' });
+        match._errors.push({ field: 'player_duplicate', message: 'Un jugador no puede ocupar dos puestos.' });
     }
 
     match.status = match._errors.length > 0 ? 'error' : 'ok';
     return match;
 }
 
-
-// --- Modal Interactivo de Revisión (Versión Final) ---
+// ... El resto del archivo (showReviewModal, saveMatchesToDB) no necesita cambios ...
 function showReviewModal(matches, type, allPlayers, allTournaments, tournamentPlayersMap) {
     return new Promise(resolve => {
         let modalData = JSON.parse(JSON.stringify(matches)); 
@@ -338,7 +355,7 @@ function showReviewModal(matches, type, allPlayers, allTournaments, tournamentPl
                     ['player1', 'player2', 'player3', 'player4'].forEach(p => { modalData[matchIndex][p] = null; });
                 }
                 
-                modalData[matchIndex] = validateMatch(modalData[matchIndex], modalData[matchIndex]._raw, type);
+                modalData[matchIndex] = validateMatch(modalData[matchIndex], modalData[matchIndex]._raw, type, tournamentPlayersMap);
                 
                 const rowElement = document.getElementById(id);
                 if (rowElement) rowElement.outerHTML = renderRow(modalData[matchIndex]);
@@ -369,8 +386,6 @@ function showReviewModal(matches, type, allPlayers, allTournaments, tournamentPl
     });
 }
 
-
-// --- Función para Guardar en la Base de Datos ---
 async function saveMatchesToDB(matchesToSave, type) {
     const dataToInsert = matchesToSave.map(m => {
         const tournament = m.tournament;
