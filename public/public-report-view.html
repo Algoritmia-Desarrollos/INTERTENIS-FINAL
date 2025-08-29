@@ -67,13 +67,24 @@
             font-family: 'Consolas', 'Menlo', 'Courier New', monospace;
             font-size: 10pt;
         }
-        .matches-report-style .pts-col { font-weight: 700; text-align: center; }
+        .matches-report-style .pts-col { font-weight: 700; text-align: center; font-size: 12pt; }
         .matches-report-style .cat-col {
             font-family: 'Segoe UI Black', 'Arial Black', sans-serif;
             font-weight: 900;
-            font-size: 10pt;
+            font-size: 12pt;
             text-align: center;
         }
+        
+        /* --- INICIO DE LA MODIFICACIÓN RESPONSIVE --- */
+        @media screen and (max-width: 768px) {
+            .matches-report-style .player-name {
+                max-width: 150px; /* Ancho máximo para la columna del jugador */
+                font-size: 12px;  /* Tamaño de fuente para el nombre del jugador */
+                white-space: normal; /* Permite que el texto se divida en varias líneas si es necesario */
+                line-height: 1.2; /* Mejora la legibilidad del texto en varias líneas */
+            }
+        }
+        /* --- FIN DE LA MODIFICACIÓN RESPONSIVE --- */
     </style>
 </head>
 <body class="bg-black text-gray-200">

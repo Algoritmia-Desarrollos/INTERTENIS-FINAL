@@ -98,11 +98,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                         <tr class="data-row ${suspendedClass}">
                             <td style="background-color: ${canchaBackgroundColor} !important; color: ${canchaTextColor} !important; font-weight: bold;">${cancha}</td>
                             <td style="background:#000;color:#fff;">${hora}</td>
-                            <td class="player-name player-name-right ${team1_class}" style='background:#000;color:#fff;${team1NameStyle};font-size:${isDoubles ? '10pt' : '12pt'};'>${team1_names}</td>
+                            <td class="player-name player-name-right ${team1_class}" style='background:#000;color:#fff;${team1NameStyle};font-size:${isDoubles ? '10pt' : '11pt'};'>${team1_names}</td>
                             <td class="pts-col" style='background:${p1TeamColor || '#3a3838'};color:${p1TextColor};'>${team1PointsDisplay}</td>
                             <td class="font-mono" style="background:#000;color:#fff;">${resultadoDisplay}</td>
                             <td class="pts-col" style='background:${p2TeamColor || '#3a3838'};color:${p2TextColor};'>${team2PointsDisplay}</td>
-                            <td class="player-name player-name-left ${team2_class}" style='background:#000;color:#fff;${team2NameStyle};font-size:${isDoubles ? '10pt' : '12pt'};'>${team2_names}</td>
+                            <td class="player-name player-name-left ${team2_class}" style='background:#000;color:#fff;${team2NameStyle};font-size:${isDoubles ? '10pt' : '11pt'};'>${team2_names}</td>
                             <td class="cat-col" style="background:#000;color:${match.category?.color || '#b45309'};">${match.category?.name || 'N/A'}</td>
                         </tr>`;
                 }
@@ -112,7 +112,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         matchesContainer.innerHTML = `
             <div class="bg-[#18191b] p-4 sm:p-6 rounded-xl shadow-lg overflow-x-auto">
                 <table class="matches-report-style">
-                    <colgroup><col style="width: 5%"><col style="width: 8%"><col style="width: 28%"><col style="width: 5%"><col style="width: 13%"><col style="width: 5%"><col style="width: 28%"><col style="width: 8%"></colgroup>
+                    <colgroup><col style="width: 5%"><col style="width: 8%"><col style="width: 22%"><col style="width: 5%"><col style="width: 22%"><col style="width: 5%"><col style="width: 22%"><col style="width: 11%"></colgroup>
                     <tbody>${tableHTML}</tbody>
                 </table>
             </div>`;
