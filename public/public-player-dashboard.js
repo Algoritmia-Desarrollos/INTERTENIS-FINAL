@@ -56,9 +56,6 @@ function calculatePlayerStats(playerId, playedMatches) {
 function renderDashboard(player, stats, pendingMatches, matchHistory, individualTournament, teamTournament) {
     const efectividad = stats.pj > 0 ? ((stats.pg / stats.pj) * 100).toFixed(0) : 0;
     
-    // --- INICIO DE LA MODIFICACIÓN ---
-    // Se añade 'flex-wrap' para que los botones se ajusten si no hay espacio
-    // y se quitan las clases de ancho para que se ajusten a su contenido.
     let buttonsHTML = '<div class="flex flex-row flex-wrap justify-center sm:justify-end gap-2 mt-4 sm:mt-0">';
     if (individualTournament) {
         buttonsHTML += `<a href="/index.html?tournamentId=${individualTournament.id}&highlightPlayerId=${player.id}" class="btn btn-secondary !py-2 !px-4 text-sm">Ver Ranking Individual</a>`;
@@ -67,7 +64,6 @@ function renderDashboard(player, stats, pendingMatches, matchHistory, individual
         buttonsHTML += `<a href="/index.html?tournamentId=${teamTournament.id}&highlightTeamId=${player.team.id}" class="btn btn-secondary !py-2 !px-4 text-sm">Ver Ranking de Equipo</a>`;
     }
     buttonsHTML += '</div>';
-    // --- FIN DE LA MODIFICACIÓN ---
 
     container.innerHTML = `
         <div class="bg-[#222222] p-4 sm:p-6 rounded-xl shadow-lg">
@@ -138,14 +134,25 @@ function renderMatchesTable(matchesToRender, containerElement, emptyMessage) {
                 const isDoubles = match.player3 && match.player4;
                 const team1_winner = isDoubles ? (match.winner_id === match.player1.id || match.winner_id === match.player3.id) : (match.winner_id === match.player1.id);
                 
-                const team1_class = team1_winner ? 'winner' : '';
-                const team2_class = !team1_winner && match.winner_id ? 'winner' : '';
+                // --- INICIO DE LA MODIFICACIÓN ---
+                let team1_class = '';
+                let team2_class = '';
+                if (match.winner_id) {
+                    if (team1_winner) {
+                        team1_class = 'winner';
+                        team2_class = 'loser';
+                    } else {
+                        team1_class = 'loser';
+                        team2_class = 'winner';
+                    }
+                }
+                // --- FIN DE LA MODIFICACIÓN ---
 
-                let team1_names = match.player1.name;
-                if (isDoubles && match.player3) team1_names += ` / ${match.player3.name}`;
+                let team1_names = `<span class="player-name-text">${match.player1.name}</span>`;
+                if (isDoubles && match.player3) team1_names += ` / <span class="player-name-text">${match.player3.name}</span>`;
 
-                let team2_names = match.player2.name;
-                if (isDoubles && match.player4) team2_names += ` / ${match.player4.name}`;
+                let team2_names = `<span class="player-name-text">${match.player2.name}</span>`;
+                if (isDoubles && match.player4) team2_names += ` / <span class="player-name-text">${match.player4.name}</span>`;
                 
                 let hora = match.match_time ? match.match_time.substring(0, 5) : 'HH:MM';
                 const setsDisplay = (match.sets || []).map(s => `${s.p1}/${s.p2}`).join(' ');

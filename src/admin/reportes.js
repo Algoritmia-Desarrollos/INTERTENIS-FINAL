@@ -56,8 +56,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 category: match.category?.name || '',
                 category_id: match.category?.id || null,
                 category_color: match.category?.color || '#e5e7eb',
-                p1_confirmed: match.p1_confirmed, 
-                p2_confirmed: match.p2_confirmed, 
+                p1_confirmed: match.p1_confirmed,
+                p2_confirmed: match.p2_confirmed,
                 player1: {
                     id: match.player1?.id, name: match.player1?.name || '', points: p1_points ?? '',
                     isWinner: match.winner_id === match.player1_id || (isDoubles && match.winner_id === match.player3_id),
@@ -306,6 +306,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         if (reportId) {
             btnSaveReport.classList.add('hidden');
+            btnEditPlayers.classList.remove('hidden');
+            btnEditAttendance.classList.remove('hidden');
             const { data: savedReport, error } = await supabase.from('reports').select('report_data').eq('id', reportId).single();
             if (error || !savedReport) {
                 pagesContainer.innerHTML = `<p class="text-center text-red-500 py-10">No se pudo cargar el reporte guardado.</p>`;

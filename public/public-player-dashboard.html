@@ -32,19 +32,20 @@
             vertical-align: middle;
             background: #222222;
             color: #ffffff;
-            /* --- INICIO DE LA MODIFICACIÓN --- */
-            border-right: 1px solid #4a4a4a; /* Borde derecho para todas las celdas */
-            /* --- FIN DE LA MODIFICACIÓN --- */
+            border-right: 1px solid #4a4a4a;
+        }
+        .matches-report-style tr td:first-child {
+             border-left: 1px solid #4a4a4a;
         }
         /* --- INICIO DE LA MODIFICACIÓN --- */
-        .matches-report-style tr td:first-child {
-             border-left: 1px solid #4a4a4a; /* Borde izquierdo solo para la primera celda de la fila */
+        .matches-report-style .winner .player-name-text {
+            color: #f8ec00 !important;
+            font-weight: 700 !important;
+        }
+        .matches-report-style .loser .player-name-text {
+            color: #8c8885 !important;
         }
         /* --- FIN DE LA MODIFICACIÓN --- */
-        .matches-report-style .winner {
-            font-weight: 700 !important;
-            color: #f4ec05 !important;
-        }
         .matches-report-style .player-name { font-weight: 700; }
         .matches-report-style .player-name-right { text-align: right; padding-right: 8px;}
         .matches-report-style .player-name-left { text-align: left; padding-left: 8px;}

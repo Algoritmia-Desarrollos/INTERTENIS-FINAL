@@ -32,12 +32,10 @@
         .player-name-clickable:hover {
             background-color: rgba(255, 255, 255, 0.1);
         }
-        /* --- INICIO DE LA MODIFICACIÓN --- */
         .player-confirmed {
             color: #fdc100 !important; /* Color amarillo para los confirmados */
             font-weight: 900 !important;
         }
-        /* --- FIN DE LA MODIFICACIÓN --- */
 
         @media print {
        body { background: none; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
@@ -57,11 +55,11 @@
                 
                 <div id="action-buttons-container" class="flex items-center gap-2">
                     <div id="default-buttons" class="flex items-center gap-2">
-                        <button id="btn-edit-players" class="btn btn-secondary">
+                        <button id="btn-edit-players" class="btn btn-secondary hidden">
                             <span class="material-icons">edit</span>
                             Editar Jugadores
                         </button>
-                        <button id="btn-edit-attendance" class="btn btn-secondary">
+                        <button id="btn-edit-attendance" class="btn btn-secondary hidden">
                             <span class="material-icons">checklist</span>
                             Editar Asistencia
                         </button>
