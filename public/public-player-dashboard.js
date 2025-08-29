@@ -34,7 +34,6 @@ async function loadPlayerData() {
     const matchHistory = allMatches.filter(m => m.winner_id).reverse();
     const stats = calculatePlayerStats(player.id, matchHistory);
 
-    // --- LÓGICA PARA IDENTIFICAR TORNEOS Y GENERAR BOTONES ---
     const enrolledTournaments = enrolledTournamentsData.map(t => t.tournament);
     const individualTournament = enrolledTournaments.find(t => t.category.name !== 'Equipos');
     const teamTournament = enrolledTournaments.find(t => t.category.name === 'Equipos');
@@ -57,14 +56,18 @@ function calculatePlayerStats(playerId, playedMatches) {
 function renderDashboard(player, stats, pendingMatches, matchHistory, individualTournament, teamTournament) {
     const efectividad = stats.pj > 0 ? ((stats.pg / stats.pj) * 100).toFixed(0) : 0;
     
-    let buttonsHTML = '<div class="flex flex-col sm:flex-row items-center gap-3 mt-4 sm:mt-0">';
+    // --- INICIO DE LA MODIFICACIÓN ---
+    // Se añade 'flex-wrap' para que los botones se ajusten si no hay espacio
+    // y se quitan las clases de ancho para que se ajusten a su contenido.
+    let buttonsHTML = '<div class="flex flex-row flex-wrap justify-center sm:justify-end gap-2 mt-4 sm:mt-0">';
     if (individualTournament) {
-        buttonsHTML += `<a href="/index.html?tournamentId=${individualTournament.id}&highlightPlayerId=${player.id}" class="btn btn-secondary !py-2 !px-4 w-full sm:w-auto text-sm">Ver Ranking Individual</a>`;
+        buttonsHTML += `<a href="/index.html?tournamentId=${individualTournament.id}&highlightPlayerId=${player.id}" class="btn btn-secondary !py-2 !px-4 text-sm">Ver Ranking Individual</a>`;
     }
     if (teamTournament && player.team) {
-        buttonsHTML += `<a href="/index.html?tournamentId=${teamTournament.id}&highlightTeamId=${player.team.id}" class="btn btn-secondary !py-2 !px-4 w-full sm:w-auto text-sm">Ver Ranking de Equipo</a>`;
+        buttonsHTML += `<a href="/index.html?tournamentId=${teamTournament.id}&highlightTeamId=${player.team.id}" class="btn btn-secondary !py-2 !px-4 text-sm">Ver Ranking de Equipo</a>`;
     }
     buttonsHTML += '</div>';
+    // --- FIN DE LA MODIFICACIÓN ---
 
     container.innerHTML = `
         <div class="bg-[#222222] p-4 sm:p-6 rounded-xl shadow-lg">
@@ -124,7 +127,12 @@ function renderMatchesTable(matchesToRender, containerElement, emptyMessage) {
             const headerBgColor = sede.toLowerCase() === 'centro' ? '#222222' : '#fdc100';
             const headerTextColor = sede.toLowerCase() === 'centro' ? '#ffc000' : '#000000';
             
-            tableHTML += `<tr><td colspan="8" style="background-color: ${headerBgColor}; color: ${headerTextColor}; font-weight: 700; text-align: center; padding: 12px 0; font-size: 15pt;">${sede.toUpperCase()} - ${formattedDate}</td></tr>`;
+            tableHTML += `
+                <tr>
+                    <td colspan="2" style="background-color: ${headerBgColor}; color: ${headerTextColor}; font-weight: 700; text-align: center; vertical-align: middle; padding: 12px 0; font-size: 15pt; border-right: 1px solid #000;">${sede.toUpperCase()}</td>
+                    <td colspan="6" style="background-color: ${headerBgColor}; color: ${headerTextColor}; font-weight: 700; text-align: center; vertical-align: middle; padding: 12px 0; font-size: 15pt;">${formattedDate}</td>
+                </tr>`;
+
             for (const match of matchesInSede) {
                 const { p1_points, p2_points } = calculatePoints(match);
                 const isDoubles = match.player3 && match.player4;
@@ -154,7 +162,6 @@ function renderMatchesTable(matchesToRender, containerElement, emptyMessage) {
                 
                 const categoryDisplay = match.category?.name || '';
                 
-                // --- INICIO DE LA MODIFICACIÓN ---
                 const played = !!match.winner_id;
                 let team1PointsDisplay = '';
                 let team2PointsDisplay = '';
@@ -172,7 +179,6 @@ function renderMatchesTable(matchesToRender, containerElement, emptyMessage) {
                         team2PointsDisplay = `<img src="${match.player2.team.image_url}" alt="" style="height: 20px; object-fit: contain; margin: auto; display: block;">`;
                     }
                 }
-                // --- FIN DE LA MODIFICACIÓN ---
 
                 tableHTML += `
                     <tr class="data-row">
