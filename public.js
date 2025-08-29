@@ -38,15 +38,8 @@ function calculatePoints(match) {
     return { p1_points, p2_points };
 }
 
-// --- RANKING POR EQUIPOS ---
-function renderTeamRankings(teamToHighlight = null) {
-    const tournamentId = tournamentFilter.value;
-    // --- NUEVO: Pasamos la opción para indicar que NO es admin ---
-    renderTeamScoreboard(rankingsContainer, tournamentId, { isAdmin: false });
-}
+// --- Lógica de Vistas y Filtros ---
 
-
-// ... (El resto del archivo no necesita cambios) ...
 function setupViewSwitcher() {
     viewSwitcherContainer.innerHTML = `
         <div class="flex border-b border-gray-700 mb-4">
@@ -58,8 +51,10 @@ function setupViewSwitcher() {
             .btn-view.active { color: #facc15; border-bottom-color: #facc15; }
         </style>
     `;
+
     const btnCategory = document.getElementById('btn-view-category');
     const btnTeams = document.getElementById('btn-view-teams');
+
     btnCategory.addEventListener('click', () => {
         if (currentView === 'category') return;
         currentView = 'category';
@@ -68,14 +63,34 @@ function setupViewSwitcher() {
         populateTournamentFilter();
         rankingsContainer.innerHTML = '';
     });
-    btnTeams.addEventListener('click', () => {
+
+    // --- INICIO DE LA MODIFICACIÓN ---
+    btnTeams.addEventListener('click', async () => {
         if (currentView === 'teams') return;
         currentView = 'teams';
         btnTeams.classList.add('active');
         btnCategory.classList.remove('active');
-        populateTournamentFilter();
-        rankingsContainer.innerHTML = '';
+        
+        // 1. Llenamos el selector de torneos como siempre
+        await populateTournamentFilter();
+        
+        // 2. Buscamos el último torneo de equipos
+        const teamTournaments = allTournaments.filter(t => t.category && t.category.name === 'Equipos');
+        if (teamTournaments.length > 0) {
+            // Ordenamos por fecha de creación para encontrar el más nuevo
+            teamTournaments.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+            const latestTournament = teamTournaments[0];
+            
+            // 3. Lo seleccionamos en el dropdown
+            tournamentFilter.value = latestTournament.id;
+            
+            // 4. Mostramos el ranking para ese torneo
+            renderTeamRankings();
+        } else {
+            rankingsContainer.innerHTML = '';
+        }
     });
+    // --- FIN DE LA MODIFICACIÓN ---
 }
 
 async function populateTournamentFilter() {
@@ -83,6 +98,7 @@ async function populateTournamentFilter() {
         const { data } = await supabase.from('tournaments').select('*, category:category_id(name)');
         allTournaments = data || [];
     }
+
     let tournamentsToShow = [];
     if (currentView === 'category') {
         filterLabel.textContent = 'Seleccionar Torneo Individual';
@@ -91,17 +107,28 @@ async function populateTournamentFilter() {
         filterLabel.textContent = 'Seleccionar Torneo de Equipos';
         tournamentsToShow = allTournaments.filter(t => t.category && t.category.name === 'Equipos');
     }
+    
+    // Ordenamos por nombre para que el selector se vea ordenado
     tournamentsToShow.sort((a, b) => {
-        const numA = parseInt((a.name || '').match(/\d+/)?.[0] || '0', 10);
-        const numB = parseInt((b.name || '').match(/\d+/)?.[0] || '0', 10);
-        return numA - numB;
+        const nameA = a.name || '';
+        const nameB = b.name || '';
+        return nameA.localeCompare(nameB, undefined, { numeric: true });
     });
+
     tournamentFilter.innerHTML = '<option value="" disabled selected>Seleccione un torneo...</option>';
     tournamentsToShow.forEach(t => {
         tournamentFilter.innerHTML += `<option value="${t.id}">${t.name}</option>`;
     });
 }
 
+// --- RANKING POR EQUIPOS ---
+function renderTeamRankings(teamToHighlight = null) {
+    const tournamentId = tournamentFilter.value;
+    renderTeamScoreboard(rankingsContainer, tournamentId, { isAdmin: false, teamToHighlight });
+}
+
+
+// --- RANKING POR CATEGORÍA (Sin cambios) ---
 async function renderCategoryRankings(playerToHighlight = null) {
     const tournamentId = tournamentFilter.value;
     rankingsContainer.innerHTML = '<p class="text-center p-8 text-gray-400">Calculando rankings...</p>';
@@ -286,6 +313,7 @@ function generateCategoryRankingsHTML(stats, playerToHighlight = null) {
     return tableHTML;
 }
 
+// --- INICIALIZACIÓN Y EVENTOS ---
 document.addEventListener('DOMContentLoaded', async () => {
     header.innerHTML = renderPublicHeader();
     setupViewSwitcher();

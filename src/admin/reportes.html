@@ -11,7 +11,7 @@
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"/>
     <style>
-          body { background-color: #000; } /* Fondo negro principal */
+          body { background-color: #000; }
         main { max-width: 210mm; margin: 20px auto; }
         .page { background: white; width: 210mm; min-height: 297mm; padding: 15mm; box-shadow: 0 0 15px rgba(0,0,0,0.5); box-sizing: border-box; display: flex; flex-direction: column; margin-bottom: 00px; }
         .page-header { border-bottom: 2px solid #ccc; padding-bottom: 10px; margin-bottom: 15px; flex-shrink: 0; color: #333; }
@@ -21,6 +21,24 @@
         .report-table tr.data-row td:first-child { background: #ffc000 !important; color: #222 !important; font-weight: bold; }
         .winner { font-weight: 700; color: #f4ec05 !important; }
         
+        .player-name-clickable {
+            cursor: pointer;
+            transition: all 0.2s ease-in-out;
+            border-radius: 4px;
+            padding: 2px 4px;
+            margin: 1px;
+            display: inline-block;
+        }
+        .player-name-clickable:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+        /* --- INICIO DE LA MODIFICACIÓN --- */
+        .player-confirmed {
+            color: #fdc100 !important; /* Color amarillo para los confirmados */
+            font-weight: 900 !important;
+        }
+        /* --- FIN DE LA MODIFICACIÓN --- */
+
         @media print {
        body { background: none; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
             main { margin: 0; width: 100%; }
@@ -36,27 +54,36 @@
         <div class="no-print content-container max-w-[210mm] mx-auto p-4 bg-[#222222] mb-4 rounded-b-xl shadow-lg">
             <div class="flex flex-wrap justify-between items-center gap-4">
                 <h1 class="text-3xl font-bold text-gray-100">Reporte de Partidos</h1>
-                <div class="flex gap-2">
-                     <a href="matches.html" class="btn btn-secondary">
-                        <span class="material-icons">arrow_back</span>
-                        Volver
-                    </a>
-                    <button id="btn-edit-report" class="btn btn-secondary">
-                        <span class="material-icons">edit</span>
-                        Editar Reporte
-                    </button>
-                    <button id="btn-cancel-edit" class="btn btn-secondary hidden">
-                        <span class="material-icons">cancel</span>
-                        Cancelar
-                    </button>
-                    <button id="btn-save-report" class="btn btn-secondary">
-                        <span class="material-icons">save</span>
-                        Guardar Reporte
-                    </button>
-                    <button id="btn-save-pdf" class="btn btn-primary">
-                        <span class="material-icons">download</span>
-                        Descargar PDF
-                    </button>
+                
+                <div id="action-buttons-container" class="flex items-center gap-2">
+                    <div id="default-buttons" class="flex items-center gap-2">
+                        <button id="btn-edit-players" class="btn btn-secondary">
+                            <span class="material-icons">edit</span>
+                            Editar Jugadores
+                        </button>
+                        <button id="btn-edit-attendance" class="btn btn-secondary">
+                            <span class="material-icons">checklist</span>
+                            Editar Asistencia
+                        </button>
+                        <button id="btn-save-report" class="btn btn-secondary">
+                            <span class="material-icons">save</span>
+                            Guardar Reporte
+                        </button>
+                        <button id="btn-save-pdf" class="btn btn-primary">
+                            <span class="material-icons">download</span>
+                            Descargar PDF
+                        </button>
+                    </div>
+                    <div id="edit-mode-buttons" class="hidden">
+                        <button id="btn-save-changes" class="btn btn-primary">
+                            <span class="material-icons">save</span>
+                            Guardar Cambios
+                        </button>
+                        <button id="btn-cancel-changes" class="btn btn-secondary">
+                            <span class="material-icons">cancel</span>
+                            Cancelar
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
