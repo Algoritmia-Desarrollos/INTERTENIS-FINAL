@@ -1,7 +1,7 @@
 import { renderHeader } from '../common/header.js';
 import { requireRole } from '../common/router.js';
 import { supabase } from '../common/supabase.js';
-import { renderTeamScoreboard } from './team-scoreboard.js'; // Importamos la nueva función
+import { renderTeamScoreboard } from './team-scoreboard.js';
 
 requireRole('admin');
 
@@ -14,9 +14,9 @@ const filterLabel = document.getElementById('filter-label');
 
 // --- Estado Global ---
 let allTournaments = [];
-let currentView = 'category'; // 'category' o 'teams'
+let currentView = 'category';
 
-// --- Lógica de Puntos ---
+// --- Lógica de Puntos (sin cambios) ---
 function calculatePoints(match) {
     let p1_points = 0;
     let p2_points = 0;
@@ -27,9 +27,7 @@ function calculatePoints(match) {
             p2TotalGames += s.p2;
             if (s.p1 > s.p2) p1SetsWon++; else p2SetsWon++;
         });
-
         const winnerIsSide1 = match.winner_id === match.player1_id || match.winner_id === match.player3_id;
-
         if (winnerIsSide1) {
             p1_points = 2;
             if (p2TotalGames <= 3) p1_points += 1;
@@ -43,8 +41,15 @@ function calculatePoints(match) {
     return { p1_points, p2_points };
 }
 
-// --- Lógica de Vistas y Filtros ---
 
+// --- RANKING POR EQUIPOS ---
+function renderTeamRankings() {
+    const tournamentId = tournamentFilter.value;
+    // --- NUEVO: Pasamos la opción para indicar que es el admin ---
+    renderTeamScoreboard(rankingsContainer, tournamentId, { isAdmin: true });
+}
+
+// ... (El resto del archivo no necesita cambios) ...
 function setupViewSwitcher() {
     viewSwitcherContainer.innerHTML = `
         <div class="flex border-b border-gray-700 mb-4">
@@ -56,10 +61,8 @@ function setupViewSwitcher() {
             .btn-view.active { color: #facc15; border-bottom-color: #facc15; }
         </style>
     `;
-
     const btnCategory = document.getElementById('btn-view-category');
     const btnTeams = document.getElementById('btn-view-teams');
-
     btnCategory.addEventListener('click', () => {
         if (currentView === 'category') return;
         currentView = 'category';
@@ -68,7 +71,6 @@ function setupViewSwitcher() {
         populateTournamentFilter();
         rankingsContainer.innerHTML = '';
     });
-
     btnTeams.addEventListener('click', () => {
         if (currentView === 'teams') return;
         currentView = 'teams';
@@ -84,7 +86,6 @@ async function populateTournamentFilter() {
         const { data } = await supabase.from('tournaments').select('*, category:category_id(name)');
         allTournaments = data || [];
     }
-
     let tournamentsToShow = [];
     if (currentView === 'category') {
         filterLabel.textContent = 'Seleccionar Torneo Individual';
@@ -93,29 +94,16 @@ async function populateTournamentFilter() {
         filterLabel.textContent = 'Seleccionar Torneo de Equipos';
         tournamentsToShow = allTournaments.filter(t => t.category && t.category.name === 'Equipos');
     }
-    
     tournamentsToShow.sort((a, b) => {
         const numA = parseInt((a.name || '').match(/\d+/)?.[0] || '0', 10);
         const numB = parseInt((b.name || '').match(/\d+/)?.[0] || '0', 10);
         return numA - numB;
     });
-
     tournamentFilter.innerHTML = '<option value="" disabled selected>Seleccione un torneo...</option>';
     tournamentsToShow.forEach(t => {
         tournamentFilter.innerHTML += `<option value="${t.id}">${t.name}</option>`;
     });
 }
-
-// --- RANKING POR EQUIPOS ---
-
-function renderTeamRankings() {
-    const tournamentId = tournamentFilter.value;
-    // Llamamos a la función importada para que haga todo el trabajo
-    renderTeamScoreboard(rankingsContainer, tournamentId);
-}
-
-
-// --- RANKING POR CATEGORÍA ---
 
 async function renderCategoryRankings(playerToHighlight = null) {
     const tournamentId = tournamentFilter.value;
@@ -301,7 +289,6 @@ function generateCategoryRankingsHTML(stats, playerToHighlight = null) {
     return tableHTML;
 }
 
-// --- INICIALIZACIÓN Y EVENTOS ---
 document.addEventListener('DOMContentLoaded', async () => {
     header.innerHTML = renderHeader();
     setupViewSwitcher();

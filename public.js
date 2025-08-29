@@ -1,8 +1,6 @@
 import { supabase } from './src/common/supabase.js';
 import { renderPublicHeader } from './public/public-header.js';
-// --- INICIO DE LA MODIFICACIÓN: Importamos el módulo del marcador de equipos ---
 import { renderTeamScoreboard } from './src/admin/team-scoreboard.js';
-// --- FIN DE LA MODIFICACIÓN ---
 
 // --- Elementos del DOM ---
 const header = document.getElementById('header');
@@ -13,9 +11,9 @@ const filterLabel = document.getElementById('filter-label');
 
 // --- Estado Global ---
 let allTournaments = [];
-let currentView = 'category'; // 'category' o 'teams'
+let currentView = 'category';
 
-// --- Lógica de Puntos (Consistente en toda la app) ---
+// --- Lógica de Puntos (sin cambios) ---
 function calculatePoints(match) {
     let p1_points = 0;
     let p2_points = 0;
@@ -26,9 +24,7 @@ function calculatePoints(match) {
             p2TotalGames += s.p2;
             if (s.p1 > s.p2) p1SetsWon++; else p2SetsWon++;
         });
-
         const winnerIsSide1 = match.winner_id === match.player1_id || match.winner_id === match.player3_id;
-
         if (winnerIsSide1) {
             p1_points = 2;
             if (p2TotalGames <= 3) p1_points += 1;
@@ -42,8 +38,15 @@ function calculatePoints(match) {
     return { p1_points, p2_points };
 }
 
-// --- Lógica de Vistas y Filtros ---
+// --- RANKING POR EQUIPOS ---
+function renderTeamRankings(teamToHighlight = null) {
+    const tournamentId = tournamentFilter.value;
+    // --- NUEVO: Pasamos la opción para indicar que NO es admin ---
+    renderTeamScoreboard(rankingsContainer, tournamentId, { isAdmin: false });
+}
 
+
+// ... (El resto del archivo no necesita cambios) ...
 function setupViewSwitcher() {
     viewSwitcherContainer.innerHTML = `
         <div class="flex border-b border-gray-700 mb-4">
@@ -55,10 +58,8 @@ function setupViewSwitcher() {
             .btn-view.active { color: #facc15; border-bottom-color: #facc15; }
         </style>
     `;
-
     const btnCategory = document.getElementById('btn-view-category');
     const btnTeams = document.getElementById('btn-view-teams');
-
     btnCategory.addEventListener('click', () => {
         if (currentView === 'category') return;
         currentView = 'category';
@@ -67,7 +68,6 @@ function setupViewSwitcher() {
         populateTournamentFilter();
         rankingsContainer.innerHTML = '';
     });
-
     btnTeams.addEventListener('click', () => {
         if (currentView === 'teams') return;
         currentView = 'teams';
@@ -83,7 +83,6 @@ async function populateTournamentFilter() {
         const { data } = await supabase.from('tournaments').select('*, category:category_id(name)');
         allTournaments = data || [];
     }
-
     let tournamentsToShow = [];
     if (currentView === 'category') {
         filterLabel.textContent = 'Seleccionar Torneo Individual';
@@ -92,27 +91,16 @@ async function populateTournamentFilter() {
         filterLabel.textContent = 'Seleccionar Torneo de Equipos';
         tournamentsToShow = allTournaments.filter(t => t.category && t.category.name === 'Equipos');
     }
-    
     tournamentsToShow.sort((a, b) => {
         const numA = parseInt((a.name || '').match(/\d+/)?.[0] || '0', 10);
         const numB = parseInt((b.name || '').match(/\d+/)?.[0] || '0', 10);
         return numA - numB;
     });
-
     tournamentFilter.innerHTML = '<option value="" disabled selected>Seleccione un torneo...</option>';
     tournamentsToShow.forEach(t => {
         tournamentFilter.innerHTML += `<option value="${t.id}">${t.name}</option>`;
     });
 }
-
-// --- RANKING POR EQUIPOS ---
-function renderTeamRankings(teamToHighlight = null) {
-    const tournamentId = tournamentFilter.value;
-    renderTeamScoreboard(rankingsContainer, tournamentId, teamToHighlight);
-}
-
-
-// --- RANKING POR CATEGORÍA (Sin cambios) ---
 
 async function renderCategoryRankings(playerToHighlight = null) {
     const tournamentId = tournamentFilter.value;
@@ -298,8 +286,6 @@ function generateCategoryRankingsHTML(stats, playerToHighlight = null) {
     return tableHTML;
 }
 
-
-// --- INICIALIZACIÓN Y EVENTOS ---
 document.addEventListener('DOMContentLoaded', async () => {
     header.innerHTML = renderPublicHeader();
     setupViewSwitcher();
@@ -308,14 +294,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     const urlParams = new URLSearchParams(window.location.search);
     const tournamentIdToSelect = urlParams.get('tournamentId');
     const playerToHighlight = urlParams.get('highlightPlayerId');
-    const teamToHighlight = urlParams.get('highlightTeamId'); // <-- LEEMOS EL NUEVO PARÁMETRO
+    const teamToHighlight = urlParams.get('highlightTeamId');
 
     if (tournamentIdToSelect) {
         tournamentFilter.value = tournamentIdToSelect;
         const selectedTournament = allTournaments.find(t => t.id == tournamentIdToSelect);
         if (selectedTournament?.category?.name === 'Equipos') {
             document.getElementById('btn-view-teams').click();
-            await renderTeamRankings(teamToHighlight); // <-- LO PASAMOS A LA FUNCIÓN
+            await renderTeamRankings(teamToHighlight);
         } else {
              await renderCategoryRankings(playerToHighlight);
         }
@@ -328,6 +314,6 @@ tournamentFilter.addEventListener('change', () => {
     if (currentView === 'category') {
         renderCategoryRankings();
     } else {
-        renderTeamRankings(); // No hay equipo para resaltar en un cambio manual
+        renderTeamRankings();
     }
 });
