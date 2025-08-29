@@ -59,21 +59,21 @@ document.addEventListener('DOMContentLoaded', async () => {
                 for (const match of matchesInSede) {
                     const { p1_points, p2_points } = calculatePoints(match);
                     const isDoubles = match.player3 && match.player4;
+                    const played = !!match.winner_id;
+                    
                     const team1_winner = isDoubles ? (match.winner_id === match.player1.id || match.winner_id === match.player3.id) : (match.winner_id === match.player1.id);
                     
                     const team1_class = team1_winner ? 'winner' : '';
                     const team2_class = !team1_winner && match.winner_id ? 'winner' : '';
 
-                    // --- INICIO DE LA MODIFICACIÓN ---
-                    const team1_confirmed_class = match.p1_confirmed ? 'player-confirmed' : '';
-                    const team2_confirmed_class = match.p2_confirmed ? 'player-confirmed' : '';
+                    const team1_confirmed_class = match.p1_confirmed && !played ? 'player-confirmed' : '';
+                    const team2_confirmed_class = match.p2_confirmed && !played ? 'player-confirmed' : '';
 
                     let team1_names = `<span class="${team1_confirmed_class}">${match.player1.name}</span>`;
                     if (isDoubles && match.player3) team1_names += ` / <span class="${team1_confirmed_class}">${match.player3.name}</span>`;
 
                     let team2_names = `<span class="${team2_confirmed_class}">${match.player2.name}</span>`;
                     if (isDoubles && match.player4) team2_names += ` / <span class="${team2_confirmed_class}">${match.player4.name}</span>`;
-                    // --- FIN DE LA MODIFICACIÓN ---
                     
                     let hora = match.match_time ? match.match_time.substring(0, 5) : 'HH:MM';
                     const setsDisplay = (match.sets || []).map(s => `${s.p1}/${s.p2}`).join(' ');
@@ -84,7 +84,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                     const p1TextColor = isColorLight(p1TeamColor) ? '#222' : '#fff';
                     const p2TextColor = isColorLight(p2TeamColor) ? '#222' : '#fff';
 
-                    const played = !!(match.sets && match.sets.length > 0);
                     let team1NameStyle = played && !team1_winner ? 'color:#888;' : '';
                     let team2NameStyle = played && (team1_winner || !match.winner_id) ? 'color:#888;' : '';
 

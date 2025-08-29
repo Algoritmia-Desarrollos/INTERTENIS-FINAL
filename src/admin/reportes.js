@@ -197,10 +197,15 @@ document.addEventListener('DOMContentLoaded', async () => {
                         }
                     } else {
                         const createPlayerSpan = (player, side, confirmed) => {
-                            const classes = editMode === 'attendance' ? 'player-name-clickable' : '';
-                            const confirmedClass = confirmed ? 'player-confirmed' : '';
-                            const dataAttrs = editMode === 'attendance' ? `data-match-id="${match.id}" data-side="${side}"` : '';
-                            return `<span class="${classes} ${confirmedClass}" ${dataAttrs}>${player.name}</span>`;
+                            const isClickable = editMode === 'attendance';
+                            // --- INICIO DE LA MODIFICACIÓN ---
+                            // Solo se aplica la clase 'confirmed' si el partido NO se jugó.
+                            const confirmedClass = confirmed && !played ? 'player-confirmed' : '';
+                            // --- FIN DE LA MODIFICACIÓN ---
+                            return `<span class="${isClickable ? 'player-name-clickable' : ''} ${confirmedClass}" 
+                                          ${isClickable ? `data-match-id="${match.id}" data-side="${side}"` : ''}>
+                                        ${player.name}
+                                  </span>`;
                         };
                         if (match.isDoubles) {
                             player1Content = `<div>${createPlayerSpan(match.player1, 'p1', match.p1_confirmed)}</div><div>${createPlayerSpan(match.player3, 'p1', match.p1_confirmed)}</div>`;
@@ -244,9 +249,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                         <td style="background-color: ${canchaBackgroundColor} !important; color: ${canchaTextColor} !important; font-weight: bold;">${cancha}</td>
                         <td class="text-center">${hora}</td>
                         <td class="text-right font-bold ${p1_class}" style='${p1NameStyle}'>${player1Content}</td>
-                        <td class="pts-col" style='text-align:center;background:${p1TeamColor || '#3a3838'};color:${p1TextColor};font-weight:700;'>${p1PointsDisplay}</td>
+                        <td class="pts-col" style='text-align:center;background:${p1TeamColor || '#3a3838'};color:${p1TextColor};font-weight:700;font-size: 11pt;'>${p1PointsDisplay}</td>
                         <td style='text-align:center;' class="font-mono">${setsDisplay}</td>
-                        <td class="pts-col" style='text-align:center;background:${p2TeamColor || '#3a3838'};color:${p2TextColor};font-weight:700;'>${p2PointsDisplay}</td>
+                        <td class="pts-col" style='text-align:center;background:${p2TeamColor || '#3a3838'};color:${p2TextColor};font-weight:700;font-size: 11pt;'>${p2PointsDisplay}</td>
                         <td class="font-bold ${p2_class}" style='${p2NameStyle}'>${player2Content}</td>
                         <td class="cat-col" style="color:${match.category_color || '#b45309'};font-family:'Segoe UI Black',Arial,sans-serif;font-weight:900; font-size: 11pt;">${categoryDisplay}</td>
                     `;
