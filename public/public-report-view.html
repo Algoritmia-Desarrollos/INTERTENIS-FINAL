@@ -60,10 +60,8 @@
             font-weight: 700 !important;
             color: #f4ec05 !important;
         }
-    /* --- INICIO DE LA MODIFICACIÓN --- */
-    .matches-report-style .player-name { font-weight: 700; font-size: 14px; } /* Aumentado de 14px a 16px */
-    /* --- FIN DE LA MODIFICACIÓN --- */
-        .matches-report-style .player-name-right { text-align: right; padding-right: 8px; }
+        .matches-report-style .player-name { font-weight: 700; font-size: 16px; }
+        .matches-report-style .player-name-right { text-align: right; padding-right: 8px;}
         .matches-report-style .player-name-left { text-align: left; padding-left: 8px;}
         .matches-report-style .font-mono { 
             font-family: 'Consolas', 'Menlo', 'Courier New', monospace;
@@ -77,16 +75,20 @@
             text-align: center;
         }
         
+        /* --- INICIO DE LA MODIFICACIÓN --- */
+        .player-confirmed {
+            color: #fdc100 !important; /* Color amarillo para los confirmados */
+            font-weight: 900 !important;
+        }
         @media screen and (max-width: 768px) {
             .matches-report-style .player-name {
-                /* --- INICIO DE LA MODIFICACIÓN --- */
-                font-size: 14px !important; /* Aumentado de 12px a 14px */
-                /* --- FIN DE LA MODIFICACIÓN --- */
+                font-size: 14px !important;
                 white-space: nowrap;
                 overflow: hidden;
                 text-overflow: ellipsis;
             }
         }
+        /* --- FIN DE LA MODIFICACIÓN --- */
     </style>
 </head>
 <body class="bg-black text-gray-200">

@@ -44,7 +44,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             }, {});
 
             for(const sede in groupedBySede) {
-                const matchesInSede = groupedBySede[sede];
+                const matchesInSede = groupedByDate[date];
                 const dateObj = new Date(date + 'T00:00:00');
                 const formattedDate = new Intl.DateTimeFormat('es-AR', { weekday: 'long', day: 'numeric', month: 'long' }).format(dateObj);
                 const headerBgColor = sede.toLowerCase() === 'centro' ? '#222222' : '#fdc100';
@@ -64,11 +64,16 @@ document.addEventListener('DOMContentLoaded', async () => {
                     const team1_class = team1_winner ? 'winner' : '';
                     const team2_class = !team1_winner && match.winner_id ? 'winner' : '';
 
-                    let team1_names = match.player1.name;
-                    if (isDoubles && match.player3) team1_names += ` / ${match.player3.name}`;
+                    // --- INICIO DE LA MODIFICACIÓN ---
+                    const team1_confirmed_class = match.p1_confirmed ? 'player-confirmed' : '';
+                    const team2_confirmed_class = match.p2_confirmed ? 'player-confirmed' : '';
 
-                    let team2_names = match.player2.name;
-                    if (isDoubles && match.player4) team2_names += ` / ${match.player4.name}`;
+                    let team1_names = `<span class="${team1_confirmed_class}">${match.player1.name}</span>`;
+                    if (isDoubles && match.player3) team1_names += ` / <span class="${team1_confirmed_class}">${match.player3.name}</span>`;
+
+                    let team2_names = `<span class="${team2_confirmed_class}">${match.player2.name}</span>`;
+                    if (isDoubles && match.player4) team2_names += ` / <span class="${team2_confirmed_class}">${match.player4.name}</span>`;
+                    // --- FIN DE LA MODIFICACIÓN ---
                     
                     let hora = match.match_time ? match.match_time.substring(0, 5) : 'HH:MM';
                     const setsDisplay = (match.sets || []).map(s => `${s.p1}/${s.p2}`).join(' ');
@@ -98,11 +103,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                         <tr class="data-row ${suspendedClass}">
                             <td style="background-color: ${canchaBackgroundColor} !important; color: ${canchaTextColor} !important; font-weight: bold;">${cancha}</td>
                             <td style="background:#000;color:#fff;">${hora}</td>
-                            <td class="player-name player-name-right ${team1_class}" style='background:#000;color:#fff;${team1NameStyle};font-size:${isDoubles ? '10pt' : '11pt'};'>${team1_names}</td>
+                            <td class="player-name player-name-right ${team1_class}" style='background:#000;color:#fff;${team1NameStyle};'>${team1_names}</td>
                             <td class="pts-col" style='background:${p1TeamColor || '#3a3838'};color:${p1TextColor};'>${team1PointsDisplay}</td>
                             <td class="font-mono" style="background:#000;color:#fff;">${resultadoDisplay}</td>
                             <td class="pts-col" style='background:${p2TeamColor || '#3a3838'};color:${p2TextColor};'>${team2PointsDisplay}</td>
-                            <td class="player-name player-name-left ${team2_class}" style='background:#000;color:#fff;${team2NameStyle};font-size:${isDoubles ? '10pt' : '11pt'};'>${team2_names}</td>
+                            <td class="player-name player-name-left ${team2_class}" style='background:#000;color:#fff;${team2NameStyle};'>${team2_names}</td>
                             <td class="cat-col" style="background:#000;color:${match.category?.color || '#b45309'};">${match.category?.name || 'N/A'}</td>
                         </tr>`;
                 }
@@ -112,7 +117,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         matchesContainer.innerHTML = `
             <div class="bg-[#18191b] p-4 sm:p-6 rounded-xl shadow-lg overflow-x-auto">
                 <table class="matches-report-style">
-                    <colgroup><col style="width: 7%"><col style="width: 10%"><col style="width: 25%"><col style="width: 5%"><col style="width: 13%"><col style="width: 5%"><col style="width: 25%"><col style="width: 25%"></colgroup>
+                    <colgroup><col style="width: 5%"><col style="width: 8%"><col style="width: 25%"><col style="width: 5%"><col style="width: 13%"><col style="width: 5%"><col style="width: 25%"><col style="width: 13%"></colgroup>
                     <tbody>${tableHTML}</tbody>
                 </table>
             </div>`;
@@ -147,6 +152,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const { data: freshMatches, error: matchesError } = await supabase
             .from('matches')
             .select(`*, 
+                p1_confirmed, p2_confirmed,
                 category:category_id(id, name, color), 
                 player1:player1_id(*, team:team_id(name, image_url, color)), 
                 player2:player2_id(*, team:team_id(name, image_url, color)),
