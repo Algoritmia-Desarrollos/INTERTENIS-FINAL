@@ -112,7 +112,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         matchesContainer.innerHTML = `
             <div class="bg-[#18191b] p-4 sm:p-6 rounded-xl shadow-lg overflow-x-auto">
                 <table class="matches-report-style">
-                    <colgroup><col style="width: 5%"><col style="width: 8%"><col style="width: 25%"><col style="width: 5%"><col style="width: 13%"><col style="width: 5%"><col style="width: 25%"><col style="width: 33%"></colgroup>
+                    <colgroup><col style="width: 7%"><col style="width: 10%"><col style="width: 25%"><col style="width: 5%"><col style="width: 13%"><col style="width: 5%"><col style="width: 25%"><col style="width: 25%"></colgroup>
                     <tbody>${tableHTML}</tbody>
                 </table>
             </div>`;
