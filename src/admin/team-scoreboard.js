@@ -212,17 +212,21 @@ function generateScoreboardHTML(sortedTeams, fortnights, tournamentId, isAdmin) 
     
     const style = `
         <style>
-            .scoreboard-container { display: grid; gap: 2px; background-color: #4a4a4a; border-radius: 8px; border: 2px solid #4a4a4a; min-width: ${120 + (sortedTeams.length * 140)}px; }
-            .scoreboard-container > div { background-color: #18191b; padding: 2px 4px; }
+            .scoreboard-container { display: grid; gap: 0; background-color: #4a4a4a; border-radius: 8px; border: 2px solid #4a4a4a; min-width: ${120 + (sortedTeams.length * 140)}px; }
+            .scoreboard-container > div { background-color: #18191b; padding: 2px 4px; border-right: 2px solid #666; border-bottom: 1px solid #666; }
+            .scoreboard-container > div:last-child { border-right: none; }
             .grid-corner, .sub-header-label, .date-label-cell, .footer-label { background-color: #000 !important; font-weight: bold; display:flex; align-items:center; justify-content:center; }
             .team-header-cell { display: flex; flex-direction: column; align-items: center; justify-content: center; font-weight: bold; padding: 12px 8px; }
+            .team-header-cell .team-pos { text-align: center; }
             .team-header-cell .team-logo { width: 40px; height: 40px; object-fit: contain; margin-bottom: 4px; }
             .team-header-cell .team-name { font-size: 1.5rem; } /* Increased for better visibility */
-            .sub-header-group { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; padding: 0; background-color: #4a4a4a; font-size: 0.7rem; font-weight: 600; color: #9ca3af; text-transform: uppercase; }
-            .sub-header-group > span { background-color: #000; display: flex; align-items: center; justify-content: center; padding: 4px 2px; }
+            .sub-header-group { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0; padding: 0; background-color: #4a4a4a; font-size: 0.7rem; font-weight: 600; color: #9ca3af; text-transform: uppercase; }
+            .sub-header-group > span { background-color: #000; display: flex; align-items: center; justify-content: center; padding: 4px 2px; border-right: 2px solid #666; }
+            .sub-header-group > span:last-child { border-right: none; }
             .date-label-cell { color: #facc15; }
-            .data-cell-group { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; padding: 0; background-color: #4a4a4a; text-align: center; }
-            .data-cell-group > * { background-color: #222222; display: flex; align-items: center; justify-content: center; padding: 8px 2px; }
+            .data-cell-group { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0; padding: 0; background-color: #4a4a4a; text-align: center; }
+            .data-cell-group > * { background-color: #222222; display: flex; align-items: center; justify-content: center; padding: 8px 2px; border-right: 2px solid #666; }
+            .data-cell-group > *:last-child { border-right: none; }
             .total-col, .footer-label.total { color: #facc15; font-weight: 700; }
             .footer-cell.total { color: #facc15; font-weight: 700; }
             .footer-cell { font-size: 1.2rem; display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; text-align: center; }
