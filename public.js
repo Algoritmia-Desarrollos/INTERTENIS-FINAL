@@ -256,7 +256,7 @@ function generateCategoryRankingsHTML(stats, playerToHighlight = null) {
         <table class="min-w-full text-sm text-gray-200">
             <thead class="bg-black">
                 <tr>
-                    <th class="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Pos.</th>
+                    <th class="px-3 py-3 text-center text-xs font-medium text-gray-400 uppercase tracking-wider">Pos.</th>
                     <th class="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Jugador</th>
                     <th class="px-3 py-3 text-center text-xs font-medium text-gray-400 uppercase tracking-wider">P+</th>
                     <th class="px-3 py-3 text-center text-xs font-medium text-gray-400 uppercase tracking-wider">P-</th>
@@ -287,7 +287,7 @@ function generateCategoryRankingsHTML(stats, playerToHighlight = null) {
 
             tableHTML += `
                 <tr class="${highlightClass}">
-                    <td class="px-3 py-3 font-bold text-yellow-400 text-base">${index + 1}°</td>
+                    <td class="px-3 py-3 font-bold text-yellow-400 text-base text-center">${index + 1}°</td>
                     <td class="px-3 py-3 whitespace-nowrap">
                         <div class="flex items-center gap-3">
                             <img src="${s.teamImageUrl || 'https://via.placeholder.com/40'}" alt="${s.teamName}" class="h-8 w-8 rounded-full object-cover">
