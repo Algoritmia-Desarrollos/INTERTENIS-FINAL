@@ -47,7 +47,7 @@ function setupViewSwitcher() {
     viewSwitcherContainer.innerHTML = `
         <div class="flex border-b border-gray-700 mb-4">
             <button id="btn-view-category" class="btn-view active">Por Categoría</button>
-            <button id="btn-view-teams" class="btn-view">Por Equipos</button>
+            <button id="btn-view-teams" class="btn-view">SuperLiga</button>
         </div>
         <style>
             .btn-view { padding: 8px 16px; border-bottom: 2px solid transparent; color: #9ca3af; font-weight: 600; cursor: pointer; }
@@ -100,7 +100,7 @@ async function populateTournamentFilter() {
         filterLabel.textContent = 'Seleccionar Torneo Individual';
         tournamentsToShow = allTournaments.filter(t => t.category && t.category.name !== 'Equipos');
     } else {
-        filterLabel.textContent = 'Seleccionar Torneo de Equipos';
+        filterLabel.textContent = 'Seleccionar SuperLiga';
         tournamentsToShow = allTournaments.filter(t => t.category && t.category.name === 'Equipos');
     }
     
@@ -159,6 +159,10 @@ async function renderCategoryRankings(playerToHighlight = null) {
         categoryTitle.className = 'text-2xl font-bold text-gray-100';
         categoryTitle.textContent = `Categoría: ${category.name}`;
         rankingsContainer.appendChild(categoryTitle);
+
+        const phraseDiv = document.createElement('div');
+     
+        rankingsContainer.appendChild(phraseDiv);
 
         const tableContainer = document.createElement('div');
         tableContainer.className = 'bg-[#222222] p-6 rounded-xl shadow-lg overflow-x-auto';

@@ -75,6 +75,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
+    function isColorLight(hex) {
+        if (!hex) return false;
+        let c = hex.replace('#', '');
+        if (c.length === 3) c = c.split('').map(x => x + x).join('');
+        const r = parseInt(c.substr(0, 2), 16),
+              g = parseInt(c.substr(2, 2), 16),
+              b = parseInt(c.substr(4, 2), 16);
+        return ((0.299 * r + 0.587 * g + 0.114 * b) > 150);
+    }
+
     async function renderReport() {
         if (!document.getElementById('suspended-row-style')) {
             const style = document.createElement('style');
@@ -107,7 +117,18 @@ document.addEventListener('DOMContentLoaded', async () => {
         function createNewPage() {
             const page = document.createElement('div');
             page.className = 'page';
-            page.innerHTML = `<div class="page-header flex justify-between items-center"><h1 class="text-2xl font-bold">Reporte de Partidos</h1><p class="text-sm text-gray-500">Página ${pageCount}</p></div><div class="page-content"></div>`;
+            page.innerHTML = `<div class="page-header flex justify-between items-center">
+                <div class="flex items-center gap-4">
+                    <img src="/logo_2021_02.png" alt="Logo" class="h-12">
+                    <div>
+                        <h2 class="text-lg font-bold">La Liga de Intertenis Club</h2>
+                        <p class="text-sm">"La original, la primera!" Desde 2010!</p>
+                    </div>
+                </div>
+                <div class="flex-1"></div>
+                <h1 class="text-2xl font-bold"></h1>
+                <p class="text-sm text-gray-500">Página ${pageCount}</p>
+            </div><div class="page-content"></div>`;
             pagesContainer.appendChild(page);
             currentHeight = 0;
             return page.querySelector('.page-content');
@@ -228,7 +249,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                         setsDisplay = played ? match.sets.map(s => `${s.p1}/${s.p2}`).join(' ') : '';
                     }
                     const p1TeamColor = match.player1.teamColor, p2TeamColor = match.player2.teamColor;
-                    const p1TextColor = '#fff', p2TextColor = '#fff';
+                    const p1TextColor = isColorLight(p1TeamColor) ? '#000' : '#fff';
+                    const p2TextColor = isColorLight(p2TeamColor) ? '#000' : '#fff';
                     let p1NameStyle = played && !match.player1.isWinner ? 'color:#6b716f;' : '';
                     let p2NameStyle = played && !match.player2.isWinner ? 'color:#6b716f;' : '';
                     let p1PointsDisplay = '', p2PointsDisplay = '';
@@ -400,7 +422,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
     
     document.getElementById('btn-save-pdf').addEventListener('click', () => {
-        const element = document.getElementById('report-pages-container'); html2pdf().set({ margin: 0, filename: `reporte_partidos.pdf`, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } }).from(element).toPdf().get('pdf').then(function (pdf) { const totalPages = pdf.internal.getNumberOfPages(); if (totalPages > 1) { pdf.deletePage(totalPages); } }).save();
+        const element = document.getElementById('report-pages-container'); html2pdf().set({ margin: 0, filename: `Reporte_partidos.pdf`, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } }).from(element).toPdf().get('pdf').then(function (pdf) { const totalPages = pdf.internal.getNumberOfPages(); if (totalPages > 1) { pdf.deletePage(totalPages); } }).save();
     });
     btnSaveReport.addEventListener('click', async () => {
         if (!matchIdsForReport || matchIdsForReport.length === 0) return alert('No hay datos de reporte para guardar.');

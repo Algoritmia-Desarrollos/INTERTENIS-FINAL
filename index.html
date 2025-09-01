@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>InterTenis - Rankings de Torneos</title>
+  <title>InterTenis - POSICIONES</title>
     <link rel="icon" href="/logo_2021_02.png" type="image/png">
     <meta property="og:image" content="/logo_2021_02.png" />
     <meta name="twitter:image" content="/logo_2021_02.png" />
@@ -19,7 +19,7 @@
         #rankings-container table td {
           padding-top: 0.4rem; 
           padding-bottom: 0.4rem;
-          font-size: 0.75rem; 
+          font-size: 0.875rem; 
           padding-left: 0.4rem;
           padding-right: 0.4rem;
         }
@@ -28,7 +28,7 @@
           width: 1.5rem;
         }
         #rankings-container table .font-bold.text-gray-100 {
-            font-size: 0.8rem; 
+            font-size: 0.9rem; 
         }
 
         /* --- NUEVOS ESTILOS PARA COLUMNA DE JUGADOR FIJA Y MÁS ANCHA --- */
@@ -68,15 +68,21 @@
     </head>
 <body class="bg-black text-gray-200">
     <header id="header"></header>
+    <div class="flex items-center justify-center gap-4 py-4 bg-[#222222] mx-auto max-w-7xl">
+        <div class="text-center">
+            <h2 class="text-xl font-bold text-gray-100">La Liga de Intertenis Club</h2>
+            <p class="text-sm text-gray-300">"La original, la primera!" Desde 2010!</p>
+        </div>
+    </div>
     <main class="flex-1 py-8">
         <div class="content-container max-w-7xl mx-auto space-y-8">
-            <h1 class="text-3xl font-bold text-gray-100">Ranking del Torneo</h1>
+            <h1 class="text-3xl font-bold text-gray-100">POSICIONES</h1>
 
             <div class="bg-[#222222] p-6 rounded-xl shadow-lg">
                 <div id="view-switcher-container" class="mb-4">
                     </div>
                 <div class="max-w-xs">
-                    <label id="filter-label" for="tournament-filter" class="block text-sm font-medium text-gray-300 mb-2">Seleccionar Torneo</label>
+                    <label id="filter-label" for="tournament-filter" class="block text-sm font-medium text-gray-300 mb-2">Seleccionar Categoría</label>
                     <select id="tournament-filter" class="input-field dark-input"></select>
                 </div>
             </div>

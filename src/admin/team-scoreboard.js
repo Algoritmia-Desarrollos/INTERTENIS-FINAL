@@ -147,6 +147,15 @@ function calculateAllTotals(teamStats) {
     });
 }
 
+function isColorLight(hex) {
+    if (!hex) return false;
+    let c = hex.replace('#', '');
+    if (c.length === 3) c = c.split('').map(x => x + x).join('');
+    const r = parseInt(c.substr(0, 2), 16),
+          g = parseInt(c.substr(2, 2), 16),
+          b = parseInt(c.substr(4, 2), 16);
+    return ((0.299 * r + 0.587 * g + 0.114 * b) > 150);
+}
 
 function generateScoreboardHTML(sortedTeams, fortnights, tournamentId, isAdmin) {
     // --- NUEVO: Los botones solo se generan si es admin ---
@@ -158,6 +167,7 @@ function generateScoreboardHTML(sortedTeams, fortnights, tournamentId, isAdmin) 
         </div>` : '';
         
     let gridHTML = `
+       
         ${editButtonsHTML}
         <div class="overflow-x-auto">
             <div id="scoreboard-grid" class="scoreboard-container" style="grid-template-columns: 120px repeat(${sortedTeams.length}, 1fr);">
@@ -166,7 +176,8 @@ function generateScoreboardHTML(sortedTeams, fortnights, tournamentId, isAdmin) 
     // ... (El resto de la generación de la tabla no cambia) ...
     gridHTML += `<div class="grid-corner"></div>`;
     sortedTeams.forEach((team, index) => {
-        gridHTML += `<div class="team-header-cell" style="background-color: ${team.color || '#333'};"><span class="team-pos">Pos. ${index + 1}</span><span class="team-name">${team.name}</span></div>`;
+        const textColor = isColorLight(team.color) ? '#000' : '#fff';
+        gridHTML += `<div class="team-header-cell" style="background-color: ${team.color || '#333'}; color: ${textColor};"><span class="team-pos">Pos. ${index + 1}</span>${team.image_url ? `<img src="${team.image_url}" alt="${team.name} logo" class="team-logo">` : ''}<span class="team-name">${team.name}</span></div>`;
     });
 
     gridHTML += `<div class="sub-header-label">Fechas</div>`;
@@ -204,8 +215,9 @@ function generateScoreboardHTML(sortedTeams, fortnights, tournamentId, isAdmin) 
             .scoreboard-container { display: grid; gap: 2px; background-color: #4a4a4a; border-radius: 8px; border: 2px solid #4a4a4a; min-width: ${120 + (sortedTeams.length * 140)}px; }
             .scoreboard-container > div { background-color: #18191b; padding: 2px 4px; }
             .grid-corner, .sub-header-label, .date-label-cell, .footer-label { background-color: #000 !important; font-weight: bold; display:flex; align-items:center; justify-content:center; }
-            .team-header-cell { display: flex; flex-direction: column; align-items: center; justify-content: center; color: white; font-weight: bold; padding: 12px 8px; }
-            .team-header-cell .team-name { font-size: 1.25rem; } /* +2px from default 1rem */
+            .team-header-cell { display: flex; flex-direction: column; align-items: center; justify-content: center; font-weight: bold; padding: 12px 8px; }
+            .team-header-cell .team-logo { width: 40px; height: 40px; object-fit: contain; margin-bottom: 4px; }
+            .team-header-cell .team-name { font-size: 1.5rem; } /* Increased for better visibility */
             .sub-header-group { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; padding: 0; background-color: #4a4a4a; font-size: 0.7rem; font-weight: 600; color: #9ca3af; text-transform: uppercase; }
             .sub-header-group > span { background-color: #000; display: flex; align-items: center; justify-content: center; padding: 4px 2px; }
             .date-label-cell { color: #facc15; }

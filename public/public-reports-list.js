@@ -11,7 +11,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // --- CARGAR Y RENDERIZAR REPORTES ---
     async function loadReports() {
-        reportsListContainer.innerHTML = '<p class="text-gray-400">Cargando reportes...</p>';
+        reportsListContainer.innerHTML = '<p class="text-gray-400">Cargando programación...</p>';
 
         const { data, error } = await supabase
             .from('reports')
@@ -19,13 +19,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             .order('created_at', { ascending: false });
 
         if (error) {
-            reportsListContainer.innerHTML = `<div class="bg-[#222222] p-4 rounded-lg text-red-400">Error al cargar los reportes.</div>`;
+            reportsListContainer.innerHTML = `<div class="bg-[#222222] p-4 rounded-lg text-red-400">Error al cargar la programación.</div>`;
             console.error(error);
             return;
         }
 
         if (!data || data.length === 0) {
-            reportsListContainer.innerHTML = `<div class="bg-[#222222] p-6 rounded-lg text-center text-gray-400">No hay reportes disponibles.</div>`;
+            reportsListContainer.innerHTML = `<div class="bg-[#222222] p-6 rounded-lg text-center text-gray-400">No hay programación disponible.</div>`;
             return;
         }
         

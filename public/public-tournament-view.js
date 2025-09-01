@@ -57,7 +57,7 @@ function generateRankingsHTML(stats) {
         </tr></thead>
         <tbody class="divide-y divide-gray-700">`;
     if (stats.length === 0) {
-        tableHTML += '<tr><td colspan="6" class="text-center p-8 text-gray-400">No hay datos de ranking para mostrar.</td></tr>';
+        tableHTML += '<tr><td colspan="6" class="text-center p-8 text-gray-400">No hay datos de POSICIONES para mostrar.</td></tr>';
     } else {
         stats.forEach((s, index) => {
             tableHTML += `<tr>
@@ -187,17 +187,17 @@ async function loadTournamentData() {
     const playersInTournament = tournamentPlayersLinks.map(link => link.player);
     const playedMatches = matchesInTournament.filter(m => m.winner_id);
 
-    // Renderizar Ranking
+    // Renderizar Posiciones
     const stats = calculateStats(playersInTournament, playedMatches);
     rankingsContainer.innerHTML = `
-        <h2 class="text-3xl font-bold text-gray-100">Ranking</h2>
+        <h2 class="text-3xl font-bold text-gray-100">POSICIONES</h2>
         <div class="bg-[#222222] p-6 rounded-xl shadow-lg overflow-x-auto">
             ${generateRankingsHTML(stats)}
         </div>
     `;
 
-    // Renderizar Partidos
-    matchesContainer.innerHTML = `<h2 class="text-3xl font-bold text-gray-100 mt-8">Partidos</h2>`;
+    // Renderizar Programación
+    matchesContainer.innerHTML = `<h2 class="text-3xl font-bold text-gray-100 mt-8">PROGRAMACION</h2>`;
     renderMatches(matchesInTournament);
 }
 

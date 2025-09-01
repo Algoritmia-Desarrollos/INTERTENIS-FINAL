@@ -44,7 +44,7 @@ function setupViewSwitcher() {
     viewSwitcherContainer.innerHTML = `
         <div class="flex border-b border-gray-700 mb-4">
             <button id="btn-view-category" class="btn-view active">Por Categoría</button>
-            <button id="btn-view-teams" class="btn-view">Por Equipos</button>
+            <button id="btn-view-teams" class="btn-view">SuperLiga</button>
         </div>
         <style>
             .btn-view { padding: 8px 16px; border-bottom: 2px solid transparent; color: #9ca3af; font-weight: 600; cursor: pointer;}
@@ -101,10 +101,10 @@ async function populateTournamentFilter() {
 
     let tournamentsToShow = [];
     if (currentView === 'category') {
-        filterLabel.textContent = 'Seleccionar Torneo Individual';
+        filterLabel.textContent = 'Seleccionar Categoría';
         tournamentsToShow = allTournaments.filter(t => t.category && t.category.name !== 'Equipos');
     } else {
-        filterLabel.textContent = 'Seleccionar Torneo de Equipos';
+        filterLabel.textContent = 'Seleccionar SuperLiga';
         tournamentsToShow = allTournaments.filter(t => t.category && t.category.name === 'Equipos');
     }
     
@@ -115,7 +115,7 @@ async function populateTournamentFilter() {
         return nameA.localeCompare(nameB, undefined, { numeric: true });
     });
 
-    tournamentFilter.innerHTML = '<option value="" disabled selected>Seleccione un torneo...</option>';
+    tournamentFilter.innerHTML = '<option value="" disabled selected>Seleccione una categoría...</option>';
     tournamentsToShow.forEach(t => {
         tournamentFilter.innerHTML += `<option value="${t.id}">${t.name}</option>`;
     });
@@ -131,10 +131,10 @@ function renderTeamRankings(teamToHighlight = null) {
 // --- RANKING POR CATEGORÍA (Sin cambios) ---
 async function renderCategoryRankings(playerToHighlight = null) {
     const tournamentId = tournamentFilter.value;
-    rankingsContainer.innerHTML = '<p class="text-center p-8 text-gray-400">Calculando rankings...</p>';
+    rankingsContainer.innerHTML = '<p class="text-center p-8 text-gray-400">Calculando POSICIONES...</p>';
 
     if (!tournamentId) {
-        rankingsContainer.innerHTML = '<div class="bg-[#222222] p-8 rounded-xl"><p class="text-center text-gray-400">Seleccione un torneo para ver los rankings.</p></div>';
+        rankingsContainer.innerHTML = '<div class="bg-[#222222] p-8 rounded-xl"><p class="text-center text-gray-400">Seleccione una categoría para ver las POSICIONES.</p></div>';
         return;
     }
 
@@ -164,6 +164,10 @@ async function renderCategoryRankings(playerToHighlight = null) {
         categoryTitle.className = 'text-2xl font-bold text-gray-100';
         categoryTitle.textContent = `Categoría: ${category.name}`;
         rankingsContainer.appendChild(categoryTitle);
+
+        const phraseDiv = document.createElement('div');
+      
+        rankingsContainer.appendChild(phraseDiv);
 
         const tableContainer = document.createElement('div');
         tableContainer.className = 'bg-[#222222] p-6 rounded-xl shadow-lg overflow-x-auto';
@@ -334,7 +338,7 @@ document.addEventListener('DOMContentLoaded', async () => {
              await renderCategoryRankings(playerToHighlight);
         }
     } else {
-        rankingsContainer.innerHTML = '<div class="bg-[#222222] p-8 rounded-xl"><p class="text-center text-gray-400">Seleccione un torneo para ver los rankings.</p></div>';
+        rankingsContainer.innerHTML = '<div class="bg-[#222222] p-8 rounded-xl"><p class="text-center text-gray-400">Seleccione una categoría para ver las posiciones.</p></div>';
     }
 });
 

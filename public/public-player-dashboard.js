@@ -2,6 +2,16 @@ import { supabase } from '../src/common/supabase.js';
 import { renderPublicHeader } from './public-header.js';
 import { calculatePoints } from '../src/admin/calculatePoints.js';
 
+function isColorLight(hex) {
+    if (!hex) return false;
+    let c = hex.replace('#', '');
+    if (c.length === 3) c = c.split('').map(x => x + x).join('');
+    const r = parseInt(c.substr(0, 2), 16),
+          g = parseInt(c.substr(2, 2), 16),
+          b = parseInt(c.substr(4, 2), 16);
+    return ((0.299 * r + 0.587 * g + 0.114 * b) > 150);
+}
+
 const headerContainer = document.getElementById('header-container');
 const container = document.getElementById('player-dashboard-container');
 
@@ -58,10 +68,10 @@ function renderDashboard(player, stats, pendingMatches, matchHistory, individual
     
     let buttonsHTML = '<div class="flex flex-row flex-wrap justify-center sm:justify-end gap-2 mt-4 sm:mt-0">';
     if (individualTournament) {
-        buttonsHTML += `<a href="/index.html?tournamentId=${individualTournament.id}&highlightPlayerId=${player.id}" class="btn btn-secondary !py-2 !px-4 text-sm">Ver Ranking Individual</a>`;
+    buttonsHTML += `<a href="/index.html?tournamentId=${individualTournament.id}&highlightPlayerId=${player.id}" class="btn btn-secondary !py-2 !px-4 text-sm">Ver POSICIONES Individual</a>`;
     }
     if (teamTournament && player.team) {
-        buttonsHTML += `<a href="/index.html?tournamentId=${teamTournament.id}&highlightTeamId=${player.team.id}" class="btn btn-secondary !py-2 !px-4 text-sm">Ver Ranking de Equipo</a>`;
+    buttonsHTML += `<a href="/index.html?tournamentId=${teamTournament.id}&highlightTeamId=${player.team.id}" class="btn btn-secondary !py-2 !px-4 text-sm">Ver POSICIONES de Equipo</a>`;
     }
     buttonsHTML += '</div>';
 
@@ -159,6 +169,8 @@ function renderMatchesTable(matchesToRender, containerElement, emptyMessage) {
                 
                 const p1TeamColor = match.player1.team?.color;
                 const p2TeamColor = match.player2.team?.color;
+                const p1TextColor = isColorLight(p1TeamColor) ? '#000' : '#fff';
+                const p2TextColor = isColorLight(p2TeamColor) ? '#000' : '#fff';
 
                 let cancha = match.location ? (match.location.split(' - ')[1] || 'N/A') : 'N/A';
                 const matchNum = cancha.match(/\d+/);
@@ -192,9 +204,9 @@ function renderMatchesTable(matchesToRender, containerElement, emptyMessage) {
                         <td style="background-color: ${canchaBackgroundColor} !important; color: ${canchaTextColor} !important; font-weight: bold; border-left: 1px solid #4a4a4a;">${cancha}</td>
                         <td style="background:#000;color:#fff;">${hora}</td>
                         <td class="player-name player-name-right ${team1_class}" style='background:#000; font-size:${isDoubles ? '9pt' : '11pt'};'>${team1_names}</td>
-                        <td class="pts-col" style='background:${p1TeamColor || '#3a3838'};'>${team1PointsDisplay}</td>
+                        <td class="pts-col" style='background:${p1TeamColor || '#3a3838'};color:${p1TextColor};'>${team1PointsDisplay}</td>
                         <td class="font-mono" style="background:#000;">${setsDisplay}</td>
-                        <td class="pts-col" style='background:${p2TeamColor || '#3a3838'};'>${team2PointsDisplay}</td>
+                        <td class="pts-col" style='background:${p2TeamColor || '#3a3838'};color:${p2TextColor};'>${team2PointsDisplay}</td>
                         <td class="player-name player-name-left ${team2_class}" style='background:#000; font-size:${isDoubles ? '9pt' : '11pt'};'>${team2_names}</td>
                         <td class="cat-col" style="background:#000;color:${match.category?.color || '#b45309'};">${categoryDisplay}</td>
                     </tr>`;
