@@ -16,7 +16,7 @@ const headerContainer = document.getElementById('header-container');
 const container = document.getElementById('player-dashboard-container');
 
 async function loadPlayerData() {
-    container.innerHTML = '<p class="text-center p-8 text-gray-400">Cargando dashboard del jugador...</p>';
+    container.innerHTML = '<div class="flex justify-center items-center p-8"><div class="spinner"></div></div>';
     const urlParams = new URLSearchParams(window.location.search);
     const playerId = urlParams.get('id');
 
@@ -33,7 +33,7 @@ async function loadPlayerData() {
     }
 
     const [{ data: matches }, { data: enrolledTournamentsData }] = await Promise.all([
-        supabase.from('matches').select(`*, tournament:tournament_id(name), category:category_id(name, color), player1:player1_id(id, name, team:team_id(color, image_url)), player2:player2_id(id, name, team:team_id(color, image_url)), player3:player3_id(id, name), player4:player4_id(id, name), winner:winner_id(id, name)`)
+        supabase.from('matches').select(`*, status, tournament:tournament_id(name), category:category_id(name, color), player1:player1_id(id, name, team:team_id(color, image_url)), player2:player2_id(id, name, team:team_id(color, image_url)), player3:player3_id(id, name), player4:player4_id(id, name), winner:winner_id(id, name)`)
             .or(`player1_id.eq.${playerId},player2_id.eq.${playerId},player3_id.eq.${playerId},player4_id.eq.${playerId}`)
             .order('match_date', { ascending: true }),
         supabase.from('tournament_players').select(`tournament:tournaments(*, category:category_id(name))`).eq('player_id', playerId)
@@ -119,6 +119,7 @@ function renderMatchesTable(matchesToRender, containerElement, emptyMessage) {
     }, {});
     const sortedDates = Object.keys(groupedByDate).sort((a, b) => new Date(a) - new Date(b));
     let tableHTML = '';
+
     for (const date of sortedDates) {
         const groupedBySede = groupedByDate[date].reduce((acc, match) => {
             const sede = (match.location ? match.location.split(' - ')[0] : 'Sede no definida').trim();
@@ -144,7 +145,6 @@ function renderMatchesTable(matchesToRender, containerElement, emptyMessage) {
                 const isDoubles = match.player3 && match.player4;
                 const team1_winner = isDoubles ? (match.winner_id === match.player1.id || match.winner_id === match.player3.id) : (match.winner_id === match.player1.id);
                 
-                // --- INICIO DE LA MODIFICACIÓN ---
                 let team1_class = '';
                 let team2_class = '';
                 if (match.winner_id) {
@@ -156,17 +156,23 @@ function renderMatchesTable(matchesToRender, containerElement, emptyMessage) {
                         team2_class = 'winner';
                     }
                 }
-                // --- FIN DE LA MODIFICACIÓN ---
 
                 let team1_names = `<span class="player-name-text">${match.player1.name}</span>`;
                 if (isDoubles && match.player3) team1_names += ` / <span class="player-name-text">${match.player3.name}</span>`;
-
                 let team2_names = `<span class="player-name-text">${match.player2.name}</span>`;
                 if (isDoubles && match.player4) team2_names += ` / <span class="player-name-text">${match.player4.name}</span>`;
                 
                 let hora = match.match_time ? match.match_time.substring(0, 5) : 'HH:MM';
-                const setsDisplay = (match.sets || []).map(s => `${s.p1}/${s.p2}`).join(' ');
                 
+                let resultadoDisplay;
+                if (match.status === 'completado_wo') {
+                    resultadoDisplay = 'W.O.';
+                } else if (match.status === 'suspendido') {
+                    resultadoDisplay = 'Suspendido';
+                } else {
+                    resultadoDisplay = (match.sets || []).map(s => `${s.p1}/${s.p2}`).join(' ');
+                }
+
                 const p1TeamColor = match.player1.team?.color;
                 const p2TeamColor = match.player2.team?.color;
                 const p1TextColor = isColorLight(p1TeamColor) ? '#000' : '#fff';
@@ -191,12 +197,8 @@ function renderMatchesTable(matchesToRender, containerElement, emptyMessage) {
                     team2PointsDisplay = p2_points ?? '';
                     if (team2PointsDisplay === 0) team2PointsDisplay = '0';
                 } else {
-                    if (match.player1.team?.image_url) {
-                        team1PointsDisplay = `<img src="${match.player1.team.image_url}" alt="" style="height: 20px; object-fit: contain; margin: auto; display: block;">`;
-                    }
-                    if (match.player2.team?.image_url) {
-                        team2PointsDisplay = `<img src="${match.player2.team.image_url}" alt="" style="height: 20px; object-fit: contain; margin: auto; display: block;">`;
-                    }
+                    if (match.player1.team?.image_url) team1PointsDisplay = `<img src="${match.player1.team.image_url}" alt="" style="height: 20px; object-fit: contain; margin: auto; display: block;">`;
+                    if (match.player2.team?.image_url) team2PointsDisplay = `<img src="${match.player2.team.image_url}" alt="" style="height: 20px; object-fit: contain; margin: auto; display: block;">`;
                 }
 
                 tableHTML += `
@@ -205,7 +207,7 @@ function renderMatchesTable(matchesToRender, containerElement, emptyMessage) {
                         <td style="background:#000;color:#fff;">${hora}</td>
                         <td class="player-name player-name-right ${team1_class}" style='background:#000; font-size:${isDoubles ? '9pt' : '11pt'};'>${team1_names}</td>
                         <td class="pts-col" style='background:${p1TeamColor || '#3a3838'};color:${p1TextColor};'>${team1PointsDisplay}</td>
-                        <td class="font-mono" style="background:#000;">${setsDisplay}</td>
+                        <td class="font-mono" style="background:#000; font-weight: bold; color: #fff;">${resultadoDisplay}</td>
                         <td class="pts-col" style='background:${p2TeamColor || '#3a3838'};color:${p2TextColor};'>${team2PointsDisplay}</td>
                         <td class="player-name player-name-left ${team2_class}" style='background:#000; font-size:${isDoubles ? '9pt' : '11pt'};'>${team2_names}</td>
                         <td class="cat-col" style="background:#000;color:${match.category?.color || '#b45309'};">${categoryDisplay}</td>
