@@ -47,14 +47,16 @@ export function renderPublicHeader() {
     </div>
   `;
 
-  // Floating WhatsApp button
+  // --- INICIO DE LA MODIFICACIÓN ---
+  // Se eliminó la clase "hidden" y "sm:inline" del span para que siempre sea visible
   const floatingButton = `
     <a href="https://wa.me/5493416940596?text=Hola" target="_blank" 
-       class="fixed bottom-4 right-4 bg-green-500 hover:bg-green-600 text-white rounded-full p-4 shadow-lg z-50 flex items-center gap-2 transition-colors">
+       class="fixed bottom-4 right-4 bg-green-500 hover:bg-green-600 text-white rounded-full p-3 shadow-lg z-50 flex items-center gap-2 transition-colors">
         <span class="material-icons">chat</span>
-        <span class="hidden sm:inline">INSCRIBITE</span>
+        <span>INSCRIBITE</span>
     </a>
   `;
+  // --- FIN DE LA MODIFICACIÓN ---
 
   // Se agrega un temporizador para asegurar que el DOM esté listo
   setTimeout(() => {
