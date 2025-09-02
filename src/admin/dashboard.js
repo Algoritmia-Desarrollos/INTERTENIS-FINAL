@@ -127,7 +127,7 @@ function renderLastMatches(matchesToRender) {
             const headerBgColor = sede.toLowerCase() === 'centro' ? '#222222' : '#fdc100';
             const headerTextColor = sede.toLowerCase() === 'centro' ? '#ffc000' : '#000000';
             tableHTML += `
-                <tr class="sede-fecha-row">
+               <tr class="sede-fecha-row">
                     <td colspan="3" style="background-color: ${headerBgColor}; color: ${headerTextColor}; font-weight: 700; text-align: center; vertical-align: middle; padding: 12px 0 8px 0; font-size: 15pt; border-radius: 0 !important; letter-spacing: 1px; border-right: none;">
                         ${sede.toUpperCase()}
                     </td>
@@ -190,15 +190,15 @@ function renderLastMatches(matchesToRender) {
                 const suspendedClass = match.status === 'suspendido' ? 'suspended-row' : '';
                 tableHTML += `
                     <tr class="clickable-row data-row ${suspendedClass}" data-match-id="${match.id}">
-                        <td style="background-color: ${canchaBackgroundColor} !important; color: ${canchaTextColor} !important; font-weight: bold;">${cancha}</td>
-                        <td style="background:#000;color:#fff;">${hora}</td>
-                        <td class="player-name player-name-right ${p1_class}" style='background:#000;color:#fff;${p1NameStyle};font-size:12pt;'>${match.player1.name}</td>
-                        <td class="pts-col" style='background:${p1TeamColor || '#3a3838'};color:${p1TextColor};'>${p1CellContent}</td>
-                        <td class="font-mono" style="background:#000;color:#fff;">${resultadoDisplay}</td>
-                        <td class="pts-col" style='background:${p2TeamColor || '#3a3838'};color:${p2TextColor};'>${p2CellContent}</td>
-                        <td class="player-name player-name-left ${p2_class}" style='background:#000;color:#fff;${p2NameStyle};font-size:12pt;'>${match.player2.name}</td>
-                        <td class="cat-col" style="background:#000;color:${match.category?.color || '#b45309'};">${match.category?.name || 'N/A'}</td>
-                        <td class="action-cell" style="background:#000;"><button class="p-1 rounded-full hover:bg-gray-700" data-action="edit" title="Editar / Cargar Resultado"><span class="material-icons text-base" style="color:#fff;">edit</span></button></td>
+                        <td style="background-color: ${canchaBackgroundColor} !important; color: ${canchaTextColor} !important; font-weight: bold; border: 1px solid #666;">${cancha}</td>
+                        <td style="background:#000;color:#fff; border: 1px solid #666;">${hora}</td>
+                        <td class="player-name player-name-right ${p1_class}" style='background:#000;color:#fff;${p1NameStyle};font-size:12pt; border: 1px solid #666;'>${match.player1.name}</td>
+                        <td class="pts-col" style='background:${p1TeamColor || '#3a3838'};color:${p1TextColor}; border: 1px solid #666;'>${p1CellContent}</td>
+                        <td class="font-mono" style="background:#000;color:#fff; border: 1px solid #666;">${resultadoDisplay}</td>
+                        <td class="pts-col" style='background:${p2TeamColor || '#3a3838'};color:${p2TextColor}; border: 1px solid #666;'>${p2CellContent}</td>
+                        <td class="player-name player-name-left ${p2_class}" style='background:#000;color:#fff;${p2NameStyle};font-size:12pt; border: 1px solid #666;'>${match.player2.name}</td>
+                        <td class="cat-col" style="background:#000;color:${match.category?.color || '#b45309'}; border: 1px solid #666;">${match.category?.name || 'N/A'}</td>
+                        <td class="action-cell" style="background:#000; border: 1px solid #666;"><button class="p-1 rounded-full hover:bg-gray-700" data-action="edit" title="Editar / Cargar Resultado"><span class="material-icons text-base" style="color:#fff;">edit</span></button></td>
                     </tr>`;
     // Agregar estilos para la fila suspendida igual que en reportes.js
     const style = document.createElement('style');
