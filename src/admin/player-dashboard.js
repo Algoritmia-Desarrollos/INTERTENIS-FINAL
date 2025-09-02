@@ -130,7 +130,12 @@ function renderMatchesTable(matchesToRender, containerElement, emptyMessage) {
         for(const sede in groupedBySede) {
             const matchesInSede = groupedBySede[sede];
             const dateObj = new Date(date + 'T00:00:00');
-            const formattedDate = new Intl.DateTimeFormat('es-AR', { weekday: 'long', day: 'numeric', month: 'long' }).format(dateObj);
+            
+            // --- INICIO DE LA CORRECCIÓN ---
+            let formattedDate = new Intl.DateTimeFormat('es-AR', { weekday: 'long', day: 'numeric', month: 'long' }).format(dateObj);
+            formattedDate = formattedDate.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ').replace(' De ', ' de ');
+            // --- FIN DE LA CORRECCIÓN ---
+
             const headerBgColor = sede.toLowerCase() === 'centro' ? '#222222' : '#fdc100';
             const headerTextColor = sede.toLowerCase() === 'centro' ? '#ffc000' : '#000000';
             
