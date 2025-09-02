@@ -2,6 +2,7 @@ import { renderHeader } from '../common/header.js';
 import { requireRole } from '../common/router.js';
 import { supabase } from '../common/supabase.js';
 import { renderTeamScoreboard } from './team-scoreboard.js';
+import { calculatePoints } from './calculatePoints.js'; // <-- MODIFICACIÓN: Importar la función central
 
 requireRole('admin');
 
@@ -15,43 +16,6 @@ const filterLabel = document.getElementById('filter-label');
 // --- Estado Global ---
 let allTournaments = [];
 let currentView = 'category';
-
-// --- INICIO DE LA MODIFICACIÓN ---
-function calculatePoints(match) {
-    let p1_points = 0;
-    let p2_points = 0;
-    if (match.winner_id) {
-        const winnerIsSide1 = match.winner_id === match.player1_id || match.winner_id === match.player3_id;
-
-        if (match.status === 'completado_wo') {
-            if (winnerIsSide1) {
-                p1_points = 2;
-            } else {
-                p2_points = 2;
-            }
-            return { p1_points, p2_points };
-        }
-
-        let p1TotalGames = 0, p2TotalGames = 0, p1SetsWon = 0, p2SetsWon = 0;
-        (match.sets || []).forEach(s => {
-            p1TotalGames += s.p1;
-            p2TotalGames += s.p2;
-            if (s.p1 > s.p2) p1SetsWon++; else p2SetsWon++;
-        });
-        
-        if (winnerIsSide1) {
-            p1_points = 2;
-            if (p2TotalGames <= 3) p1_points += 1;
-            p2_points = (p2SetsWon === 1) ? 1 : 0;
-        } else {
-            p2_points = 2;
-            if (p1TotalGames <= 3) p2_points += 1;
-            p1_points = (p1SetsWon === 1) ? 1 : 0;
-        }
-    }
-    return { p1_points, p2_points };
-}
-// --- FIN DE LA MODIFICACIÓN ---
 
 // --- Lógica de Vistas y Filtros ---
 
@@ -151,7 +115,7 @@ async function renderCategoryRankings(playerToHighlight = null) {
     const playerIds = tournamentPlayersLinks.map(link => link.player_id);
 
     const { data: playersInTournament } = await supabase.from('players').select('*, teams(name, image_url), categories(id, name)').in('id', playerIds);
-    const { data: matchesInTournament } = await supabase.from('matches').select('*, status, player1:player1_id(id), player2:player2_id(id), player3:player3_id(id), player4:player4_id(id)').eq('tournament_id', tournamentId).not('winner_id', 'is', null);
+    const { data: matchesInTournament } = await supabase.from('matches').select('*, status, sets, winner_id, bonus_loser, player1_id, player2_id, player3_id, player4_id').eq('tournament_id', tournamentId).not('winner_id', 'is', null);
 
     const stats = calculateCategoryStats(playersInTournament || [], matchesInTournament || []);
     const categoriesInTournament = [...new Map(playersInTournament.map(p => p && [p.category_id, p.categories]).filter(Boolean)).values()];

@@ -7,19 +7,32 @@ const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS
 // Exportamos el cliente de Supabase para que esté disponible en toda la aplicación
 export const supabase = createClient(supabaseUrl, supabaseKey);
 
-
-
 /**
  * Muestra una notificación toast en la esquina de la pantalla.
  * @param {string} message - El mensaje a mostrar.
  * @param {string} [type='success'] - El tipo de notificación ('success' o 'error').
  */
-function showToast(message, type = 'success') {
-    const container = document.getElementById('toast-container');
-    if (!container) return;
+export function showToast(message, type = 'success') {
+    // Busca el contenedor, si no existe, lo crea y lo añade al body.
+    let container = document.getElementById('toast-container');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'toast-container';
+        document.body.appendChild(container);
+    }
+
     const toast = document.createElement('div');
-    toast.className = `toast ${type}`;
+    // Añade clases para el estilo y la animación
+    toast.className = `toast toast-${type} toast-fade-in`;
     toast.textContent = message;
+
     container.appendChild(toast);
-    setTimeout(() => { toast.remove(); }, 3000);
+
+    // Temporizador para eliminar el toast
+    setTimeout(() => {
+        toast.classList.remove('toast-fade-in');
+        toast.classList.add('toast-fade-out');
+        // Espera a que la animación de salida termine para remover el elemento del DOM
+        toast.addEventListener('animationend', () => toast.remove());
+    }, 4000);
 }
