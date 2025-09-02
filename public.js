@@ -216,17 +216,27 @@ function calculateCategoryStats(players, matches) {
 
         const winnerIsSide1 = match.winner_id === match.player1_id || match.winner_id === match.player3_id;
 
+        // --- INICIO DE LA MODIFICACIÓN ---
+        // Siempre se actualizan los partidos ganados y perdidos
         if (winnerIsSide1) {
             p1Stat.pg++; 
             p2Stat.pp++;
-            if (p2TotalGames <= 3) p1Stat.bonus++;
-            if (p2SetsWon === 1) p2Stat.bonus++;
         } else {
             p2Stat.pg++; 
             p1Stat.pp++;
-            if (p1TotalGames <= 3) p2Stat.bonus++;
-            if (p1SetsWon === 1) p1Stat.bonus++;
         }
+
+        // Los puntos de bonus solo se calculan si NO es un Walkover
+        if (match.status !== 'completado_wo') {
+            if (winnerIsSide1) {
+                if (p2TotalGames <= 3) p1Stat.bonus++;
+                if (p2SetsWon === 1) p2Stat.bonus++;
+            } else {
+                if (p1TotalGames <= 3) p2Stat.bonus++;
+                if (p1SetsWon === 1) p1Stat.bonus++;
+            }
+        }
+        // --- FIN DE LA MODIFICACIÓN ---
     });
 
     stats.forEach(s => {

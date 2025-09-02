@@ -141,12 +141,19 @@ function renderLastMatches(matchesToRender) {
                 const p1_class = match.player1.id === match.winner_id ? 'winner' : '';
                 const p2_class = match.player2.id === match.winner_id ? 'winner' : '';
                 let hora = match.match_time ? match.match_time.substring(0, 5) : 'HH:MM';
+                
+                // --- INICIO DE LA MODIFICACIÓN ---
                 let resultadoDisplay = '';
                 if (match.status === 'suspendido') {
                     resultadoDisplay = '<span style="color:#fff;font-weight:700;text-decoration:none !important;">Suspendido</span>';
-                } else {
+                } else if (match.status === 'completado_wo') {
+                    resultadoDisplay = '<span style="font-weight:700;">W.O.</span>';
+                }
+                else {
                     resultadoDisplay = (match.sets || []).map(s => `${s.p1}/${s.p2}`).join(' ');
                 }
+                // --- FIN DE LA MODIFICACIÓN ---
+
                 const p1TeamColor = match.player1.team?.color;
                 const p2TeamColor = match.player2.team?.color;
                 const p1TextColor = isColorLight(p1TeamColor) ? '#222' : '#fff';
@@ -275,6 +282,16 @@ function openScoreModal(match) {
                         </div>
                     `).join('')}
                 </form>
+
+                ${!isPlayed ? `
+                <div class="p-4 bg-[#1d1d1d] border-y border-[#333] text-center">
+                    <p class="text-sm font-medium text-gray-400 mb-2">Si un jugador no se presenta, registrar como Walkover (WO):</p>
+                    <div class="flex justify-center gap-4">
+                         <button id="btn-wo-p1" class="btn btn-secondary !py-1 !px-3 !text-sm !text-yellow-300">Gana ${match.player1.name} por WO</button>
+                         <button id="btn-wo-p2" class="btn btn-secondary !py-1 !px-3 !text-sm !text-yellow-300">Gana ${match.player2.name} por WO</button>
+                    </div>
+                </div>
+                ` : ''}
                 <div class="p-4 bg-[#181818] flex flex-col sm:flex-row justify-between gap-3 sm:gap-4 rounded-b-xl border-t border-[#333]">
                     <div class="flex flex-row flex-wrap items-center gap-2 justify-center sm:justify-start mb-2 sm:mb-0">
                         <button id="btn-delete-match" class="btn btn-secondary !p-2" title="Eliminar Partido"><span class="material-icons !text-red-600">delete_forever</span></button>
@@ -293,8 +310,16 @@ function openScoreModal(match) {
     document.getElementById('btn-save-score').onclick = () => saveScores(match.id);
     document.getElementById('btn-cancel-modal').onclick = closeModal;
     document.getElementById('btn-delete-match').onclick = () => deleteMatch(match.id);
+    document.getElementById('btn-suspend-match').onclick = () => suspendMatch(match.id);
     if (match.winner_id) document.getElementById('btn-clear-score').onclick = () => clearScore(match.id);
     document.getElementById('score-modal-overlay').onclick = (e) => { if (e.target.id === 'score-modal-overlay') closeModal(); };
+
+    // --- INICIO DE LA MODIFICACIÓN: EVENT LISTENERS WALKOVER ---
+    if (!isPlayed) {
+        document.getElementById('btn-wo-p1').onclick = () => handleWoWin(match.id, match.player1_id, match.player2_id);
+        document.getElementById('btn-wo-p2').onclick = () => handleWoWin(match.id, match.player2_id, match.player1_id);
+    }
+    // --- FIN DE LA MODIFICACIÓN ---
 }
 
 function closeModal() {
@@ -329,7 +354,8 @@ async function saveScores(matchId) {
     
     const { error } = await supabase.from('matches').update({ 
             sets: sets.length > 0 ? sets : null, 
-            winner_id, 
+            winner_id,
+            status: winner_id ? 'completado' : 'programado',
             player1_id: p1_id,
             player2_id: p2_id,
             bonus_loser: (p1SetsWon === 1 && winner_id == p2_id) || (p2SetsWon === 1 && winner_id == p1_id)
@@ -338,6 +364,32 @@ async function saveScores(matchId) {
     if (error) alert("Error al guardar: " + error.message);
     else { closeModal(); await loadDashboardData(); }
 }
+
+// --- INICIO DE LA MODIFICACIÓN: NUEVA FUNCIÓN ---
+async function handleWoWin(matchId, winnerId, loserId) {
+    const winner = allPlayers.find(p => p.id === winnerId);
+    const loser = allPlayers.find(p => p.id === loserId);
+
+    if (!confirm(`¿Confirmas que ${winner?.name} gana por no presentación de ${loser?.name}?`)) {
+        return;
+    }
+
+    const { error } = await supabase.from('matches').update({
+        winner_id: winnerId,
+        sets: null,
+        status: 'completado_wo',
+        bonus_loser: false
+    }).eq('id', matchId);
+
+    if (error) {
+        alert("Error al registrar el WO: " + error.message);
+    } else {
+        alert("Walkover registrado con éxito.");
+        closeModal();
+        await loadDashboardData();
+    }
+}
+// --- FIN DE LA MODIFICACIÓN ---
 
 async function clearScore(matchId) {
     if (confirm("¿Limpiar el resultado de este partido?")) {
@@ -357,7 +409,7 @@ async function deleteMatch(matchId) {
 
 async function suspendMatch(matchId) {
     if (confirm("¿Marcar este partido como suspendido?")) {
-        const { error } = await supabase.from('matches').update({ status: 'suspendido', sets: null, winner_id: null }).eq('id', matchId);
+        const { error } = await supabase.from('matches').update({ status: 'suspendido', sets: null, winner_id: null, bonus_loser: false }).eq('id', matchId);
         if (error) alert("Error: " + error.message);
         else { closeModal(); await loadDashboardData(); }
     }

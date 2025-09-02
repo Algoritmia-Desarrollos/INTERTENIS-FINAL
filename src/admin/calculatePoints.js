@@ -4,6 +4,22 @@ export function calculatePoints(match) {
     let p2_points = 0; // Puntos para el Lado 2 (Jugador 2 y 4)
 
     if (match.winner_id) {
+        const winnerIsSide1 = match.winner_id === match.player1_id || match.winner_id === match.player3_id;
+
+        // --- INICIO DE LA MODIFICACIÓN: Lógica para Walkover ---
+        // Si el partido fue ganado por WO, se asignan 2 puntos al ganador y 0 al perdedor, sin bonus.
+        if (match.status === 'completado_wo') {
+            if (winnerIsSide1) {
+                p1_points = 2;
+                p2_points = 0;
+            } else {
+                p1_points = 0;
+                p2_points = 2;
+            }
+            return { p1_points, p2_points };
+        }
+        // --- FIN DE LA MODIFICACIÓN ---
+
         let p1TotalGames = 0;
         let p2TotalGames = 0;
         let p1SetsWon = 0;
@@ -20,8 +36,6 @@ export function calculatePoints(match) {
         });
 
         // Determina si el ganador pertenece al Lado 1 (la primera pareja)
-        const winnerIsSide1 = match.winner_id === match.player1_id || match.winner_id === match.player3_id;
-
         if (winnerIsSide1) {
             // Gana el Lado 1
             p1_points = 2; // Puntos base para el ganador

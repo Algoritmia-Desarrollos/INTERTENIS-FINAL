@@ -44,9 +44,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             }, {});
 
             for(const sede in groupedBySede) {
-                const matchesInSede = groupedByDate[date];
+                const matchesInSede = groupedBySede[sede];
                 const dateObj = new Date(date + 'T00:00:00');
-                const formattedDate = new Intl.DateTimeFormat('es-AR', { weekday: 'long', day: 'numeric', month: 'long' }).format(dateObj);
+                let formattedDate = new Intl.DateTimeFormat('es-AR', { weekday: 'long', day: 'numeric', month: 'long' }).format(dateObj);
+                formattedDate = formattedDate.charAt(0).toUpperCase() + formattedDate.slice(1);
+                formattedDate = formattedDate.replace(/ de (\w)/, (match, p1) => ` de ${p1.toUpperCase()}`);
                 const headerBgColor = sede.toLowerCase() === 'centro' ? '#222222' : '#fdc100';
                 const headerTextColor = sede.toLowerCase() === 'centro' ? '#ffc000' : '#000000';
                 
@@ -76,8 +78,18 @@ document.addEventListener('DOMContentLoaded', async () => {
                     if (isDoubles && match.player4) team2_names += ` / <span class="${team2_confirmed_class}">${match.player4.name}</span>`;
                     
                     let hora = match.match_time ? match.match_time.substring(0, 5) : 'HH:MM';
+                    
+                    // --- INICIO DE LA MODIFICACIÓN ---
                     const setsDisplay = (match.sets || []).map(s => `${s.p1}/${s.p2}`).join(' ');
-                    const resultadoDisplay = match.status === 'suspendido' ? '<span style="color:#fff;font-weight:700;">Suspendido</span>' : setsDisplay;
+                    let resultadoDisplay = '';
+                    if (match.status === 'suspendido') {
+                        resultadoDisplay = '<span style="color:#fff;font-weight:700;">Suspendido</span>';
+                    } else if (match.status === 'completado_wo') {
+                        resultadoDisplay = '<span style="font-weight:700;">W.O.</span>';
+                    } else {
+                        resultadoDisplay = setsDisplay;
+                    }
+                    // --- FIN DE LA MODIFICACIÓN ---
                     
                     const p1TeamColor = match.player1.team?.color;
                     const p2TeamColor = match.player2.team?.color;
@@ -88,7 +100,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                     let team2NameStyle = played && (team1_winner || !match.winner_id) ? 'color:#888;' : '';
 
                     let team1PointsDisplay = played ? (p1_points ?? '') : (match.player1.team?.image_url ? `<img src="${match.player1.team.image_url}" alt="" style="height: 20px; object-fit: contain; margin: auto; display: block;">` : '');
+                    if (team1PointsDisplay === 0) team1PointsDisplay = '0';
                     let team2PointsDisplay = played ? (p2_points ?? '') : (match.player2.team?.image_url ? `<img src="${match.player2.team.image_url}" alt="" style="height: 20px; object-fit: contain; margin: auto; display: block;">` : '');
+                    if (team2PointsDisplay === 0) team2PointsDisplay = '0';
 
                     let cancha = match.location ? (match.location.split(' - ')[1] || match.location.split(' - ')[0] || 'N/A') : 'N/A';
                     const matchNum = cancha.match(/\d+/);

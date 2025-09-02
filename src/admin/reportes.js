@@ -157,7 +157,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         let container = createNewPage();
         for (const date of sortedDates) {
             const sedes = groupedMatches[date];
-            const formattedDate = new Date(date + 'T00:00:00').toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' });
+            let formattedDate = new Date(date + 'T00:00:00').toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' });
+            formattedDate = formattedDate.charAt(0).toUpperCase() + formattedDate.slice(1);
+            formattedDate = formattedDate.replace(/ de (\w)/, (match, p1) => ` de ${p1.toUpperCase()}`);
+
             for (const sede in sedes) {
                 const matches = sedes[sede];
                 const tableHeight = HEADER_ROW_HEIGHT_MM + (matches.length * ROW_HEIGHT_MM);
@@ -183,7 +186,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                     const row = tbody.insertRow();
                     row.className = 'data-row' + (match.status === 'suspendido' ? ' suspended-row' : '');
                     row.style.height = '9mm';
-                    const played = Array.isArray(match.sets) && match.sets.length > 0;
+
+                    // --- INICIO DE LA MODIFICACIÓN ---
+                    const played = match.player1.isWinner || match.player2.isWinner;
+                    // --- FIN DE LA MODIFICACIÓN ---
+                    
                     let player1Content, player2Content;
                     
                     if (editMode === 'players' && !played) {
@@ -219,10 +226,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     } else {
                         const createPlayerSpan = (player, side, confirmed) => {
                             const isClickable = editMode === 'attendance';
-                            // --- INICIO DE LA MODIFICACIÓN ---
-                            // Solo se aplica la clase 'confirmed' si el partido NO se jugó.
                             const confirmedClass = confirmed && !played ? 'player-confirmed' : '';
-                            // --- FIN DE LA MODIFICACIÓN ---
                             return `<span class="${isClickable ? 'player-name-clickable' : ''} ${confirmedClass}" 
                                           ${isClickable ? `data-match-id="${match.id}" data-side="${side}"` : ''}>
                                         ${player.name}
@@ -242,12 +246,18 @@ document.addEventListener('DOMContentLoaded', async () => {
                     const p1_class = match.player1.isWinner ? 'winner' : '';
                     const p2_class = match.player2.isWinner ? 'winner' : '';
                     let hora = match.time?.substring(0, 5) || '';
+                    
+                    // --- INICIO DE LA MODIFICACIÓN ---
                     let setsDisplay = '';
                     if (match.status === 'suspendido') {
                         setsDisplay = `<span style="color:#fff;font-weight:700;text-decoration:none !important;">Suspendido</span>`;
+                    } else if (match.status === 'completado_wo') {
+                        setsDisplay = `<span style="color:#fff;font-weight:700;">W.O.</span>`;
                     } else {
-                        setsDisplay = played ? match.sets.map(s => `${s.p1}/${s.p2}`).join(' ') : '';
+                        setsDisplay = (Array.isArray(match.sets) && match.sets.length > 0) ? match.sets.map(s => `${s.p1}/${s.p2}`).join(' ') : '';
                     }
+                    // --- FIN DE LA MODIFICACIÓN ---
+
                     const p1TeamColor = match.player1.teamColor, p2TeamColor = match.player2.teamColor;
                     const p1TextColor = isColorLight(p1TeamColor) ? '#000' : '#fff';
                     const p2TextColor = isColorLight(p2TeamColor) ? '#000' : '#fff';

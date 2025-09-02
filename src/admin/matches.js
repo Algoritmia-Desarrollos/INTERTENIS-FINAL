@@ -311,18 +311,26 @@ function renderMatches(matchesToRender) {
 
                 let hora = match.match_time ? match.match_time.substring(0, 5) : 'HH:MM';
                 const setsDisplay = (match.sets || []).map(s => `${s.p1}/${s.p2}`).join(' ');
+                
                 let resultadoDisplay = '';
                 if (match.status === 'suspendido') {
                     resultadoDisplay = '<span style="color:#fff;font-weight:700;text-decoration:none !important;">Suspendido</span>';
-                } else {
+                } else if (match.status === 'completado_wo') {
+                    resultadoDisplay = '<span style="font-weight:700;">W.O.</span>';
+                }
+                else {
                     resultadoDisplay = setsDisplay;
                 }
+
                 const p1TeamColor = match.player1.team?.color;
                 const p2TeamColor = match.player2.team?.color;
                 const p1TextColor = isColorLight(p1TeamColor) ? '#222' : '#fff';
                 const p2TextColor = isColorLight(p2TeamColor) ? '#222' : '#fff';
 
-                const played = !!(match.sets && match.sets.length > 0);
+                // --- INICIO DE LA MODIFICACIÓN ---
+                const played = !!match.winner_id;
+                // --- FIN DE LA MODIFICACIÓN ---
+                
                 let team1NameStyle = played && !team1_winner ? 'color:#888;' : '';
                 let team2NameStyle = played && !team2_winner ? 'color:#888;' : '';
 
@@ -505,6 +513,17 @@ function openScoreModal(match) {
                         </div>
                     `).join('')}
                 </form>
+                
+                ${!isPlayed ? `
+                <div class="p-4 bg-[#1d1d1d] border-y border-[#333] text-center">
+                    <p class="text-sm font-medium text-gray-400 mb-2">Si un equipo/jugador no se presenta, registrar como Walkover (WO):</p>
+                    <div class="flex justify-center gap-4">
+                        <button id="btn-wo-p1" class="btn btn-secondary !py-1 !px-3 !text-sm !text-yellow-300">Gana ${isDoubles ? `Equipo A` : match.player1.name} por WO</button>
+                        <button id="btn-wo-p2" class="btn btn-secondary !py-1 !px-3 !text-sm !text-yellow-300">Gana ${isDoubles ? `Equipo B` : match.player2.name} por WO</button>
+                    </div>
+                </div>
+                ` : ''}
+
                 <div class="p-4 bg-[#181818] flex flex-col sm:flex-row justify-between gap-3 sm:gap-4 rounded-b-xl border-t border-[#333]">
                     <div class="flex flex-row flex-wrap items-center gap-2 justify-center sm:justify-start mb-2 sm:mb-0">
                         <button id="btn-delete-match" class="btn btn-secondary !p-2" title="Eliminar Partido"><span class="material-icons !text-red-600">delete_forever</span></button>
@@ -531,6 +550,48 @@ function openScoreModal(match) {
     document.getElementById('btn-delete-match').onclick = () => deleteMatch(match.id);
     if (isPlayed) document.getElementById('btn-clear-score').onclick = () => clearScore(match.id);
     document.getElementById('score-modal-overlay').onclick = (e) => { if (e.target.id === 'score-modal-overlay') closeModal(); };
+
+    if (!isPlayed) {
+        document.getElementById('btn-wo-p1').onclick = () => handleWoWin(match, 'p1');
+        document.getElementById('btn-wo-p2').onclick = () => handleWoWin(match, 'p2');
+    }
+}
+
+async function handleWoWin(match, winnerSide) {
+    const isDoubles = !!(match.player3_id && match.player4_id);
+    
+    // El winner_id se establece como el del primer jugador del equipo ganador para consistencia.
+    const winner_id = winnerSide === 'p1' ? match.player1_id : match.player2_id;
+    
+    let winnerName, loserName;
+    if (isDoubles) {
+        winnerName = winnerSide === 'p1' ? `${match.player1.name} / ${match.player3.name}` : `${match.player2.name} / ${match.player4.name}`;
+        loserName = winnerSide === 'p1' ? `${match.player2.name} / ${match.player4.name}` : `${match.player1.name} / ${match.player3.name}`;
+    } else {
+        winnerName = winnerSide === 'p1' ? match.player1.name : match.player2.name;
+        loserName = winnerSide === 'p1' ? match.player2.name : match.player1.name;
+    }
+
+    if (!confirm(`¿Confirmas que ${winnerName} gana por no presentación de ${loserName}?`)) {
+        return;
+    }
+
+    const updateData = {
+        winner_id: winner_id,
+        sets: null, // Los W.O. no tienen sets
+        status: 'completado_wo', // Nuevo estado para identificarlo
+        bonus_loser: false
+    };
+
+    const { error } = await supabase.from('matches').update(updateData).eq('id', match.id);
+
+    if (error) {
+        alert("Error al registrar el WO: " + error.message);
+    } else {
+        alert("Walkover registrado con éxito.");
+        closeModal();
+        await loadInitialData();
+    }
 }
 
 
