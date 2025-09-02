@@ -13,18 +13,29 @@ const filterLabel = document.getElementById('filter-label');
 let allTournaments = [];
 let currentView = 'category';
 
-// --- Lógica de Puntos (sin cambios) ---
+// --- INICIO DE LA MODIFICACIÓN ---
 function calculatePoints(match) {
     let p1_points = 0;
     let p2_points = 0;
     if (match.winner_id) {
+        const winnerIsSide1 = match.winner_id === match.player1_id || match.winner_id === match.player3_id;
+
+        if (match.status === 'completado_wo') {
+            if (winnerIsSide1) {
+                p1_points = 2;
+            } else {
+                p2_points = 2;
+            }
+            return { p1_points, p2_points };
+        }
+
         let p1TotalGames = 0, p2TotalGames = 0, p1SetsWon = 0, p2SetsWon = 0;
         (match.sets || []).forEach(s => {
             p1TotalGames += s.p1;
             p2TotalGames += s.p2;
             if (s.p1 > s.p2) p1SetsWon++; else p2SetsWon++;
         });
-        const winnerIsSide1 = match.winner_id === match.player1_id || match.winner_id === match.player3_id;
+
         if (winnerIsSide1) {
             p1_points = 2;
             if (p2TotalGames <= 3) p1_points += 1;
@@ -37,6 +48,8 @@ function calculatePoints(match) {
     }
     return { p1_points, p2_points };
 }
+// --- FIN DE LA MODIFICACIÓN ---
+
 
 // --- Lógica de Vistas y Filtros ---
 
@@ -64,33 +77,26 @@ function setupViewSwitcher() {
         rankingsContainer.innerHTML = '';
     });
 
-    // --- INICIO DE LA MODIFICACIÓN ---
     btnTeams.addEventListener('click', async () => {
         if (currentView === 'teams') return;
         currentView = 'teams';
         btnTeams.classList.add('active');
         btnCategory.classList.remove('active');
         
-        // 1. Llenamos el selector de torneos como siempre
         await populateTournamentFilter();
         
-        // 2. Buscamos el último torneo de equipos
         const teamTournaments = allTournaments.filter(t => t.category && t.category.name === 'Equipos');
         if (teamTournaments.length > 0) {
-            // Ordenamos por fecha de creación para encontrar el más nuevo
             teamTournaments.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
             const latestTournament = teamTournaments[0];
             
-            // 3. Lo seleccionamos en el dropdown
             tournamentFilter.value = latestTournament.id;
             
-            // 4. Mostramos el ranking para ese torneo
             renderTeamRankings();
         } else {
             rankingsContainer.innerHTML = '';
         }
     });
-    // --- FIN DE LA MODIFICACIÓN ---
 }
 
 async function populateTournamentFilter() {
@@ -108,7 +114,6 @@ async function populateTournamentFilter() {
         tournamentsToShow = allTournaments.filter(t => t.category && t.category.name === 'Equipos');
     }
     
-    // Ordenamos por nombre para que el selector se vea ordenado
     tournamentsToShow.sort((a, b) => {
         const nameA = a.name || '';
         const nameB = b.name || '';
@@ -128,7 +133,7 @@ function renderTeamRankings(teamToHighlight = null) {
 }
 
 
-// --- RANKING POR CATEGORÍA (Sin cambios) ---
+// --- RANKING POR CATEGORÍA ---
 async function renderCategoryRankings(playerToHighlight = null) {
     const tournamentId = tournamentFilter.value;
     rankingsContainer.innerHTML = '<p class="text-center p-8 text-gray-400">Calculando POSICIONES...</p>';
@@ -146,7 +151,7 @@ async function renderCategoryRankings(playerToHighlight = null) {
     const playerIds = tournamentPlayersLinks.map(link => link.player_id);
 
     const { data: playersInTournament } = await supabase.from('players').select('*, teams(name, image_url), categories(id, name)').in('id', playerIds);
-    const { data: matchesInTournament } = await supabase.from('matches').select('*, player1:player1_id(id), player2:player2_id(id), player3:player3_id(id), player4:player4_id(id)').eq('tournament_id', tournamentId).not('winner_id', 'is', null);
+    const { data: matchesInTournament } = await supabase.from('matches').select('*, status, player1:player1_id(id), player2:player2_id(id), player3:player3_id(id), player4:player4_id(id)').eq('tournament_id', tournamentId).not('winner_id', 'is', null);
 
     const stats = calculateCategoryStats(playersInTournament || [], matchesInTournament || []);
     const categoriesInTournament = [...new Map(playersInTournament.map(p => p && [p.category_id, p.categories]).filter(Boolean)).values()];
@@ -216,8 +221,6 @@ function calculateCategoryStats(players, matches) {
 
         const winnerIsSide1 = match.winner_id === match.player1_id || match.winner_id === match.player3_id;
 
-        // --- INICIO DE LA MODIFICACIÓN ---
-        // Siempre se actualizan los partidos ganados y perdidos
         if (winnerIsSide1) {
             p1Stat.pg++; 
             p2Stat.pp++;
@@ -226,7 +229,6 @@ function calculateCategoryStats(players, matches) {
             p1Stat.pp++;
         }
 
-        // Los puntos de bonus solo se calculan si NO es un Walkover
         if (match.status !== 'completado_wo') {
             if (winnerIsSide1) {
                 if (p2TotalGames <= 3) p1Stat.bonus++;
@@ -236,7 +238,6 @@ function calculateCategoryStats(players, matches) {
                 if (p1SetsWon === 1) p1Stat.bonus++;
             }
         }
-        // --- FIN DE LA MODIFICACIÓN ---
     });
 
     stats.forEach(s => {

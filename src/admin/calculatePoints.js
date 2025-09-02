@@ -16,7 +16,7 @@ export function calculatePoints(match) {
                 p1_points = 0;
                 p2_points = 2;
             }
-            return { p1_points, p2_points };
+            return { p1_points, p2_points }; // Retorna inmediatamente los puntos correctos.
         }
         // --- FIN DE LA MODIFICACIÓN ---
 
@@ -35,7 +35,7 @@ export function calculatePoints(match) {
             }
         });
 
-        // Determina si el ganador pertenece al Lado 1 (la primera pareja)
+        // Lógica para partidos normales (con sets)
         if (winnerIsSide1) {
             // Gana el Lado 1
             p1_points = 2; // Puntos base para el ganador
