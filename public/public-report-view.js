@@ -17,132 +17,131 @@ document.addEventListener('DOMContentLoaded', async () => {
         return ((0.299 * r + 0.587 * g + 0.114 * b) > 150);
     }
 
-    function renderMatches(matchesToRender) {
-        if (!matchesToRender || matchesToRender.length === 0) {
-            matchesContainer.innerHTML = '<p class="text-center text-gray-400 py-8">Este reporte no contiene partidos.</p>';
-            return;
-        }
+  // REEMPLAZA esta función en public/public-report-view.js
+function renderMatches(matchesToRender) {
+    if (!matchesToRender || matchesToRender.length === 0) {
+        matchesContainer.innerHTML = '<p class="text-center text-gray-400 py-8">Este reporte no contiene partidos.</p>';
+        return;
+    }
 
-        const groupedByDate = matchesToRender.reduce((acc, match) => {
-            const date = match.match_date || 'Sin fecha';
-            if (!acc[date]) acc[date] = [];
-            acc[date].push(match);
+    const groupedByDate = matchesToRender.reduce((acc, match) => {
+        const date = match.match_date || 'Sin fecha';
+        if (!acc[date]) acc[date] = [];
+        acc[date].push(match);
+        return acc;
+    }, {});
+
+    const sortedDates = Object.keys(groupedByDate).sort((a, b) => new Date(a) - new Date(b));
+    let tableHTML = '';
+
+    for (const [dateIdx, date] of sortedDates.entries()) {
+        if (dateIdx > 0) tableHTML += `<tr><td colspan="9" style="height: 18px; background: #000; border: none;"></td></tr>`;
+        
+        const groupedBySede = groupedByDate[date].reduce((acc, match) => {
+            const sede = (match.location ? match.location.split(' - ')[0] : 'Sede no definida').trim();
+            if(!acc[sede]) acc[sede] = [];
+            acc[sede].push(match);
             return acc;
         }, {});
 
-        const sortedDates = Object.keys(groupedByDate).sort((a, b) => new Date(a) - new Date(b));
-        let tableHTML = '';
-
-        for (const [dateIdx, date] of sortedDates.entries()) {
-            if (dateIdx > 0) tableHTML += `<tr><td colspan="9" style="height: 18px; background: #000; border: none;"></td></tr>`;
+        for(const sede in groupedBySede) {
+            const matchesInSede = groupedBySede[sede];
+            const dateObj = new Date(date + 'T00:00:00');
+            let formattedDate = new Intl.DateTimeFormat('es-AR', { weekday: 'long', day: 'numeric', month: 'long' }).format(dateObj);
+            formattedDate = formattedDate.charAt(0).toUpperCase() + formattedDate.slice(1);
+            formattedDate = formattedDate.replace(/ de (\w)/, (match, p1) => ` de ${p1.toUpperCase()}`);
+            const headerBgColor = sede.toLowerCase() === 'centro' ? '#222222' : '#fdc100';
+            const headerTextColor = sede.toLowerCase() === 'centro' ? '#ffc000' : '#000000';
             
-            const groupedBySede = groupedByDate[date].reduce((acc, match) => {
-                const sede = (match.location ? match.location.split(' - ')[0] : 'Sede no definida').trim();
-                if(!acc[sede]) acc[sede] = [];
-                acc[sede].push(match);
-                return acc;
-            }, {});
+            tableHTML += `
+                <tr>
+                    <td colspan="2" style="background-color: ${headerBgColor}; color: ${headerTextColor}; font-weight: 700; text-align: center; vertical-align: middle; padding: 12px 0 8px 0; font-size: 15pt; border-radius: 0; letter-spacing: 1px; border-right: none;">${sede.toUpperCase()}</td>
+                    <td colspan="7" style="background-color: ${headerBgColor}; color: ${headerTextColor}; font-weight: 700; text-align: center; vertical-align: middle; padding: 12px 0 8px 0; font-size: 15pt; border-radius: 0; letter-spacing: 1px; border-left: none;">${formattedDate}</td>
+                </tr>`;
 
-            for(const sede in groupedBySede) {
-                const matchesInSede = groupedBySede[sede];
-                const dateObj = new Date(date + 'T00:00:00');
-                let formattedDate = new Intl.DateTimeFormat('es-AR', { weekday: 'long', day: 'numeric', month: 'long' }).format(dateObj);
-                formattedDate = formattedDate.charAt(0).toUpperCase() + formattedDate.slice(1);
-                formattedDate = formattedDate.replace(/ de (\w)/, (match, p1) => ` de ${p1.toUpperCase()}`);
-                const headerBgColor = sede.toLowerCase() === 'centro' ? '#222222' : '#fdc100';
-                const headerTextColor = sede.toLowerCase() === 'centro' ? '#ffc000' : '#000000';
+            for (const match of matchesInSede) {
+                const { p1_points, p2_points } = calculatePoints(match);
+                const isDoubles = match.player3 && match.player4;
+                const played = !!match.winner_id;
                 
-                tableHTML += `
-                    <tr>
-                        <td colspan="2" style="background-color: ${headerBgColor}; color: ${headerTextColor}; font-weight: 700; text-align: center; vertical-align: middle; padding: 12px 0 8px 0; font-size: 15pt; border-radius: 0; letter-spacing: 1px; border-right: none;">${sede.toUpperCase()}</td>
-                        <td colspan="7" style="background-color: ${headerBgColor}; color: ${headerTextColor}; font-weight: 700; text-align: center; vertical-align: middle; padding: 12px 0 8px 0; font-size: 15pt; border-radius: 0; letter-spacing: 1px; border-left: none;">${formattedDate}</td>
-                    </tr>`;
+                const team1_winner = isDoubles ? (match.winner_id === match.player1.id || match.winner_id === match.player3.id) : (match.winner_id === match.player1.id);
+                
+                const team1_class = team1_winner ? 'winner' : '';
+                const team2_class = !team1_winner && match.winner_id ? 'winner' : '';
 
-                for (const match of matchesInSede) {
-                    const { p1_points, p2_points } = calculatePoints(match);
-                    const isDoubles = match.player3 && match.player4;
-                    const played = !!match.winner_id;
-                    
-                    const team1_winner = isDoubles ? (match.winner_id === match.player1.id || match.winner_id === match.player3.id) : (match.winner_id === match.player1.id);
-                    
-                    const team1_class = team1_winner ? 'winner' : '';
-                    const team2_class = !team1_winner && match.winner_id ? 'winner' : '';
+                const team1_confirmed_class = match.p1_confirmed && !played ? 'player-confirmed' : '';
+                const team2_confirmed_class = match.p2_confirmed && !played ? 'player-confirmed' : '';
 
-                    const team1_confirmed_class = match.p1_confirmed && !played ? 'player-confirmed' : '';
-                    const team2_confirmed_class = match.p2_confirmed && !played ? 'player-confirmed' : '';
+                let team1_names = `<span class="${team1_confirmed_class}">${match.player1.name}</span>`;
+                if (isDoubles && match.player3) team1_names += ` / <span class="${team1_confirmed_class}">${match.player3.name}</span>`;
 
-                    let team1_names = `<span class="${team1_confirmed_class}">${match.player1.name}</span>`;
-                    if (isDoubles && match.player3) team1_names += ` / <span class="${team1_confirmed_class}">${match.player3.name}</span>`;
+                let team2_names = `<span class="${team2_confirmed_class}">${match.player2.name}</span>`;
+                if (isDoubles && match.player4) team2_names += ` / <span class="${team2_confirmed_class}">${match.player4.name}</span>`;
+                
+                let hora = match.match_time ? match.match_time.substring(0, 5) : 'HH:MM';
+                
+                const setsDisplayRaw = (match.sets || []).map(s => {
+                    if (match.winner_id && !team1_winner) {
+                        return `${s.p2}/${s.p1}`;
+                    }
+                    return `${s.p1}/${s.p2}`;
+                }).join(' ');
 
-                    let team2_names = `<span class="${team2_confirmed_class}">${match.player2.name}</span>`;
-                    if (isDoubles && match.player4) team2_names += ` / <span class="${team2_confirmed_class}">${match.player4.name}</span>`;
-                    
-                    let hora = match.match_time ? match.match_time.substring(0, 5) : 'HH:MM';
-                    
-                    // --- INICIO DE LA MODIFICACIÓN ---
-const winnerIsSide1 = isDoubles ? (match.winner_id === match.player1.id || match.winner_id === match.player3.id) : (match.winner_id === match.player1.id);
-
-const setsDisplay = (match.sets || []).map(s => {
-    if (match.winner_id && !winnerIsSide1) {
-        return `${s.p2}/${s.p1}`;
-    }
-    return `${s.p1}/${s.p2}`;
-}).join(' ');
-
-let resultadoDisplay = '';
-if (match.status === 'suspendido') {
-    resultadoDisplay = '<span style="color:#fff;font-weight:700;">Suspendido</span>';
-} else if (match.status === 'completado_wo') {
-    resultadoDisplay = '<span style="font-weight:700;">W.O.</span>';
-} else {
-    resultadoDisplay = setsDisplay;
-}
-// --- FIN DE LA MODIFICACIÓN ---
-                    
-                    const p1TeamColor = match.player1.team?.color;
-                    const p2TeamColor = match.player2.team?.color;
-                    const p1TextColor = isColorLight(p1TeamColor) ? '#222' : '#fff';
-                    const p2TextColor = isColorLight(p2TeamColor) ? '#222' : '#fff';
-
-                    let team1NameStyle = played && !team1_winner ? 'color:#888;' : '';
-                    let team2NameStyle = played && (team1_winner || !match.winner_id) ? 'color:#888;' : '';
-
-                    let team1PointsDisplay = played ? (p1_points ?? '') : (match.player1.team?.image_url ? `<img src="${match.player1.team.image_url}" alt="" style="height: 20px; object-fit: contain; margin: auto; display: block;">` : '');
-                    if (team1PointsDisplay === 0) team1PointsDisplay = '0';
-                    let team2PointsDisplay = played ? (p2_points ?? '') : (match.player2.team?.image_url ? `<img src="${match.player2.team.image_url}" alt="" style="height: 20px; object-fit: contain; margin: auto; display: block;">` : '');
-                    if (team2PointsDisplay === 0) team2PointsDisplay = '0';
-
-                    let cancha = match.location ? (match.location.split(' - ')[1] || match.location.split(' - ')[0] || 'N/A') : 'N/A';
-                    const matchNum = cancha.match(/\d+/);
-                    if (matchNum) cancha = matchNum[0];
-
-                    const canchaBackgroundColor = sede.toLowerCase() === 'centro' ? '#222222' : '#ffc000';
-                    const canchaTextColor = sede.toLowerCase() === 'centro' ? '#ffc000' : '#222';
-                    const suspendedClass = match.status === 'suspendido' ? 'suspended-row' : '';
-
-                    tableHTML += `
-                        <tr class="data-row ${suspendedClass}">
-                            <td style="background-color: ${canchaBackgroundColor} !important; color: ${canchaTextColor} !important; font-weight: bold;">${cancha}</td>
-                            <td style="background:#000;color:#fff;">${hora}</td>
-                            <td class="player-name player-name-right ${team1_class}" style='background:#000;color:#fff;${team1NameStyle};'>${team1_names}</td>
-                            <td class="pts-col" style='background:${p1TeamColor || '#3a3838'};color:${p1TextColor};'>${team1PointsDisplay}</td>
-                            <td class="font-mono" style="background:#000;color:#fff;">${resultadoDisplay}</td>
-                            <td class="pts-col" style='background:${p2TeamColor || '#3a3838'};color:${p2TextColor};'>${team2PointsDisplay}</td>
-                            <td class="player-name player-name-left ${team2_class}" style='background:#000;color:#fff;${team2NameStyle};'>${team2_names}</td>
-                            <td class="cat-col" style="background:#000;color:${match.category?.color || '#b45309'};">${match.category?.name || 'N/A'}</td>
-                        </tr>`;
+                let resultadoDisplay = '';
+                if (match.status === 'suspendido') {
+                    resultadoDisplay = '<span style="color:#fff;font-weight:700;">Suspendido</span>';
+                } else if (match.status === 'completado_wo') {
+                    resultadoDisplay = '<span style="font-weight:700;">W.O.</span>';
+                } else if (match.status === 'completado_ret') {
+                    resultadoDisplay = `<span style="font-weight:700;">${setsDisplayRaw} ret.</span>`;
+                } else {
+                    resultadoDisplay = setsDisplayRaw;
                 }
+                
+                const p1TeamColor = match.player1.team?.color;
+                const p2TeamColor = match.player2.team?.color;
+                const p1TextColor = isColorLight(p1TeamColor) ? '#222' : '#fff';
+                const p2TextColor = isColorLight(p2TeamColor) ? '#222' : '#fff';
+
+                let team1NameStyle = played && !team1_winner ? 'color:#888;' : '';
+                let team2NameStyle = played && (team1_winner || !match.winner_id) ? 'color:#888;' : '';
+
+                let team1PointsDisplay = played ? (p1_points ?? '') : (match.player1.team?.image_url ? `<img src="${match.player1.team.image_url}" alt="" style="height: 20px; object-fit: contain; margin: auto; display: block;">` : '');
+                if (team1PointsDisplay === 0) team1PointsDisplay = '0';
+                let team2PointsDisplay = played ? (p2_points ?? '') : (match.player2.team?.image_url ? `<img src="${match.player2.team.image_url}" alt="" style="height: 20px; object-fit: contain; margin: auto; display: block;">` : '');
+                if (team2PointsDisplay === 0) team2PointsDisplay = '0';
+
+                let cancha = match.location ? (match.location.split(' - ')[1] || match.location.split(' - ')[0] || 'N/A') : 'N/A';
+                const matchNum = cancha.match(/\d+/);
+                if (matchNum) cancha = matchNum[0];
+
+                const canchaBackgroundColor = sede.toLowerCase() === 'centro' ? '#222222' : '#ffc000';
+                const canchaTextColor = sede.toLowerCase() === 'centro' ? '#ffc000' : '#222';
+                const suspendedClass = match.status === 'suspendido' ? 'suspended-row' : '';
+
+                tableHTML += `
+                    <tr class="data-row ${suspendedClass}">
+                        <td style="background-color: ${canchaBackgroundColor} !important; color: ${canchaTextColor} !important; font-weight: bold;">${cancha}</td>
+                        <td style="background:#000;color:#fff;">${hora}</td>
+                        <td class="player-name player-name-right ${team1_class}" style='background:#000;color:#fff;${team1NameStyle};'>${team1_names}</td>
+                        <td class="pts-col" style='background:${p1TeamColor || '#3a3838'};color:${p1TextColor};'>${team1PointsDisplay}</td>
+                        <td class="font-mono" style="background:#000;color:#fff;">${resultadoDisplay}</td>
+                        <td class="pts-col" style='background:${p2TeamColor || '#3a3838'};color:${p2TextColor};'>${team2PointsDisplay}</td>
+                        <td class="player-name player-name-left ${team2_class}" style='background:#000;color:#fff;${team2NameStyle};'>${team2_names}</td>
+                        <td class="cat-col" style="background:#000;color:${match.category?.color || '#b45309'};">${match.category?.name || 'N/A'}</td>
+                    </tr>`;
             }
         }
-        
-        matchesContainer.innerHTML = `
-            <div class="bg-[#18191b] p-4 sm:p-6 rounded-xl shadow-lg overflow-x-auto">
-                <table class="matches-report-style">
-                    <colgroup><col style="width: 5%"><col style="width: 8%"><col style="width: 25%"><col style="width: 5%"><col style="width: 13%"><col style="width: 5%"><col style="width: 25%"><col style="width: 13%"></colgroup>
-                    <tbody>${tableHTML}</tbody>
-                </table>
-            </div>`;
     }
+    
+    matchesContainer.innerHTML = `
+        <div class="bg-[#18191b] p-4 sm:p-6 rounded-xl shadow-lg overflow-x-auto">
+            <table class="matches-report-style">
+                <colgroup><col style="width: 5%"><col style="width: 8%"><col style="width: 25%"><col style="width: 5%"><col style="width: 13%"><col style="width: 5%"><col style="width: 25%"><col style="width: 13%"></colgroup>
+                <tbody>${tableHTML}</tbody>
+            </table>
+        </div>`;
+}
 
     async function loadReportData() {
         headerContainer.innerHTML = renderPublicHeader();

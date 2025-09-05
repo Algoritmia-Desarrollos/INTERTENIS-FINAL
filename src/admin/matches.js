@@ -421,6 +421,7 @@ else {
 
 // --- MODAL Y ACCIONES (NUEVO CÓDIGO UNIFICADO) ---
 
+// REEMPLAZA esta función en src/admin/matches.js
 function openScoreModal(match) {
     const sets = match.sets || [];
     const isPlayed = !!match.winner_id;
@@ -433,7 +434,6 @@ function openScoreModal(match) {
     }
     const isDoubles = match.player3_id && match.player4_id;
 
-    // Parse location
     let sede = '';
     let cancha = '';
     if (match.location) {
@@ -442,98 +442,103 @@ function openScoreModal(match) {
         cancha = parts[1]?.trim() || '';
     }
     
-    // Prepare options for selects
     const sedeOptions = ['Centro', 'Funes'].map(s => `<option value="${s}" ${sede === s ? 'selected' : ''}>${s}</option>`).join('');
     const canchaOptions = [1, 2, 3, 4, 5, 6].map(c => `<option value="Cancha ${c}" ${cancha === `Cancha ${c}` ? 'selected' : ''}>Cancha ${c}</option>`).join('');
 
     modalContainer.innerHTML = `
         <div id="score-modal-overlay" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-2 z-50">
-            <div id="score-modal-content" class="bg-[#232323] rounded-xl shadow-lg w-full max-w-2xl border border-[#444] mx-2 sm:mx-0">
-                <div class="p-6 border-b border-[#333]">
-                    <h3 class="text-xl font-bold text-yellow-400">Editar Partido / Resultado</h3>
-                </div>
-                <form id="score-form" class="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
-                    
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-300">Jugador A1</label>
-                            <select id="player1-select-modal" class="input-field mt-1 bg-[#181818] text-gray-100 border-[#444]" ${isPlayed ? 'disabled' : ''}>
-                                ${playersInTournament.map(p => `<option value="${p.id}" ${p.id === match.player1_id ? 'selected' : ''}>${p.name}</option>`).join('')}
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-300">Jugador B1</label>
-                            <select id="player2-select-modal" class="input-field mt-1 bg-[#181818] text-gray-100 border-[#444]" ${isPlayed ? 'disabled' : ''}>
-                                ${playersInTournament.map(p => `<option value="${p.id}" ${p.id === match.player2_id ? 'selected' : ''}>${p.name}</option>`).join('')}
-                            </select>
-                        </div>
-                    </div>
-                    ${isDoubles ? `
-                    <div id="doubles-players-container" class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-300">Jugador A2</label>
-                            <select id="player3-select-modal" class="input-field mt-1 bg-[#181818] text-gray-100 border-[#444]" ${isPlayed ? 'disabled' : ''}>
-                                ${playersInTournament.map(p => `<option value="${p.id}" ${p.id === match.player3_id ? 'selected' : ''}>${p.name}</option>`).join('')}
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-300">Jugador B2</label>
-                            <select id="player4-select-modal" class="input-field mt-1 bg-[#181818] text-gray-100 border-[#444]" ${isPlayed ? 'disabled' : ''}>
-                                ${playersInTournament.map(p => `<option value="${p.id}" ${p.id === match.player4_id ? 'selected' : ''}>${p.name}</option>`).join('')}
-                            </select>
-                        </div>
-                    </div>` : ''}
-
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-gray-700 mt-4">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-300">Fecha</label>
-                            <input type="date" id="match-date-modal" class="input-field mt-1 bg-[#181818] text-gray-100 border-[#444]" value="${match.match_date || ''}">
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-300">Hora</label>
-                            <input type="time" id="match-time-modal" class="input-field mt-1 bg-[#181818] text-gray-100 border-[#444]" value="${match.match_time ? match.match_time.substring(0, 5) : ''}">
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-300">Sede</label>
-                            <select id="match-sede-modal" class="input-field mt-1 bg-[#181818] text-gray-100 border-[#444]">
-                                <option value="">Seleccionar Sede</option>
-                                ${sedeOptions}
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-300">Cancha</label>
-                             <select id="match-cancha-modal" class="input-field mt-1 bg-[#181818] text-gray-100 border-[#444]">
-                                <option value="">Seleccionar Cancha</option>
-                                ${canchaOptions}
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="grid grid-cols-3 gap-4 items-center pt-4 border-t border-gray-700 mt-4">
-                        <span class="font-semibold text-gray-200">SET</span>
-                        <span class="font-semibold text-center text-gray-200" style="font-size:14px;" id="teamA-name">${isDoubles ? `${match.player1.name} / ${match.player3?.name || '...'}` : match.player1.name}</span>
-                        <span class="font-semibold text-center text-gray-200" style="font-size:14px;" id="teamB-name">${isDoubles ? `${match.player2.name} / ${match.player4?.name || '...'}` : match.player2.name}</span>
-                    </div>
-                    ${[1, 2, 3].map(i => `
-                        <div class="grid grid-cols-3 gap-4 items-center">
-                            <span class="text-gray-300">Set ${i}</span>
-                            <input type="number" id="p1_set${i}" class="input-field text-center bg-[#181818] text-gray-100 border-[#444]" value="${sets[i-1]?.p1 ?? ''}" min="0" max="9">
-                            <input type="number" id="p2_set${i}" class="input-field text-center bg-[#181818] text-gray-100 border-[#444]" value="${sets[i-1]?.p2 ?? ''}" min="0" max="9">
-                        </div>
-                    `).join('')}
-                </form>
+            <div id="score-modal-content" class="bg-[#232323] rounded-xl shadow-lg w-full max-w-md lg:max-w-2xl border border-[#444] mx-2 sm:mx-0 flex flex-col max-h-[90vh]">
                 
-                ${!isPlayed ? `
-                <div class="p-4 bg-[#1d1d1d] border-y border-[#333] text-center">
-                    <p class="text-sm font-medium text-gray-400 mb-2">Si un equipo/jugador no se presenta, registrar como Walkover (WO):</p>
-                    <div class="flex justify-center gap-4">
-                        <button id="btn-wo-p1" class="btn btn-secondary !py-1 !px-3 !text-sm !text-yellow-300">Gana ${isDoubles ? `Equipo A` : match.player1.name} por WO</button>
-                        <button id="btn-wo-p2" class="btn btn-secondary !py-1 !px-3 !text-sm !text-yellow-300">Gana ${isDoubles ? `Equipo B` : match.player2.name} por WO</button>
-                    </div>
-                </div>
-                ` : ''}
+                <style>
+                    .modal-player-name {
+                        font-size: 0.875rem; white-space: nowrap;
+                        overflow: hidden; text-overflow: ellipsis; display: block;
+                    }
+                    @media (max-width: 640px) { .modal-player-name { font-size: 0.75rem; } }
+                </style>
 
-                <div class="p-4 bg-[#181818] flex flex-col sm:flex-row justify-between gap-3 sm:gap-4 rounded-b-xl border-t border-[#333]">
+                <div class="p-4 sm:p-6 border-b border-[#333] flex-shrink-0">
+                    <h3 class="text-lg sm:text-xl font-bold text-yellow-400">Editar Partido / Resultado</h3>
+                </div>
+                
+                <div class="overflow-y-auto">
+                    <form id="score-form" class="p-4 sm:p-6 space-y-4">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-300">Jugador A1</label>
+                                <select id="player1-select-modal" class="input-field mt-1 bg-[#181818] text-gray-100 border-[#444]" ${isPlayed ? 'disabled' : ''}>
+                                    ${playersInTournament.map(p => `<option value="${p.id}" ${p.id === match.player1_id ? 'selected' : ''}>${p.name}</option>`).join('')}
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-300">Jugador B1</label>
+                                <select id="player2-select-modal" class="input-field mt-1 bg-[#181818] text-gray-100 border-[#444]" ${isPlayed ? 'disabled' : ''}>
+                                    ${playersInTournament.map(p => `<option value="${p.id}" ${p.id === match.player2_id ? 'selected' : ''}>${p.name}</option>`).join('')}
+                                </select>
+                            </div>
+                        </div>
+                        ${isDoubles ? `
+                        <div id="doubles-players-container" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-300">Jugador A2</label>
+                                <select id="player3-select-modal" class="input-field mt-1 bg-[#181818] text-gray-100 border-[#444]" ${isPlayed ? 'disabled' : ''}>
+                                    ${playersInTournament.map(p => `<option value="${p.id}" ${p.id === match.player3_id ? 'selected' : ''}>${p.name}</option>`).join('')}
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-300">Jugador B2</label>
+                                <select id="player4-select-modal" class="input-field mt-1 bg-[#181818] text-gray-100 border-[#444]" ${isPlayed ? 'disabled' : ''}>
+                                    ${playersInTournament.map(p => `<option value="${p.id}" ${p.id === match.player4_id ? 'selected' : ''}>${p.name}</option>`).join('')}
+                                </select>
+                            </div>
+                        </div>` : ''}
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-gray-700 mt-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-300">Fecha</label>
+                                <input type="date" id="match-date-modal" class="input-field mt-1 bg-[#181818] text-gray-100 border-[#444]" value="${match.match_date || ''}">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-300">Hora</label>
+                                <input type="time" id="match-time-modal" class="input-field mt-1 bg-[#181818] text-gray-100 border-[#444]" value="${match.match_time ? match.match_time.substring(0, 5) : ''}">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-300">Sede</label>
+                                <select id="match-sede-modal" class="input-field mt-1 bg-[#181818] text-gray-100 border-[#444]">
+                                    <option value="">Seleccionar Sede</option>
+                                    ${sedeOptions}
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-300">Cancha</label>
+                                 <select id="match-cancha-modal" class="input-field mt-1 bg-[#181818] text-gray-100 border-[#444]">
+                                    <option value="">Seleccionar Cancha</option>
+                                    ${canchaOptions}
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-3 gap-2 sm:gap-4 items-center pt-4 border-t border-gray-700 mt-4">
+                            <span class="font-semibold text-gray-200">SET</span>
+                            <span class="font-semibold text-center text-gray-200 modal-player-name" id="teamA-name">${isDoubles ? `${match.player1.name} / ${match.player3?.name || '...'}` : match.player1.name}</span>
+                            <span class="font-semibold text-center text-gray-200 modal-player-name" id="teamB-name">${isDoubles ? `${match.player2.name} / ${match.player4?.name || '...'}` : match.player2.name}</span>
+                        </div>
+                        ${[1, 2, 3].map(i => `
+                            <div class="grid grid-cols-3 gap-2 sm:gap-4 items-center">
+                                <span class="text-gray-300">Set ${i}</span>
+                                <input type="number" id="p1_set${i}" class="input-field text-center bg-[#181818] text-gray-100 border-[#444]" value="${sets[i-1]?.p1 ?? ''}" min="0" max="9">
+                                <input type="number" id="p2_set${i}" class="input-field text-center bg-[#181818] text-gray-100 border-[#444]" value="${sets[i-1]?.p2 ?? ''}" min="0" max="9">
+                            </div>
+                        `).join('')}
+                    </form>
+                    
+                    ${!isPlayed ? `
+                        <div id="wo-section" class="p-4 bg-[#1d1d1d] border-y border-[#333] text-center"></div>
+                        <div id="ret-section" class="p-4 bg-[#1d1d1d] border-b border-[#333] text-center"></div>
+                    ` : ''}
+                </div>
+
+                <div class="p-4 bg-[#181818] flex flex-col sm:flex-row justify-between gap-3 sm:gap-4 rounded-b-xl border-t border-[#333] flex-shrink-0">
                     <div class="flex flex-row flex-wrap items-center gap-2 justify-center sm:justify-start mb-2 sm:mb-0">
                         <button id="btn-delete-match" class="btn btn-secondary !p-2" title="Eliminar Partido"><span class="material-icons !text-red-600">delete_forever</span></button>
                         ${isPlayed ? `<button id="btn-clear-score" class="btn btn-secondary !p-2" title="Limpiar Resultado"><span class="material-icons !text-yellow-600">cleaning_services</span></button>` : ''}
@@ -561,10 +566,92 @@ function openScoreModal(match) {
     document.getElementById('score-modal-overlay').onclick = (e) => { if (e.target.id === 'score-modal-overlay') closeModal(); };
 
     if (!isPlayed) {
-        document.getElementById('btn-wo-p1').onclick = () => handleWoWin(match, 'p1');
-        document.getElementById('btn-wo-p2').onclick = () => handleWoWin(match, 'p2');
+        const teamAName = isDoubles ? `Equipo A` : match.player1.name;
+        const teamBName = isDoubles ? `Equipo B` : match.player2.name;
+
+        const woSection = document.getElementById('wo-section');
+        const retSection = document.getElementById('ret-section');
+
+        if(woSection) {
+            woSection.innerHTML = `
+                <p class="text-sm font-medium text-gray-400 mb-2">Si un jugador no se presenta (Walkover):</p>
+                <div class="flex flex-col sm:flex-row justify-center gap-2 sm:gap-4">
+                    <button id="btn-wo-p1" class="btn btn-secondary !py-1 !px-3 !text-sm !text-yellow-300">Gana ${teamAName} por WO</button>
+                    <button id="btn-wo-p2" class="btn btn-secondary !py-1 !px-3 !text-sm !text-yellow-300">Gana ${teamBName} por WO</button>
+                </div>
+            `;
+            document.getElementById('btn-wo-p1').onclick = () => handleWoWin(match, 'p1');
+            document.getElementById('btn-wo-p2').onclick = () => handleWoWin(match, 'p2');
+        }
+        
+        if(retSection) {
+            retSection.innerHTML = `
+                <p class="text-sm font-medium text-gray-400 mb-2">Si un jugador se retira a mitad de partido:</p>
+                <div class="flex flex-col sm:flex-row justify-center gap-2 sm:gap-4">
+                     <button id="btn-ret-p1" class="btn btn-secondary !py-1 !px-3 !text-sm !text-orange-400">Se retira ${teamAName}</button>
+                     <button id="btn-ret-p2" class="btn btn-secondary !py-1 !px-3 !text-sm !text-orange-400">Se retira ${teamBName}</button>
+                </div>
+            `;
+            document.getElementById('btn-ret-p1').onclick = () => handleRetirement(match, 'p1');
+            document.getElementById('btn-ret-p2').onclick = () => handleRetirement(match, 'p2');
+        }
     }
 }
+
+
+// AGREGA esta nueva función en src/admin/matches.js
+async function handleRetirement(match, retiringSide) {
+    const isDoubles = !!(match.player3_id && match.player4_id);
+
+    // 1. Recopila los resultados de los sets ingresados
+    const sets = [];
+    let p1SetsWon = 0, p2SetsWon = 0;
+    for (let i = 1; i <= 3; i++) {
+        const p1Score = document.getElementById(`p1_set${i}`).value;
+        const p2Score = document.getElementById(`p2_set${i}`).value;
+        if (p1Score && p2Score && p1Score !== '' && p2Score !== '') {
+            const p1 = parseInt(p1Score, 10);
+            const p2 = parseInt(p2Score, 10);
+            sets.push({ p1, p2 });
+            if (p1 > p2) p1SetsWon++;
+            if (p2 > p1) p2SetsWon++;
+        }
+    }
+
+    if (sets.length === 0) {
+        return alert("Por favor, ingrese el resultado de al menos un game antes de registrar un retiro.");
+    }
+
+    // 2. Determina el ganador y si el perdedor obtiene punto bonus
+    const winner_id = retiringSide === 'p1' ? match.player2_id : match.player1_id;
+    const bonus_loser = (retiringSide === 'p1' && p1SetsWon >= 1) || (retiringSide === 'p2' && p2SetsWon >= 1);
+
+    // 3. Pide confirmación al administrador
+    const retiringPlayerName = retiringSide === 'p1' ? (isDoubles ? `Equipo A` : match.player1.name) : (isDoubles ? `Equipo B` : match.player2.name);
+    if (!confirm(`¿Confirmas que ${retiringPlayerName} se retira del partido?`)) {
+        return;
+    }
+
+    // 4. Prepara los datos para guardar
+    const updateData = {
+        winner_id,
+        sets,
+        status: 'completado_ret', // Nuevo estado para identificar retiros
+        bonus_loser
+    };
+
+    // 5. Guarda en la base de datos
+    const { error } = await supabase.from('matches').update(updateData).eq('id', match.id);
+
+    if (error) {
+        alert("Error al registrar el retiro: " + error.message);
+    } else {
+        alert("Retiro registrado con éxito.");
+        closeModal();
+        await loadInitialData();
+    }
+}
+
 
 async function handleWoWin(match, winnerSide) {
     const isDoubles = !!(match.player3_id && match.player4_id);

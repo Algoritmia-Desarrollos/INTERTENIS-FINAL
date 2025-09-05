@@ -96,6 +96,7 @@ async function loadDashboardData() {
 }
 
 
+// REEMPLAZA esta función en src/admin/dashboard.js
 function renderLastMatches(matchesToRender) {
     const matchesContainer = document.getElementById('matches-container');
 
@@ -142,33 +143,30 @@ function renderLastMatches(matchesToRender) {
                 const p2_class = match.player2.id === match.winner_id ? 'winner' : '';
                 let hora = match.match_time ? match.match_time.substring(0, 5) : 'HH:MM';
                 
-               // --- INICIO DE LA MODIFICACIÓN ---
-// Determina si el ganador es del equipo 1 (p1/p3)
-const winnerIsSide1 = match.player1.id === match.winner_id || (match.player3 && match.player3.id === match.winner_id);
+                const winnerIsSide1 = match.player1.id === match.winner_id || (match.player3 && match.player3.id === match.winner_id);
+                const setsDisplayRaw = (match.sets || []).map(s => {
+                    if (match.winner_id && !winnerIsSide1) {
+                        return `${s.p2}/${s.p1}`;
+                    }
+                    return `${s.p1}/${s.p2}`;
+                }).join(' ');
 
-// Formatea los sets desde la perspectiva del ganador
-const setsDisplay = (match.sets || []).map(s => {
-    if (match.winner_id && !winnerIsSide1) {
-        return `${s.p2}/${s.p1}`; // Invierte el marcador si el ganador es del equipo 2
-    }
-    return `${s.p1}/${s.p2}`;
-}).join(' ');
-
-let resultadoDisplay = '';
-if (match.status === 'suspendido') {
-    resultadoDisplay = '<span style="color:#fff;font-weight:700;text-decoration:none !important;">Suspendido</span>';
-} else if (match.status === 'completado_wo') {
-    resultadoDisplay = '<span style="font-weight:700;">W.O.</span>';
-}
-else {
-    resultadoDisplay = setsDisplay;
-}
+                let resultadoDisplay = '';
+                if (match.status === 'suspendido') {
+                    resultadoDisplay = '<span style="color:#fff;font-weight:700;text-decoration:none !important;">Suspendido</span>';
+                } else if (match.status === 'completado_wo') {
+                    resultadoDisplay = '<span style="font-weight:700;">W.O.</span>';
+                } else if (match.status === 'completado_ret') {
+                    resultadoDisplay = `<span style="font-weight:700;">${setsDisplayRaw} ret.</span>`;
+                } else {
+                    resultadoDisplay = setsDisplayRaw;
+                }
 
                 const p1TeamColor = match.player1.team?.color;
                 const p2TeamColor = match.player2.team?.color;
                 const p1TextColor = isColorLight(p1TeamColor) ? '#222' : '#fff';
                 const p2TextColor = isColorLight(p2TeamColor) ? '#222' : '#fff';
-                const played = !!(match.sets && match.sets.length > 0);
+                const played = !!(match.winner_id);
                 let p1NameStyle = played && !p1_class ? 'color:#888;' : '';
                 let p2NameStyle = played && !p2_class ? 'color:#888;' : '';
                 
@@ -210,19 +208,6 @@ else {
                         <td class="cat-col" style="background:#000;color:${match.category?.color || '#b45309'}; border: 1px solid #666;">${match.category?.name || 'N/A'}</td>
                         <td class="action-cell" style="background:#000; border: 1px solid #666;"><button class="p-1 rounded-full hover:bg-gray-700" data-action="edit" title="Editar / Cargar Resultado"><span class="material-icons text-base" style="color:#fff;">edit</span></button></td>
                     </tr>`;
-    // Agregar estilos para la fila suspendida igual que en reportes.js
-    const style = document.createElement('style');
-    style.innerHTML = `.suspended-row td, .suspended-row .font-mono, .suspended-row .pts-col, .suspended-row .cat-col, .suspended-row .player-name, .suspended-row .player-name-right, .suspended-row .player-name-left {
-        color: #ff4444 !important;
-        text-decoration: none !important;
-    }
-    .suspended-row td.font-mono {
-        color: #fff !important;
-        text-decoration: none !important;
-        font-weight: 700;
-        background: #222 !important;
-    }`;
-    document.head.appendChild(style);
             }
         }
     }
@@ -254,6 +239,7 @@ else {
     </div>`;
 }
 
+// REEMPLAZA esta función en src/admin/dashboard.js
 function openScoreModal(match) {
     const modalContainer = document.getElementById('score-modal-container');
     const sets = match.sets || [];
@@ -262,47 +248,54 @@ function openScoreModal(match) {
 
     modalContainer.innerHTML = `
         <div id="score-modal-overlay" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-2 z-50">
-            <div id="score-modal-content" class="bg-[#232323] rounded-xl shadow-lg w-full max-w-lg border border-[#444] mx-2 sm:mx-0">
-                <div class="p-6 border-b border-[#333]"><h3 class="text-xl font-bold text-yellow-400">Editar Partido / Resultado</h3></div>
-                <form id="score-form" class="p-6 space-y-4">
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-300">Jugador A</label>
-                            <select id="player1-select-modal" class="input-field mt-1 bg-[#181818] text-gray-100 border-[#444]" ${isPlayed ? 'disabled' : ''}>
-                                ${playersInCategory.map(p => `<option value="${p.id}" ${p.id === match.player1_id ? 'selected' : ''}>${p.name}</option>`).join('')}
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-300">Jugador B</label>
-                            <select id="player2-select-modal" class="input-field mt-1 bg-[#181818] text-gray-100 border-[#444]" ${isPlayed ? 'disabled' : ''}>
-                                ${playersInCategory.map(p => `<option value="${p.id}" ${p.id === match.player2_id ? 'selected' : ''}>${p.name}</option>`).join('')}
-                            </select>
-                        </div>
-                    </div>
-                    <div class="grid grid-cols-3 gap-4 items-center pt-4">
-                        <span class="font-semibold text-gray-200">SET</span>
-                        <span class="font-semibold text-center text-gray-200" style="font-size:14px;">${match.player1.name}</span>
-                        <span class="font-semibold text-center text-gray-200" style="font-size:14px;">${match.player2.name}</span>
-                    </div>
-                    ${[1, 2, 3].map(i => `
-                        <div class="grid grid-cols-3 gap-4 items-center">
-                            <span class="text-gray-300">Set ${i}</span>
-                            <input type="number" id="p1_set${i}" class="input-field text-center bg-[#181818] text-gray-100 border-[#444]" value="${sets[i-1]?.p1 ?? ''}" min="0" max="9">
-                            <input type="number" id="p2_set${i}" class="input-field text-center bg-[#181818] text-gray-100 border-[#444]" value="${sets[i-1]?.p2 ?? ''}" min="0" max="9">
-                        </div>
-                    `).join('')}
-                </form>
+            <div id="score-modal-content" class="bg-[#232323] rounded-xl shadow-lg w-full max-w-lg border border-[#444] mx-2 sm:mx-0 flex flex-col max-h-[90vh]">
+                
+                <style>
+                    .modal-player-name { font-size: 0.875rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
+                    @media (max-width: 640px) { .modal-player-name { font-size: 0.75rem; } }
+                </style>
 
-                ${!isPlayed ? `
-                <div class="p-4 bg-[#1d1d1d] border-y border-[#333] text-center">
-                    <p class="text-sm font-medium text-gray-400 mb-2">Si un jugador no se presenta, registrar como Walkover (WO):</p>
-                    <div class="flex justify-center gap-4">
-                         <button id="btn-wo-p1" class="btn btn-secondary !py-1 !px-3 !text-sm !text-yellow-300">Gana ${match.player1.name} por WO</button>
-                         <button id="btn-wo-p2" class="btn btn-secondary !py-1 !px-3 !text-sm !text-yellow-300">Gana ${match.player2.name} por WO</button>
-                    </div>
+                <div class="p-4 sm:p-6 border-b border-[#333] flex-shrink-0">
+                    <h3 class="text-lg sm:text-xl font-bold text-yellow-400">Editar Partido / Resultado</h3>
                 </div>
-                ` : ''}
-                <div class="p-4 bg-[#181818] flex flex-col sm:flex-row justify-between gap-3 sm:gap-4 rounded-b-xl border-t border-[#333]">
+
+                <div class="overflow-y-auto">
+                    <form id="score-form" class="p-4 sm:p-6 space-y-4">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-300">Jugador A</label>
+                                <select id="player1-select-modal" class="input-field mt-1 bg-[#181818] text-gray-100 border-[#444]" ${isPlayed ? 'disabled' : ''}>
+                                    ${playersInCategory.map(p => `<option value="${p.id}" ${p.id === match.player1_id ? 'selected' : ''}>${p.name}</option>`).join('')}
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-300">Jugador B</label>
+                                <select id="player2-select-modal" class="input-field mt-1 bg-[#181818] text-gray-100 border-[#444]" ${isPlayed ? 'disabled' : ''}>
+                                    ${playersInCategory.map(p => `<option value="${p.id}" ${p.id === match.player2_id ? 'selected' : ''}>${p.name}</option>`).join('')}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-3 gap-2 sm:gap-4 items-center pt-4 border-t border-gray-700 mt-4">
+                            <span class="font-semibold text-gray-200">SET</span>
+                            <span class="font-semibold text-center text-gray-200 modal-player-name">${match.player1.name}</span>
+                            <span class="font-semibold text-center text-gray-200 modal-player-name">${match.player2.name}</span>
+                        </div>
+                        ${[1, 2, 3].map(i => `
+                            <div class="grid grid-cols-3 gap-2 sm:gap-4 items-center">
+                                <span class="text-gray-300">Set ${i}</span>
+                                <input type="number" id="p1_set${i}" class="input-field text-center bg-[#181818] text-gray-100 border-[#444]" value="${sets[i-1]?.p1 ?? ''}" min="0" max="9">
+                                <input type="number" id="p2_set${i}" class="input-field text-center bg-[#181818] text-gray-100 border-[#444]" value="${sets[i-1]?.p2 ?? ''}" min="0" max="9">
+                            </div>
+                        `).join('')}
+                    </form>
+
+                    ${!isPlayed ? `
+                        <div id="wo-section" class="p-4 bg-[#1d1d1d] border-y border-[#333] text-center"></div>
+                        <div id="ret-section" class="p-4 bg-[#1d1d1d] border-b border-[#333] text-center"></div>
+                    ` : ''}
+                </div>
+
+                <div class="p-4 bg-[#181818] flex flex-col sm:flex-row justify-between gap-3 sm:gap-4 rounded-b-xl border-t border-[#333] flex-shrink-0">
                     <div class="flex flex-row flex-wrap items-center gap-2 justify-center sm:justify-start mb-2 sm:mb-0">
                         <button id="btn-delete-match" class="btn btn-secondary !p-2" title="Eliminar Partido"><span class="material-icons !text-red-600">delete_forever</span></button>
                         ${isPlayed ? `<button id="btn-clear-score" class="btn btn-secondary !p-2" title="Limpiar Resultado"><span class="material-icons !text-yellow-600">cleaning_services</span></button>` : ''}
@@ -324,12 +317,34 @@ function openScoreModal(match) {
     if (match.winner_id) document.getElementById('btn-clear-score').onclick = () => clearScore(match.id);
     document.getElementById('score-modal-overlay').onclick = (e) => { if (e.target.id === 'score-modal-overlay') closeModal(); };
 
-    // --- INICIO DE LA MODIFICACIÓN: EVENT LISTENERS WALKOVER ---
     if (!isPlayed) {
-        document.getElementById('btn-wo-p1').onclick = () => handleWoWin(match.id, match.player1_id, match.player2_id);
-        document.getElementById('btn-wo-p2').onclick = () => handleWoWin(match.id, match.player2_id, match.player1_id);
+        const woSection = document.getElementById('wo-section');
+        const retSection = document.getElementById('ret-section');
+
+        if(woSection) {
+            woSection.innerHTML = `
+                <p class="text-sm font-medium text-gray-400 mb-2">Si un jugador no se presenta (Walkover):</p>
+                <div class="flex flex-col sm:flex-row justify-center gap-2 sm:gap-4">
+                     <button id="btn-wo-p1" class="btn btn-secondary !py-1 !px-3 !text-sm !text-yellow-300">Gana ${match.player1.name} por WO</button>
+                     <button id="btn-wo-p2" class="btn btn-secondary !py-1 !px-3 !text-sm !text-yellow-300">Gana ${match.player2.name} por WO</button>
+                </div>
+            `;
+            document.getElementById('btn-wo-p1').onclick = () => handleWoWin(match.id, match.player1_id, match.player2_id);
+            document.getElementById('btn-wo-p2').onclick = () => handleWoWin(match.id, match.player2_id, match.player1_id);
+        }
+        
+        if(retSection) {
+            retSection.innerHTML = `
+                <p class="text-sm font-medium text-gray-400 mb-2">Si un jugador se retira a mitad de partido:</p>
+                <div class="flex flex-col sm:flex-row justify-center gap-2 sm:gap-4">
+                     <button id="btn-ret-p1" class="btn btn-secondary !py-1 !px-3 !text-sm !text-orange-400">Se retira ${match.player1.name}</button>
+                     <button id="btn-ret-p2" class="btn btn-secondary !py-1 !px-3 !text-sm !text-orange-400">Se retira ${match.player2.name}</button>
+                </div>
+            `;
+            document.getElementById('btn-ret-p1').onclick = () => handleRetirement(match, 'p1');
+            document.getElementById('btn-ret-p2').onclick = () => handleRetirement(match, 'p2');
+        }
     }
-    // --- FIN DE LA MODIFICACIÓN ---
 }
 
 function closeModal() {

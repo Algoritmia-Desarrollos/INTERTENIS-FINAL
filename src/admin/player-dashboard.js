@@ -106,6 +106,7 @@ function renderDashboard(player, stats, pendingMatches, matchHistory, individual
     renderMatchesTable(matchHistory, document.getElementById('history-matches-container'), 'No hay partidos en el historial.');
 }
 
+// REEMPLAZA esta función en src/admin/player-dashboard.js y public/public-player-dashboard.js
 function renderMatchesTable(matchesToRender, containerElement, emptyMessage) {
     if (!matchesToRender || matchesToRender.length === 0) {
         containerElement.innerHTML = `<div class="bg-[#222222] p-6 rounded-xl"><p class="text-center text-gray-500 py-4">${emptyMessage}</p></div>`;
@@ -131,10 +132,8 @@ function renderMatchesTable(matchesToRender, containerElement, emptyMessage) {
             const matchesInSede = groupedBySede[sede];
             const dateObj = new Date(date + 'T00:00:00');
             
-            // --- INICIO DE LA CORRECCIÓN ---
             let formattedDate = new Intl.DateTimeFormat('es-AR', { weekday: 'long', day: 'numeric', month: 'long' }).format(dateObj);
             formattedDate = formattedDate.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ').replace(' De ', ' de ');
-            // --- FIN DE LA CORRECCIÓN ---
 
             const headerBgColor = sede.toLowerCase() === 'centro' ? '#222222' : '#fdc100';
             const headerTextColor = sede.toLowerCase() === 'centro' ? '#ffc000' : '#000000';
@@ -169,28 +168,23 @@ function renderMatchesTable(matchesToRender, containerElement, emptyMessage) {
                 
                 let hora = match.match_time ? match.match_time.substring(0, 5) : 'HH:MM';
                 
-                // --- INICIO DE LA CORRECCIÓN ---
-const winnerIsSide1 = isDoubles 
-    ? (match.winner_id === match.player1.id || match.winner_id === match.player3.id) 
-    : (match.winner_id === match.player1.id);
+                const setsDisplayRaw = (match.sets || []).map(s => {
+                    if (match.winner_id && !team1_winner) {
+                        return `${s.p2}/${s.p1}`;
+                    }
+                    return `${s.p1}/${s.p2}`;
+                }).join(' ');
 
-let setsDisplay = (match.sets || []).map(set => {
-    // Si el ganador del partido NO es del lado 1, invertimos el resultado del set
-    if (match.winner_id && !winnerIsSide1) {
-        return `${set.p2}/${set.p1}`;
-    }
-    return `${set.p1}/${set.p2}`;
-}).join(' ');
-
-let resultadoDisplay;
-if (match.status === 'completado_wo') {
-    resultadoDisplay = 'W.O.';
-} else if (match.status === 'suspendido') {
-    resultadoDisplay = 'Suspendido';
-} else {
-    resultadoDisplay = setsDisplay;
-}
-// --- FIN DE LA CORRECCIÓN ---
+                let resultadoDisplay;
+                if (match.status === 'completado_wo') {
+                    resultadoDisplay = 'W.O.';
+                } else if (match.status === 'suspendido') {
+                    resultadoDisplay = 'Suspendido';
+                } else if (match.status === 'completado_ret') {
+                    resultadoDisplay = `${setsDisplayRaw} ret.`;
+                } else {
+                    resultadoDisplay = setsDisplayRaw;
+                }
 
                 const p1TeamColor = match.player1.team?.color;
                 const p2TeamColor = match.player2.team?.color;

@@ -1,4 +1,4 @@
-// Extraído de dashboard.js para unificar el cálculo de puntos
+// REEMPLAZA el contenido completo de src/admin/calculatePoints.js
 export function calculatePoints(match) {
     let p1_points = 0; // Puntos para el Lado 1 (Jugador 1 y 3)
     let p2_points = 0; // Puntos para el Lado 2 (Jugador 2 y 4)
@@ -6,8 +6,7 @@ export function calculatePoints(match) {
     if (match.winner_id) {
         const winnerIsSide1 = match.winner_id === match.player1_id || match.winner_id === match.player3_id;
 
-        // --- INICIO DE LA MODIFICACIÓN: Lógica para Walkover ---
-        // Si el partido fue ganado por WO, se asignan 2 puntos al ganador y 0 al perdedor, sin bonus.
+        // Caso 1: Partido ganado por Walkover (WO)
         if (match.status === 'completado_wo') {
             if (winnerIsSide1) {
                 p1_points = 2;
@@ -16,10 +15,22 @@ export function calculatePoints(match) {
                 p1_points = 0;
                 p2_points = 2;
             }
-            return { p1_points, p2_points }; // Retorna inmediatamente los puntos correctos.
+            return { p1_points, p2_points };
         }
-        // --- FIN DE LA MODIFICACIÓN ---
 
+        // Caso 2: Partido ganado por Retiro
+        if (match.status === 'completado_ret') {
+            if (winnerIsSide1) {
+                p1_points = 2; // Ganador recibe 2 puntos
+                p2_points = match.bonus_loser ? 1 : 0; // Perdedor recibe 1 punto SI ganó un set
+            } else {
+                p2_points = 2; // Ganador recibe 2 puntos
+                p1_points = match.bonus_loser ? 1 : 0; // Perdedor recibe 1 punto SI ganó un set
+            }
+            return { p1_points, p2_points };
+        }
+
+        // Caso 3: Partido completado normalmente
         let p1TotalGames = 0;
         let p2TotalGames = 0;
         let p1SetsWon = 0;
@@ -35,33 +46,14 @@ export function calculatePoints(match) {
             }
         });
 
-        // Lógica para partidos normales (con sets)
         if (winnerIsSide1) {
-            // Gana el Lado 1
-            p1_points = 2; // Puntos base para el ganador
-            p2_points = 0; // Puntos base para el perdedor
-
-            // Bonus Ganador para el Lado 1
-            if (p2TotalGames <= 3) {
-                p1_points += 1;
-            }
-            // Bonus Perdedor para el Lado 2
-            if (p2SetsWon === 1) {
-                p2_points += 1;
-            }
+            p1_points = 2;
+            if (p2TotalGames <= 3) p1_points += 1; // Bonus ganador
+            if (p2SetsWon === 1) p2_points += 1;   // Bonus perdedor
         } else {
-            // Gana el Lado 2
-            p2_points = 2; // Puntos base para el ganador
-            p1_points = 0; // Puntos base para el perdedor
-
-            // Bonus Ganador para el Lado 2
-            if (p1TotalGames <= 3) {
-                p2_points += 1;
-            }
-            // Bonus Perdedor para el Lado 1
-            if (p1SetsWon === 1) {
-                p1_points += 1;
-            }
+            p2_points = 2;
+            if (p1TotalGames <= 3) p2_points += 1; // Bonus ganador
+            if (p1SetsWon === 1) p1_points += 1;   // Bonus perdedor
         }
     }
     return { p1_points, p2_points };
