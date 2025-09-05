@@ -235,6 +235,7 @@ function applyQuickFilter(mode) {
     applyFiltersAndSort();
 }
 
+// REEMPLAZA esta función en src/admin/matches.js
 function renderMatches(matchesToRender) {
     if (matchesToRender.length === 0) {
         matchesContainer.innerHTML = '<p class="text-center text-gray-400 py-8">No hay partidos que coincidan con los filtros.</p>';
@@ -310,35 +311,30 @@ function renderMatches(matchesToRender) {
                 if (isDoubles && match.player4) team2_names += ` / ${match.player4.name}`;
 
                 let hora = match.match_time ? match.match_time.substring(0, 5) : 'HH:MM';
-// --- INICIO DE LA MODIFICACIÓN ---
-const setsDisplay = (match.sets || []).map(s => {
-    // Si el equipo 1 (player1/player3) NO fue el ganador, 
-    // invertimos el marcador para que se muestre desde la perspectiva del ganador.
-    if (!team1_winner) {
-        return `${s.p2}/${s.p1}`;
-    }
-    // Si el equipo 1 fue el ganador, se muestra normal.
-    return `${s.p1}/${s.p2}`;
-}).join(' ');
+                
+                const setsDisplayRaw = (match.sets || []).map(s => {
+                    if (match.winner_id && !team1_winner) {
+                        return `${s.p2}/${s.p1}`;
+                    }
+                    return `${s.p1}/${s.p2}`;
+                }).join(' ');
                 
                 let resultadoDisplay = '';
-if (match.status === 'suspendido') {
-    resultadoDisplay = '<span style="color:#fff;font-weight:700;text-decoration:none !important;">Suspendido</span>';
-} else if (match.status === 'completado_wo') {
-    resultadoDisplay = '<span style="font-weight:700;">W.O.</span>';
-}
-else {
-    resultadoDisplay = setsDisplay;
-}
+                if (match.status === 'suspendido') {
+                    resultadoDisplay = '<span style="color:#fff;font-weight:700;text-decoration:none !important;">Suspendido</span>';
+                } else if (match.status === 'completado_wo') {
+                    resultadoDisplay = '<span style="font-weight:700;">W.O.</span>';
+                } else if (match.status === 'completado_ret') {
+                    resultadoDisplay = `<span style="font-weight:700;">${setsDisplayRaw} ret.</span>`;
+                } else {
+                    resultadoDisplay = setsDisplayRaw;
+                }
 
                 const p1TeamColor = match.player1.team?.color;
                 const p2TeamColor = match.player2.team?.color;
                 const p1TextColor = isColorLight(p1TeamColor) ? '#222' : '#fff';
                 const p2TextColor = isColorLight(p2TeamColor) ? '#222' : '#fff';
-
-                // --- INICIO DE LA MODIFICACIÓN ---
                 const played = !!match.winner_id;
-                // --- FIN DE LA MODIFICACIÓN ---
                 
                 let team1NameStyle = played && !team1_winner ? 'color:#888;' : '';
                 let team2NameStyle = played && !team2_winner ? 'color:#888;' : '';

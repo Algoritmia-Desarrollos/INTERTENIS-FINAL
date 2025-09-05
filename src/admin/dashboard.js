@@ -347,6 +347,59 @@ function openScoreModal(match) {
     }
 }
 
+
+// AGREGA esta nueva función en src/admin/dashboard.js
+async function handleRetirement(match, retiringSide) {
+    // 1. Recopila los resultados de los sets ingresados
+    const sets = [];
+    let p1SetsWon = 0, p2SetsWon = 0;
+    for (let i = 1; i <= 3; i++) {
+        const p1Score = document.getElementById(`p1_set${i}`).value;
+        const p2Score = document.getElementById(`p2_set${i}`).value;
+        if (p1Score && p2Score && p1Score !== '' && p2Score !== '') {
+            const p1 = parseInt(p1Score, 10);
+            const p2 = parseInt(p2Score, 10);
+            sets.push({ p1, p2 });
+            if (p1 > p2) p1SetsWon++;
+            if (p2 > p1) p2SetsWon++;
+        }
+    }
+
+    if (sets.length === 0) {
+        return alert("Por favor, ingrese el resultado de al menos un game antes de registrar un retiro.");
+    }
+
+    // 2. Determina el ganador y si el perdedor obtiene punto bonus
+    const winner_id = retiringSide === 'p1' ? match.player2_id : match.player1_id;
+    const bonus_loser = (retiringSide === 'p1' && p1SetsWon >= 1) || (retiringSide === 'p2' && p2SetsWon >= 1);
+
+    // 3. Pide confirmación al administrador
+    const retiringPlayerName = retiringSide === 'p1' ? match.player1.name : match.player2.name;
+    if (!confirm(`¿Confirmas que ${retiringPlayerName} se retira del partido?`)) {
+        return;
+    }
+
+    // 4. Prepara los datos para guardar
+    const updateData = {
+        winner_id,
+        sets,
+        status: 'completado_ret',
+        bonus_loser
+    };
+
+    // 5. Guarda en la base de datos
+    const { error } = await supabase.from('matches').update(updateData).eq('id', match.id);
+
+    if (error) {
+        alert("Error al registrar el retiro: " + error.message);
+    } else {
+        alert("Retiro registrado con éxito.");
+        closeModal();
+        await loadDashboardData();
+    }
+}
+
+
 function closeModal() {
     document.getElementById('score-modal-container').innerHTML = '';
 }
