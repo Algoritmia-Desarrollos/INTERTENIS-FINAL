@@ -124,15 +124,19 @@ function renderLastMatches(matchesToRender) {
         for(const sede in groupedBySede) {
             const matchesInSede = groupedBySede[sede];
             const dateObj = new Date(date + 'T00:00:00');
-            const formattedDate = new Intl.DateTimeFormat('es-AR', { weekday: 'long', day: 'numeric', month: 'long' }).format(dateObj);
+            
+            let formattedDate = new Intl.DateTimeFormat('es-AR', { weekday: 'long', day: 'numeric', month: 'long' }).format(dateObj);
+            formattedDate = formattedDate.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ').replace(' De ', ' de ');
+
             const headerBgColor = sede.toLowerCase() === 'centro' ? '#222222' : '#fdc100';
             const headerTextColor = sede.toLowerCase() === 'centro' ? '#ffc000' : '#000000';
+
             tableHTML += `
                <tr class="sede-fecha-row">
-                    <td colspan="3" style="background-color: ${headerBgColor}; color: ${headerTextColor}; font-weight: 700; text-align: center; vertical-align: middle; padding: 12px 0 8px 0; font-size: 15pt; border-radius: 0 !important; letter-spacing: 1px; border-right: none;">
+                    <td colspan="2" style="background-color: ${headerBgColor}; color: ${headerTextColor}; font-weight: 700; text-align: center; vertical-align: middle; padding: 12px 0 8px 0; font-size: 15pt; border-radius: 0 !important; letter-spacing: 1px;">
                         ${sede.toUpperCase()}
                     </td>
-                    <td colspan="6" style="background-color: ${headerBgColor}; color: ${headerTextColor}; font-weight: 700; text-align: center; vertical-align: middle; padding: 12px 0 8px 0; font-size: 15pt; border-radius: 0 !important; letter-spacing: 1px; border-left: none;">
+                    <td colspan="7" style="background-color: ${headerBgColor}; color: ${headerTextColor}; font-weight: 700; text-align: center; vertical-align: middle; padding: 12px 0 8px 0; font-size: 15pt; border-radius: 0 !important; letter-spacing: 1px;">
                         ${formattedDate}
                     </td>
                 </tr>`;
@@ -198,15 +202,15 @@ function renderLastMatches(matchesToRender) {
                 const suspendedClass = match.status === 'suspendido' ? 'suspended-row' : '';
                 tableHTML += `
                     <tr class="clickable-row data-row ${suspendedClass}" data-match-id="${match.id}">
-                        <td style="background-color: ${canchaBackgroundColor} !important; color: ${canchaTextColor} !important; font-weight: bold; border: 1px solid #666;">${cancha}</td>
-                        <td style="background:#000;color:#fff; border: 1px solid #666;">${hora}</td>
-                        <td class="player-name player-name-right ${p1_class}" style='background:#000;color:#fff;${p1NameStyle};font-size:12pt; border: 1px solid #666;'>${match.player1.name}</td>
-                        <td class="pts-col" style='background:${p1TeamColor || '#3a3838'};color:${p1TextColor}; border: 1px solid #666;'>${p1CellContent}</td>
-                        <td class="font-mono" style="background:#000;color:#fff; border: 1px solid #666;">${resultadoDisplay}</td>
-                        <td class="pts-col" style='background:${p2TeamColor || '#3a3838'};color:${p2TextColor}; border: 1px solid #666;'>${p2CellContent}</td>
-                        <td class="player-name player-name-left ${p2_class}" style='background:#000;color:#fff;${p2NameStyle};font-size:12pt; border: 1px solid #666;'>${match.player2.name}</td>
-                        <td class="cat-col" style="background:#000;color:${match.category?.color || '#b45309'}; border: 1px solid #666;">${match.category?.name || 'N/A'}</td>
-                        <td class="action-cell" style="background:#000; border: 1px solid #666;"><button class="p-1 rounded-full hover:bg-gray-700" data-action="edit" title="Editar / Cargar Resultado"><span class="material-icons text-base" style="color:#fff;">edit</span></button></td>
+                        <td style="background-color: ${canchaBackgroundColor} !important; color: ${canchaTextColor} !important; font-weight: bold;">${cancha}</td>
+                        <td style="background:#000;color:#fff;">${hora}</td>
+                        <td class="player-name player-name-right ${p1_class}" style='background:#000;color:#fff;${p1NameStyle};font-size:12pt;'>${match.player1.name}</td>
+                        <td class="pts-col" style='background:${p1TeamColor || '#3a3838'};color:${p1TextColor};'>${p1CellContent}</td>
+                        <td class="font-mono" style="background:#000;color:#fff;">${resultadoDisplay}</td>
+                        <td class="pts-col" style='background:${p2TeamColor || '#3a3838'};color:${p2TextColor};'>${p2CellContent}</td>
+                        <td class="player-name player-name-left ${p2_class}" style='background:#000;color:#fff;${p2NameStyle};font-size:12pt;'>${match.player2.name}</td>
+                        <td class="cat-col" style="background:#000;color:${match.category?.color || '#b45309'};">${match.category?.name || 'N/A'}</td>
+                        <td class="action-cell"><button class="p-1 rounded-full hover:bg-gray-700" data-action="edit" title="Editar / Cargar Resultado"><span class="material-icons text-base" style="color:#fff;">edit</span></button></td>
                     </tr>`;
             }
         }
@@ -216,18 +220,32 @@ function renderLastMatches(matchesToRender) {
     <div class="bg-[#18191b] p-4 sm:p-6 rounded-xl shadow-lg overflow-x-auto">
         <style>
             .matches-report-style { min-width: 800px; width: 100%; border-collapse: separate; border-spacing: 0; }
-            .matches-report-style th, .matches-report-style td { padding: 6px 4px; font-size: 9pt; border-bottom: 1px solid #4a4a4a; text-align: center; vertical-align: middle; background: #222222; color: #ffffff; white-space: nowrap; }
-            .matches-report-style thead th { background: #000; font-size: 8pt; color: #a0a0a0; text-transform: uppercase; font-weight: 600; padding-top: 8px; padding-bottom: 8px; border: none; }
+            .matches-report-style td {
+                padding: 6px 4px; font-size: 9pt; border-bottom: 3px solid #4a4a4a;
+                text-align: center; vertical-align: middle; background: #222222;
+                color: #ffffff; white-space: nowrap; border-right: 3px solid #4a4a4a;
+            }
+            .matches-report-style tr td:first-child { border-left: 3px solid #4a4a4a; }
             .matches-report-style tbody tr:last-child td { border-bottom: none; }
+            /* --- INICIO DE LA MODIFICACIÓN --- */
+            .matches-report-style .sede-fecha-row td { 
+                border-left: none; 
+                border-right: none; 
+                border-top: none;
+                border-bottom: 3px solid #4a4a4a;
+            }
+            /* --- FIN DE LA MODIFICACIÓN --- */
+            .matches-report-style thead th { background: #000; font-size: 8pt; color: #a0a0a0; text-transform: uppercase; font-weight: 600; padding-top: 8px; padding-bottom: 8px; border: none; }
             .matches-report-style .winner { font-weight: 700 !important; color: #f4ec05 !important; }
             .matches-report-style .player-name { font-weight: 700; font-size: 10pt; }
             .matches-report-style .player-name-right { text-align: right; padding-right: 8px; }
             .matches-report-style .player-name-left { text-align: left; padding-left: 8px; }
             .matches-report-style .font-mono { font-family: 'Consolas', 'Menlo', 'Courier New', monospace; font-size: 10pt; }
-            .matches-report-style .pts-col { font-weight: 700; text-align: center; }
+            .matches-report-style .pts-col { font-weight: 700; text-align: center; font-size: 12pt;}
             .matches-report-style .cat-col { font-family: 'Segoe UI Black', 'Arial Black', sans-serif; font-weight: 900; font-size: 10pt; text-align: center; }
             .matches-report-style .action-cell button { color: #9ca3af; }
             .matches-report-style .action-cell button:hover { color: #ffffff; }
+            .matches-report-style .suspended-row td { text-decoration: none !important; color: #ff4d4f !important; background: #2a1a1a !important; opacity: 0.85; font-weight: 700; }
         </style>
         <table class="matches-report-style">
             <colgroup><col style="width: 5%"><col style="width: 8%"><col style="width: 26%"><col style="width: 5%"><col style="width: 13%"><col style="width: 5%"><col style="width: 26%"><col style="width: 6%"><col style="width: 6%"></colgroup>
