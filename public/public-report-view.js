@@ -80,16 +80,24 @@ document.addEventListener('DOMContentLoaded', async () => {
                     let hora = match.match_time ? match.match_time.substring(0, 5) : 'HH:MM';
                     
                     // --- INICIO DE LA MODIFICACIÓN ---
-                    const setsDisplay = (match.sets || []).map(s => `${s.p1}/${s.p2}`).join(' ');
-                    let resultadoDisplay = '';
-                    if (match.status === 'suspendido') {
-                        resultadoDisplay = '<span style="color:#fff;font-weight:700;">Suspendido</span>';
-                    } else if (match.status === 'completado_wo') {
-                        resultadoDisplay = '<span style="font-weight:700;">W.O.</span>';
-                    } else {
-                        resultadoDisplay = setsDisplay;
-                    }
-                    // --- FIN DE LA MODIFICACIÓN ---
+const winnerIsSide1 = isDoubles ? (match.winner_id === match.player1.id || match.winner_id === match.player3.id) : (match.winner_id === match.player1.id);
+
+const setsDisplay = (match.sets || []).map(s => {
+    if (match.winner_id && !winnerIsSide1) {
+        return `${s.p2}/${s.p1}`;
+    }
+    return `${s.p1}/${s.p2}`;
+}).join(' ');
+
+let resultadoDisplay = '';
+if (match.status === 'suspendido') {
+    resultadoDisplay = '<span style="color:#fff;font-weight:700;">Suspendido</span>';
+} else if (match.status === 'completado_wo') {
+    resultadoDisplay = '<span style="font-weight:700;">W.O.</span>';
+} else {
+    resultadoDisplay = setsDisplay;
+}
+// --- FIN DE LA MODIFICACIÓN ---
                     
                     const p1TeamColor = match.player1.team?.color;
                     const p2TeamColor = match.player2.team?.color;

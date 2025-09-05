@@ -310,17 +310,26 @@ function renderMatches(matchesToRender) {
                 if (isDoubles && match.player4) team2_names += ` / ${match.player4.name}`;
 
                 let hora = match.match_time ? match.match_time.substring(0, 5) : 'HH:MM';
-                const setsDisplay = (match.sets || []).map(s => `${s.p1}/${s.p2}`).join(' ');
+// --- INICIO DE LA MODIFICACIÓN ---
+const setsDisplay = (match.sets || []).map(s => {
+    // Si el equipo 1 (player1/player3) NO fue el ganador, 
+    // invertimos el marcador para que se muestre desde la perspectiva del ganador.
+    if (!team1_winner) {
+        return `${s.p2}/${s.p1}`;
+    }
+    // Si el equipo 1 fue el ganador, se muestra normal.
+    return `${s.p1}/${s.p2}`;
+}).join(' ');
                 
                 let resultadoDisplay = '';
-                if (match.status === 'suspendido') {
-                    resultadoDisplay = '<span style="color:#fff;font-weight:700;text-decoration:none !important;">Suspendido</span>';
-                } else if (match.status === 'completado_wo') {
-                    resultadoDisplay = '<span style="font-weight:700;">W.O.</span>';
-                }
-                else {
-                    resultadoDisplay = setsDisplay;
-                }
+if (match.status === 'suspendido') {
+    resultadoDisplay = '<span style="color:#fff;font-weight:700;text-decoration:none !important;">Suspendido</span>';
+} else if (match.status === 'completado_wo') {
+    resultadoDisplay = '<span style="font-weight:700;">W.O.</span>';
+}
+else {
+    resultadoDisplay = setsDisplay;
+}
 
                 const p1TeamColor = match.player1.team?.color;
                 const p2TeamColor = match.player2.team?.color;

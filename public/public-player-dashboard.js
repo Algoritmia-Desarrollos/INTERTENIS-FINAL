@@ -168,15 +168,28 @@ function renderMatchesTable(matchesToRender, containerElement, emptyMessage) {
                 
                 let hora = match.match_time ? match.match_time.substring(0, 5) : 'HH:MM';
                 
-                let resultadoDisplay;
-                if (match.status === 'completado_wo') {
-                    resultadoDisplay = 'W.O.';
-                } else if (match.status === 'suspendido') {
-                    resultadoDisplay = 'Suspendido';
-                } else {
-                    resultadoDisplay = (match.sets || []).map(s => `${s.p1}/${s.p2}`).join(' ');
-                }
+// --- INICIO DE LA CORRECCIÓN ---
+const winnerIsSide1 = isDoubles 
+    ? (match.winner_id === match.player1.id || match.winner_id === match.player3.id) 
+    : (match.winner_id === match.player1.id);
 
+let setsDisplay = (match.sets || []).map(set => {
+    // Si el ganador del partido NO es del lado 1, invertimos el resultado del set
+    if (match.winner_id && !winnerIsSide1) {
+        return `${set.p2}/${set.p1}`;
+    }
+    return `${set.p1}/${set.p2}`;
+}).join(' ');
+
+let resultadoDisplay;
+if (match.status === 'completado_wo') {
+    resultadoDisplay = 'W.O.';
+} else if (match.status === 'suspendido') {
+    resultadoDisplay = 'Suspendido';
+} else {
+    resultadoDisplay = setsDisplay;
+}
+// --- FIN DE LA CORRECCIÓN ---
                 const p1TeamColor = match.player1.team?.color;
                 const p2TeamColor = match.player2.team?.color;
                 const p1TextColor = isColorLight(p1TeamColor) ? '#000' : '#fff';

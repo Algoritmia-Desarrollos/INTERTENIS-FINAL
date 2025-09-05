@@ -142,17 +142,27 @@ function renderLastMatches(matchesToRender) {
                 const p2_class = match.player2.id === match.winner_id ? 'winner' : '';
                 let hora = match.match_time ? match.match_time.substring(0, 5) : 'HH:MM';
                 
-                // --- INICIO DE LA MODIFICACIÓN ---
-                let resultadoDisplay = '';
-                if (match.status === 'suspendido') {
-                    resultadoDisplay = '<span style="color:#fff;font-weight:700;text-decoration:none !important;">Suspendido</span>';
-                } else if (match.status === 'completado_wo') {
-                    resultadoDisplay = '<span style="font-weight:700;">W.O.</span>';
-                }
-                else {
-                    resultadoDisplay = (match.sets || []).map(s => `${s.p1}/${s.p2}`).join(' ');
-                }
-                // --- FIN DE LA MODIFICACIÓN ---
+               // --- INICIO DE LA MODIFICACIÓN ---
+// Determina si el ganador es del equipo 1 (p1/p3)
+const winnerIsSide1 = match.player1.id === match.winner_id || (match.player3 && match.player3.id === match.winner_id);
+
+// Formatea los sets desde la perspectiva del ganador
+const setsDisplay = (match.sets || []).map(s => {
+    if (match.winner_id && !winnerIsSide1) {
+        return `${s.p2}/${s.p1}`; // Invierte el marcador si el ganador es del equipo 2
+    }
+    return `${s.p1}/${s.p2}`;
+}).join(' ');
+
+let resultadoDisplay = '';
+if (match.status === 'suspendido') {
+    resultadoDisplay = '<span style="color:#fff;font-weight:700;text-decoration:none !important;">Suspendido</span>';
+} else if (match.status === 'completado_wo') {
+    resultadoDisplay = '<span style="font-weight:700;">W.O.</span>';
+}
+else {
+    resultadoDisplay = setsDisplay;
+}
 
                 const p1TeamColor = match.player1.team?.color;
                 const p2TeamColor = match.player2.team?.color;
