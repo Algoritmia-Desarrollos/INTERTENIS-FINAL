@@ -12,29 +12,26 @@
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"/>
     
 <style>
-    /* Reglas que se aplican SIEMPRE (escritorio y celular) */
+
+   /* Reglas que se aplican SIEMPRE (escritorio y celular) */
     .rankings-table .col-prom {
       white-space: nowrap; /* Evita el salto de línea en la columna Promedio */
     }
-
-    /* Estilos que se aplican SÓLO en pantallas chicas (celulares) */
+    /* Estilos para pantallas chicas (celulares) */
     @media (max-width: 768px) {
       
-        /* Contenedor del nombre del jugador (esto se queda como está) */
+        /* Contenedor del nombre del jugador */
         .rankings-table .player-name-container {
             font-size: 0.875rem;
             font-weight: 600;
             text-align: left;
-            padding-left: 0.5rem;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
+            padding-left: 0.5rem; /* Mantenemos el texto a la izquierda */
         }
 
-        /* ---- 👇 2. AJUSTAMOS EL ANCHO DE LA COLUMNA DEL NOMBRE 👇 ---- */
+        /* Columna del nombre del jugador (CORREGIDO) */
         .rankings-table .col-player {
-            /* Usamos un porcentaje para que sea flexible */
-            width: 65%; /* <-- Aumentado de 45% a 65% */
+            /* 👇 ESTE ES EL CAMBIO FINAL Y CORRECTO 👇 */
+            min-width: 200px; /* Ancho mínimo para ver el nombre */
         }
     }
 </style>
