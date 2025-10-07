@@ -2,7 +2,7 @@ import { renderHeader } from '../common/header.js';
 import { requireRole } from '../common/router.js';
 import { supabase } from '../common/supabase.js';
 import { renderTeamScoreboard } from './team-scoreboard.js';
-import { calculatePoints } from './calculatePoints.js'; // <-- MODIFICACIÓN: Importar la función central
+import { calculatePoints } from './calculatePoints.js';
 
 requireRole('admin');
 
@@ -12,6 +12,7 @@ const tournamentFilter = document.getElementById('tournament-filter');
 const rankingsContainer = document.getElementById('rankings-container');
 const viewSwitcherContainer = document.getElementById('view-switcher-container');
 const filterLabel = document.getElementById('filter-label');
+const pageTitle = document.querySelector('h1'); // Seleccionar el H1 principal
 
 // --- Estado Global ---
 let allTournaments = [];
@@ -22,7 +23,7 @@ let currentView = 'category';
 function setupViewSwitcher() {
     viewSwitcherContainer.innerHTML = `
         <div class="flex border-b border-gray-700 mb-4">
-            <button id="btn-view-category" class="btn-view active">Por Categoría</button>
+            <button id="btn-view-category" class="btn-view active">Singles</button>
             <button id="btn-view-teams" class="btn-view">SuperLiga</button>
         </div>
         <style>
@@ -37,6 +38,7 @@ function setupViewSwitcher() {
     btnCategory.addEventListener('click', () => {
         if (currentView === 'category') return;
         currentView = 'category';
+        if(pageTitle) pageTitle.textContent = "Categorías";
         btnCategory.classList.add('active');
         btnTeams.classList.remove('active');
         populateTournamentFilter();
@@ -46,6 +48,7 @@ function setupViewSwitcher() {
     btnTeams.addEventListener('click', async () => {
         if (currentView === 'teams') return;
         currentView = 'teams';
+        if(pageTitle) pageTitle.textContent = "SuperLiga";
         btnTeams.classList.add('active');
         btnCategory.classList.remove('active');
         
@@ -71,7 +74,7 @@ async function populateTournamentFilter() {
 
     let tournamentsToShow = [];
     if (currentView === 'category') {
-        filterLabel.textContent = 'Seleccionar Torneo Individual';
+        filterLabel.textContent = 'Seleccionar Categoría';
         tournamentsToShow = allTournaments.filter(t => t.category && t.category.name !== 'Equipos');
     } else {
         filterLabel.textContent = 'Seleccionar SuperLiga';
@@ -100,10 +103,10 @@ function renderTeamRankings() {
 // --- RANKING POR CATEGORÍA ---
 async function renderCategoryRankings(playerToHighlight = null) {
     const tournamentId = tournamentFilter.value;
-    rankingsContainer.innerHTML = '<p class="text-center p-8 text-gray-400">Calculando rankings...</p>';
+    rankingsContainer.innerHTML = '<p class="text-center p-8 text-gray-400">Calculando POSICIONES...</p>';
 
     if (!tournamentId) {
-        rankingsContainer.innerHTML = '<div class="bg-[#222222] p-8 rounded-xl"><p class="text-center text-gray-400">Seleccione un torneo para ver los rankings.</p></div>';
+        rankingsContainer.innerHTML = '<div class="bg-[#222222] p-8 rounded-xl"><p class="text-center text-gray-400">Seleccione una categoría para ver las posiciones.</p></div>';
         return;
     }
 
@@ -228,60 +231,60 @@ function calculateCategoryStats(players, matches) {
 
 function generateCategoryRankingsHTML(stats, playerToHighlight = null) {
     let tableHTML = `
-        <table class="min-w-full text-sm text-gray-200">
+        <table class="min-w-full text-sm text-gray-200" style="border-spacing: 0; border-collapse: separate;">
             <thead class="bg-black">
                 <tr>
-                    <th class="px-3 py-3 text-center text-xs font-medium text-gray-400 uppercase tracking-wider">Pos.</th>
-                    <th class="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Jugador</th>
-                    <th class="px-3 py-3 text-center text-xs font-medium text-gray-400 uppercase tracking-wider">P+</th>
-                    <th class="px-3 py-3 text-center text-xs font-medium text-gray-400 uppercase tracking-wider">P-</th>
-                    <th class="px-3 py-3 text-center text-xs font-medium text-gray-400 uppercase tracking-wider">Dif.</th>
-                    <th class="px-3 py-3 text-center text-xs font-medium text-gray-400 uppercase tracking-wider border-l border-gray-700">S+</th>
-                    <th class="px-3 py-3 text-center text-xs font-medium text-gray-400 uppercase tracking-wider">S-</th>
-                    <th class="px-3 py-3 text-center text-xs font-medium text-gray-400 uppercase tracking-wider">Dif.</th>
-                    <th class="px-3 py-3 text-center text-xs font-medium text-gray-400 uppercase tracking-wider border-l border-gray-700">G+</th>
-                    <th class="px-3 py-3 text-center text-xs font-medium text-gray-400 uppercase tracking-wider">G-</th>
-                    <th class="px-3 py-3 text-center text-xs font-medium text-gray-400 uppercase tracking-wider">Dif.</th>
-                    <th class="px-3 py-3 text-center text-xs font-medium text-gray-400 uppercase tracking-wider border-l border-gray-700">Bon.</th>
-                    <th class="px-3 py-3 text-center text-xs font-medium text-gray-400 uppercase tracking-wider border-l border-gray-700">Pts.</th>
-                    <th class="px-3 py-3 text-center text-xs font-medium text-gray-400 uppercase tracking-wider border-l border-gray-700">Parcial</th>
-                    <th class="px-3 py-3 text-center text-xs font-medium text-gray-400 uppercase tracking-wider border-l border-gray-700">Prom. %</th>
+                    <th class="px-3 py-3 text-center text-xs font-medium text-gray-400 uppercase tracking-wider" style="border-width: 1px 0 1px 1px; border-color: #4b5563;">Pos.</th>
+                    <th class="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider" style="border-width: 1px 0 1px 1px; border-color: #4b5563;">Jugador</th>
+                    <th class="px-3 py-3 text-center text-xs font-medium text-gray-400 uppercase tracking-wider" style="border-width: 1px 0 1px 1px; border-color: #4b5563;">P+</th>
+                    <th class="px-3 py-3 text-center text-xs font-medium text-gray-400 uppercase tracking-wider" style="border-width: 1px 0 1px 1px; border-color: #4b5563;">P-</th>
+                    <th class="px-3 py-3 text-center text-xs font-medium text-gray-400 uppercase tracking-wider" style="border-width: 1px 1px 1px 1px; border-color: #4b5563 #6b7280 #4b5563 #4b5563;">Dif.</th>
+                    <th class="px-3 py-3 text-center text-xs font-medium text-gray-400 uppercase tracking-wider" style="border-width: 1px 0 1px 1px; border-color: #4b5563;">S+</th>
+                    <th class="px-3 py-3 text-center text-xs font-medium text-gray-400 uppercase tracking-wider" style="border-width: 1px 0 1px 1px; border-color: #4b5563;">S-</th>
+                    <th class="px-3 py-3 text-center text-xs font-medium text-gray-400 uppercase tracking-wider" style="border-width: 1px 1px 1px 1px; border-color: #4b5563 #6b7280 #4b5563 #4b5563;">Dif.</th>
+                    <th class="px-3 py-3 text-center text-xs font-medium text-gray-400 uppercase tracking-wider" style="border-width: 1px 0 1px 1px; border-color: #4b5563;">G+</th>
+                    <th class="px-3 py-3 text-center text-xs font-medium text-gray-400 uppercase tracking-wider" style="border-width: 1px 0 1px 1px; border-color: #4b5563;">G-</th>
+                    <th class="px-3 py-3 text-center text-xs font-medium text-gray-400 uppercase tracking-wider" style="border-width: 1px 1px 1px 1px; border-color: #4b5563 #6b7280 #4b5563 #4b5563;">Dif.</th>
+                    <th class="px-3 py-3 text-center text-xs font-medium text-gray-400 uppercase tracking-wider" style="border-width: 1px 1px 1px 1px; border-color: #4b5563;">Bon.</th>
+                    <th class="px-3 py-3 text-center text-xs font-medium text-gray-400 uppercase tracking-wider" style="border-width: 1px 1px 1px 1px; border-color: #4b5563;">Pts.</th>
+                    <th class="px-3 py-3 text-center text-xs font-medium text-gray-400 uppercase tracking-wider" style="border-width: 1px 1px 1px 1px; border-color: #4b5563;">Parcial</th>
+                    <th class="px-3 py-3 text-center text-xs font-medium text-gray-400 uppercase tracking-wider" style="border-width: 1px 1px 1px 1px; border-color: #4b5563;">Prom. %</th>
                 </tr>
             </thead>
-            <tbody class="divide-y divide-gray-700">`;
+            <tbody>`;
     
     if (stats.length === 0) {
         tableHTML += '<tr><td colspan="15" class="text-center p-8 text-gray-400">No hay jugadores en esta categoría para mostrar.</td></tr>';
     } else {
         stats.forEach((s, index) => {
             const hasPlayed = s.pj > 0;
-            const difPClass = s.difP < 0 ? 'text-red-500' : s.difP > 0 ? 'text-green-400' : 'text-gray-300';
-            const difSClass = s.difS < 0 ? 'text-red-500' : s.difS > 0 ? 'text-green-400' : 'text-gray-300';
-            const difGClass = s.difG < 0 ? 'text-red-500' : s.difG > 0 ? 'text-green-400' : 'text-gray-300';
-            const highlightClass = s.playerId == playerToHighlight ? 'bg-yellow-900/50 border-l-4 border-yellow-500' : '';
+            const difPClass = 'text-orange-400';
+            const difSClass = 'text-orange-400';
+            const difGClass = 'text-orange-400';
+            const highlightClass = s.playerId == playerToHighlight ? 'bg-yellow-900/50' : '';
 
             tableHTML += `
                 <tr class="${highlightClass}">
-                    <td class="px-3 py-3 font-bold text-yellow-400 text-base text-center">${index + 1}°</td>
-                    <td class="px-3 py-3 whitespace-nowrap">
+                    <td class="px-3 py-3 font-bold text-yellow-400 text-base text-center" style="border-width: 0 0 1px 1px; border-color: #4b5563;">${index + 1}°</td>
+                    <td class="px-3 py-3 whitespace-nowrap" style="border-width: 0 0 1px 1px; border-color: #4b5563;">
                         <div class="flex items-center gap-3">
                             <img src="${s.teamImageUrl || 'https://via.placeholder.com/40'}" alt="${s.teamName}" class="h-8 w-8 rounded-full object-cover">
                             <span class="font-bold text-gray-100">${s.name}</span>
                         </div>
                     </td>
-                    <td class="px-3 py-3 text-center">${hasPlayed ? s.pg : ''}</td>
-                    <td class="px-3 py-3 text-center">${hasPlayed ? s.pp : ''}</td>
-                    <td class="px-3 py-3 text-center font-semibold ${difPClass}">${hasPlayed ? s.difP : ''}</td>
-                    <td class="px-3 py-3 text-center border-l border-gray-700">${hasPlayed ? s.sg : ''}</td>
-                    <td class="px-3 py-3 text-center">${hasPlayed ? s.sp : ''}</td>
-                    <td class="px-3 py-3 text-center font-semibold ${difSClass}">${hasPlayed ? s.difS : ''}</td>
-                    <td class="px-3 py-3 text-center border-l border-gray-700">${hasPlayed ? s.gg : ''}</td>
-                    <td class="px-3 py-3 text-center">${hasPlayed ? s.gp : ''}</td>
-                    <td class="px-3 py-3 text-center font-semibold ${difGClass}">${hasPlayed ? s.difG : ''}</td>
-                    <td class="px-3 py-3 text-center border-l border-gray-700">${hasPlayed ? s.bonus : ''}</td>
-                    <td class="px-3 py-3 text-center border-l border-gray-700 font-bold text-lg text-yellow-300">${hasPlayed ? s.puntos : '0'}</td>
-                    <td class="px-3 py-3 text-center border-l border-gray-700">${hasPlayed ? s.parcial.toFixed(2) : ''}</td>
-                    <td class="px-3 py-3 text-center border-l border-gray-700 font-semibold">
+                    <td class="px-3 py-3 text-center font-bold" style="border-width: 0 0 1px 1px; border-color: #4b5563;">${hasPlayed ? s.pg : ''}</td>
+                    <td class="px-3 py-3 text-center font-bold" style="border-width: 0 0 1px 1px; border-color: #4b5563;">${hasPlayed ? s.pp : ''}</td>
+                    <td class="px-3 py-3 text-center font-bold ${difPClass}" style="border-width: 0 1px 1px 1px; border-color: #4b5563 #6b7280 #4b5563 #4b5563;">${hasPlayed ? s.difP : ''}</td>
+                    <td class="px-3 py-3 text-center font-bold" style="border-width: 0 0 1px 1px; border-color: #4b5563;">${hasPlayed ? s.sg : ''}</td>
+                    <td class="px-3 py-3 text-center font-bold" style="border-width: 0 0 1px 1px; border-color: #4b5563;">${hasPlayed ? s.sp : ''}</td>
+                    <td class="px-3 py-3 text-center font-bold ${difSClass}" style="border-width: 0 1px 1px 1px; border-color: #4b5563 #6b7280 #4b5563 #4b5563;">${hasPlayed ? s.difS : ''}</td>
+                    <td class="px-3 py-3 text-center font-bold" style="border-width: 0 0 1px 1px; border-color: #4b5563;">${hasPlayed ? s.gg : ''}</td>
+                    <td class="px-3 py-3 text-center font-bold" style="border-width: 0 0 1px 1px; border-color: #4b5563;">${hasPlayed ? s.gp : ''}</td>
+                    <td class="px-3 py-3 text-center font-bold ${difGClass}" style="border-width: 0 1px 1px 1px; border-color: #4b5563 #6b7280 #4b5563 #4b5563;">${hasPlayed ? s.difG : ''}</td>
+                    <td class="px-3 py-3 text-center font-bold text-red-500" style="border-width: 0 1px 1px 1px; border-color: #4b5563;">${hasPlayed ? s.bonus : ''}</td>
+                    <td class="px-3 py-3 text-center font-bold text-lg text-yellow-300" style="border-width: 0 1px 1px 1px; border-color: #4b5563;">${hasPlayed ? s.puntos : '0'}</td>
+                    <td class="px-3 py-3 text-center font-bold" style="border-width: 0 1px 1px 1px; border-color: #4b5563;">${hasPlayed ? s.parcial.toFixed(2) : ''}</td>
+                    <td class="px-3 py-3 text-center font-bold text-yellow-400" style="border-width: 0 1px 1px 1px; border-color: #4b5563;">
                         ${s.promedio.toFixed(2)}
                         <span class="text-xs text-gray-500">/${s.partidosParaPromediar}</span>
                     </td>
@@ -292,9 +295,11 @@ function generateCategoryRankingsHTML(stats, playerToHighlight = null) {
     return tableHTML;
 }
 
+
 // --- INICIALIZACIÓN Y EVENTOS ---
 document.addEventListener('DOMContentLoaded', async () => {
     header.innerHTML = renderHeader();
+    if(pageTitle) pageTitle.textContent = "Categorías";
     setupViewSwitcher();
     await populateTournamentFilter();
     
@@ -310,7 +315,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         await (currentView === 'category' ? renderCategoryRankings(playerToHighlight) : renderTeamRankings());
     } else {
-        rankingsContainer.innerHTML = '<div class="bg-[#222222] p-8 rounded-xl"><p class="text-center text-gray-400">Seleccione un torneo para ver los rankings.</p></div>';
+        rankingsContainer.innerHTML = '<div class="bg-[#222222] p-8 rounded-xl"><p class="text-center text-gray-400">Seleccione un torneo para ver las posiciones.</p></div>';
     }
 });
 

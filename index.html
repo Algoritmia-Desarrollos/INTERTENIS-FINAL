@@ -11,66 +11,33 @@
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"/>
     
-    <style>
-      /* --- INICIO DE LA MODIFICACIÓN --- */
-      @media screen and (max-width: 768px) {
-        /* ESTILOS PARA FILAS MÁS COMPACTAS */
-        #rankings-container table th,
-        #rankings-container table td {
-          padding-top: 0.4rem; 
-          padding-bottom: 0.4rem;
-          font-size: 0.875rem; 
-          padding-left: 0.4rem;
-          padding-right: 0.4rem;
-        }
-        #rankings-container table img {
-          height: 1.5rem;
-          width: 1.5rem;
-        }
-        #rankings-container table .font-bold.text-gray-100 {
-            font-size: 0.9rem; 
+<style>
+    /* Reglas que se aplican SIEMPRE (escritorio y celular) */
+    .rankings-table .col-prom {
+      white-space: nowrap; /* Evita el salto de línea en la columna Promedio */
+    }
+
+    /* Estilos que se aplican SÓLO en pantallas chicas (celulares) */
+    @media (max-width: 768px) {
+      
+        /* Contenedor del nombre del jugador (esto se queda como está) */
+        .rankings-table .player-name-container {
+            font-size: 0.875rem;
+            font-weight: 600;
+            text-align: left;
+            padding-left: 0.5rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
-        /* --- NUEVOS ESTILOS PARA COLUMNA DE JUGADOR FIJA Y MÁS ANCHA --- */
-        /* Se aplica solo a la segunda columna (Jugador) para que sea fija */
-        #rankings-container table th:nth-child(2),
-        #rankings-container table td:nth-child(2) {
-          position: -webkit-sticky; /* Compatibilidad con Safari */
-          position: sticky;
-          left: 0; /* Se pega al borde izquierdo del todo */
-          z-index: 10;
-          /* Se define un ancho mínimo para hacerla un poco más ancha */
-          min-width: 150px; 
+        /* ---- 👇 2. AJUSTAMOS EL ANCHO DE LA COLUMNA DEL NOMBRE 👇 ---- */
+        .rankings-table .col-player {
+            /* Usamos un porcentaje para que sea flexible */
+            width: 65%; /* <-- Aumentado de 45% a 65% */
         }
-        
-        /* Se asegura que la celda de datos fija tenga el fondo correcto */
-        #rankings-container table td:nth-child(2) {
-            background-color: #222222; 
-        }
-
-        /* Se asegura que el encabezado fijo tenga el fondo correcto */
-        #rankings-container table th:nth-child(2) {
-            background-color: #000;
-        }
-        
-        /* ESTILOS PARA TRUNCAR NOMBRES LARGOS */
-        #rankings-container table td:nth-child(2) > div {
-          min-width: 0;
-        }
-        #rankings-container table td:nth-child(2) span {
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
-        }
-      }
-      #rankings-container table {
-        border-collapse: collapse;
-      }
-      #rankings-container table th,
-      #rankings-container table td {
-        border: 2px solid #666;
-      }
-    </style>
+    }
+</style>
     </head>
 <body class="bg-black text-gray-200">
     <header id="header"></header>
