@@ -35,7 +35,7 @@ function renderMatches(matchesToRender) {
     let tableHTML = '';
 
     for (const [dateIdx, date] of sortedDates.entries()) {
-        if (dateIdx > 0) tableHTML += `<tr><td colspan="9" style="height: 18px; background: #000; border: none;"></td></tr>`;
+        if (dateIdx > 0) tableHTML += `<tr><td colspan="8" style="height: 18px; background: #000; border: none;"></td></tr>`;
         
         const groupedBySede = groupedByDate[date].reduce((acc, match) => {
             const sede = (match.location ? match.location.split(' - ')[0] : 'Sede no definida').trim();
@@ -55,9 +55,20 @@ function renderMatches(matchesToRender) {
             
             tableHTML += `
                 <tr>
-                    <td colspan="2" style="background-color: ${headerBgColor}; color: ${headerTextColor}; font-weight: 700; text-align: center; vertical-align: middle; padding: 12px 0 8px 0; font-size: 15pt; border-radius: 0; letter-spacing: 1px; border-right: none;">${sede.toUpperCase()}</td>
-                    <td colspan="7" style="background-color: ${headerBgColor}; color: ${headerTextColor}; font-weight: 700; text-align: center; vertical-align: middle; padding: 12px 0 8px 0; font-size: 15pt; border-radius: 0; letter-spacing: 1px; border-left: none;">${formattedDate}</td>
-                </tr>`;
+                    <td colspan="2" style="background-color: ${headerBgColor}; color: ${headerTextColor}; font-weight: 700; text-align: left; vertical-align: middle; padding: 12px 1rem; font-size: 15pt; border-radius: 0; letter-spacing: 1px;">${sede.toUpperCase()}</td>
+                    <td colspan="6" style="background-color: ${headerBgColor}; color: ${headerTextColor}; font-weight: 700; text-align: center; vertical-align: middle; padding: 12px 1rem; padding-right: 155px; font-size: 15pt; border-radius: 0; letter-spacing: 1px;">${formattedDate}</td>
+                </tr>
+                <tr style="font-size: 8px; color: #a0a0a0; font-weight: normal;">
+                    <th style="font-size: 12px; padding-bottom: 2px; text-align: center;">Cancha</th>
+                    <th style="font-size: 12px; padding-bottom: 2px; text-align: center;">Horario</th>
+                    <th></th>
+                    <th></th>
+                    <th></th>
+                    <th></th>
+                    <th></th>
+                    <th style="padding-bottom: 2px; font-size: 12px; text-left: center;">Categoría</th>
+                </tr>
+                `;
 
             for (const match of matchesInSede) {
                 const { p1_points, p2_points } = calculatePoints(match);
