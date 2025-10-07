@@ -59,14 +59,14 @@ function renderMatches(matchesToRender) {
                     <td colspan="6" style="background-color: ${headerBgColor}; color: ${headerTextColor}; font-weight: 700; text-align: center; vertical-align: middle; padding: 12px 1rem; padding-right: 155px; font-size: 15pt; border-radius: 0; letter-spacing: 1px;">${formattedDate}</td>
                 </tr>
                 <tr style="font-size: 8px; color: #a0a0a0; font-weight: normal;">
-                    <th style="font-size: 12px; padding-bottom: 2px; text-align: center;">Cancha</th>
-                    <th style="font-size: 12px; padding-bottom: 2px; text-align: center;">Horario</th>
-                    <th></th>
-                    <th></th>
-                    <th></th>
-                    <th></th>
-                    <th></th>
-                    <th style="padding-bottom: 2px; font-size: 12px; text-left: center;">Categoría</th>
+                    <th style="font-size: 12px; padding-bottom: 2px;background: black; text-align: center;">Cancha</th>
+                    <th style="font-size: 12px; padding-bottom: 2px;background: black;  text-align: center;">Horario</th>
+                    <th style="padding-bottom: 2px;background: black;  text-align: center;"></th>
+                    <th style="background: black;"></th>
+                    <th style="background: black;"></th>
+                    <th style="background: black;"></th>
+                    <th style="background: black;"></th>
+                    <th style="padding-bottom: 2px;background: black;  font-size: 12px; text-left: center;">Categoría</th>
                 </tr>
                 `;
 
