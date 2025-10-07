@@ -21,60 +21,21 @@
         box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.3);
       }
       
-      /* --- INICIO DE LA MODIFICACIÓN RESPONSIVE --- */
-      @media screen and (max-width: 768px) {
-        /* ESTILOS PARA FILAS MÁS COMPACTAS */
-        #rankings-container table th,
-        #rankings-container table td {
-          padding-top: 0.4rem; 
-          padding-bottom: 0.4rem;
-          font-size: 0.875rem; 
-          padding-left: 0.4rem;
-          padding-right: 0.4rem;
-        }
-        #rankings-container table img {
-          height: 1.5rem;
-          width: 1.5rem;
-        }
-        #rankings-container table .font-bold.text-gray-100 {
-            font-size: 0.9rem; 
-        }
-
-        /* ESTILOS PARA COLUMNA DE JUGADOR FIJA Y MÁS ANCHA */
-        #rankings-container table th:nth-child(2),
-        #rankings-container table td:nth-child(2) {
-          position: -webkit-sticky;
-          position: sticky;
-          left: 0;
-          z-index: 10;
-          min-width: 150px; 
-        }
-        
-        #rankings-container table td:nth-child(2) {
-            background-color: #222222; 
-        }
-
-        #rankings-container table th:nth-child(2) {
-            background-color: #000;
-        }
-        
-        /* ESTILOS PARA TRUNCAR NOMBRES LARGOS */
-        #rankings-container table td:nth-child(2) > div {
-          min-width: 0;
-        }
-        #rankings-container table td:nth-child(2) span {
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
-        }
+      /* Estilos unificados de la tabla de rankings */
+      .rankings-table .col-prom {
+        white-space: nowrap;
       }
-      /* --- FIN DE LA MODIFICACIÓN RESPONSIVE --- */
-      #rankings-container table {
-        border-collapse: collapse;
-      }
-      #rankings-container table th,
-      #rankings-container table td {
-        border: 2px solid #666;
+
+      @media (max-width: 768px) {
+        .rankings-table .player-name-container {
+            font-size: 0.875rem;
+            font-weight: 600;
+            text-align: left;
+            padding-left: 0.5rem;
+        }
+        .rankings-table .col-player {
+            min-width: 200px;
+        }
       }
     </style>
 </head>
