@@ -134,11 +134,11 @@ function renderMatches(matchesToRender) {
                     <tr class="data-row ${suspendedClass}">
                         <td style="background-color: ${canchaBackgroundColor} !important; color: ${canchaTextColor} !important; font-weight: bold;">${cancha}</td>
                         <td style="background:#000;color:#fff;">${hora}</td>
-                        <td class="player-name player-name-right ${team1_class}" style='background:#000;color:#fff;${team1NameStyle};'>${team1_names}</td>
+                        <td class="player-name player-name-right ${team1_class}" style='background:#000;color:#fff;${team1NameStyle}; font-size: 16px;'>${team1_names}</td>
                         <td class="pts-col" style='background:${p1TeamColor || '#3a3838'};color:${p1TextColor}; font-size: 20px; font-weight: 800'>${team1PointsDisplay}</td>
                         <td class="font-mono" style="background:#000;color:#fff; font-size: 16px; font-weight: 700;">${resultadoDisplay}</td>
                         <td class="pts-col" style='background:${p2TeamColor || '#3a3838'};color:${p2TextColor}; font-size: 20px; font-weight: 800'>${team2PointsDisplay}</td>
-                        <td class="player-name player-name-left ${team2_class}" style='background:#000;color:#fff;${team2NameStyle};'>${team2_names}</td>
+                        <td class="player-name player-name-left ${team2_class}" style='background:#000;color:#fff;${team2NameStyle}; font-size: 16px;'>${team2_names}</td>
                         <td class="cat-col" style="background:#000;color:${match.category?.color || '#b45309'};">${match.category?.name || 'N/A'}</td>
                     </tr>`;
             }
