@@ -11,7 +11,7 @@
   <link rel="stylesheet" href="../common/styles.css" />
   <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
   <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"/>
-<style>
+  <style>
     /* Estilos tabla rápida */
     .availability-table {
       border-collapse: separate; border-spacing: 0; width: 100%;
@@ -19,71 +19,63 @@
     }
     .availability-table th, .availability-table td {
       border: 1px solid #4b5563; padding: 0; text-align: center;
-      vertical-align: middle; height: 45px; /* Altura celdas datos */
+      vertical-align: middle; height: 45px;
     }
 
     /* --- CONTENEDOR CON SCROLL --- */
-    /* Asegúrate de que el contenedor tenga overflow y una altura definida */
     #availability-table-container {
-        overflow: auto; /* O overflow-y: auto; si solo quieres scroll vertical */
-        max-height: calc(100vh - 250px); /* O la altura que necesites */
-        position: relative; /* Necesario para el contexto de sticky */
+        overflow: auto; max-height: calc(100vh - 200px); /* Ajusta altura si es necesario */
+        position: relative;
     }
-
 
     /* --- Estilos Encabezado Fijo (Verticalmente) --- */
     .availability-table thead th {
-      /* Aplicar sticky a TODAS las celdas del encabezado */
-      position: sticky !important;
-      z-index: 10 !important; /* Encima del cuerpo */
-      background-color: #111827 !important; /* gray-900, !important */
-      color: #9ca3af; /* gray-400 */
-      padding: 0.3rem 0.1rem; white-space: nowrap;
+      position: sticky !important; z-index: 10 !important;
+      background-color: #111827 !important; /* gray-900 */
+      color: #9ca3af; padding: 0.1rem; white-space: nowrap;
     }
     /* Fila 1: Días/Fechas */
     .availability-table thead tr:first-child th {
-      top: 0 !important; /* Pega la primera fila arriba */
-      background-color: #1f2937 !important; /* gray-800, !important */
-      color: #e5e7eb !important; /* gray-200 */
+      top: 0 !important; background-color: #1f2937 !important; color: #e5e7eb !important;
       font-size: 0.8rem !important; line-height: 1.2 !important;
-      height: 40px !important; min-height: 40px !important; max-height: 40px !important; /* <<-- ALTURA FIJA */
+      height: 40px !important; min-height: 40px !important; max-height: 40px !important;
     }
-    /* Fila 2: M/T */
+    /* Fila 2: M/T Checkboxes */
     .availability-table thead tr:nth-child(2) th {
-       top: 40px !important; /* <<-- PEGA debajo (usa altura fila 1), !important */
-       font-size: 0.7rem !important;
-       background-color: #111827 !important; /* Fondo consistente */
-       height: 30px !important; min-height: 30px !important; max-height: 30px !important; /* Altura fija */
+       top: 40px !important; /* Debajo de fila 1 */
+       font-size: 0.7rem !important; height: 30px !important;
+       min-height: 30px !important; max-height: 30px !important;
+       padding: 0 !important; /* Reset padding */
     }
-     /* Esquina Superior Izquierda (Solo sticky vertical) */
+     .availability-table thead tr:nth-child(2) th label { /* Contenedor checkbox + texto */
+         display: flex; align-items: center; justify-content: center;
+         width: 100%; height: 100%; cursor: pointer; padding: 0 2px; /* Padding interno */
+         gap: 2px; /* Espacio entre checkbox y texto */
+     }
+      .availability-table thead tr:nth-child(2) th input[type="checkbox"] {
+          transform: scale(0.8); margin: 0; cursor: pointer;
+      }
+
+    /* Esquina Superior Izquierda */
      .availability-table thead tr:first-child th:first-child,
      .availability-table thead tr:nth-child(2) th:first-child {
-         z-index: 11 !important; /* Ligeramente por encima de otros th */
-         /* 'top' heredado, SIN left sticky */
-         /* Fondos específicos para asegurar visibilidad */
-         background-color: #111827 !important;
+         z-index: 11 !important; /* Encima de otros th */
+         background-color: #111827 !important; /* Fondo base */
      }
-     /* Sobreescribir fondo para la esquina superior superior */
       .availability-table thead tr:first-child th:first-child {
          background-color: #1f2937 !important; /* Coincide con Fila 1 */
      }
 
-
-    /* --- Columna Nombres (ASEGURARSE QUE NO SEA FIJA) --- */
+    /* Columna Nombres (NO FIJA) */
     .player-name-cell {
-      background-color: #1f2937; /* gray-800 */
-      font-weight: 600; text-align: left;
+      background-color: #1f2937; font-weight: 600; text-align: left;
       padding-left: 0.5rem; white-space: nowrap; overflow: hidden;
       text-overflow: ellipsis; width: 170px;
-      /* Explícitamente NO sticky */
-      position: static !important;
-      top: auto !important; left: auto !important; z-index: auto !important;
+      position: static !important; /* NO sticky */
     }
 
-
     /* Celdas de Slot */
-    .slot-cell {
-      cursor: pointer; background-color: #374151; /* NO disponible */
+    .slot-cell { cursor: pointer; background-color: #374151; /* NO disponible */
       transition: background-color 0.1s ease-in-out; min-width: 45px;
     }
     .slot-cell.available { background-color: #16a34a; /* DISPONIBLE */ }
@@ -91,7 +83,7 @@
     .player-row:hover .player-name-cell { background-color: #374151; }
     .player-row:hover .slot-cell { background-color: #4b5563; }
     .player-row:hover .slot-cell.available { background-color: #15803d; }
-    /* Inputs y botones */
+    /* Inputs y botones (Panel Superior) */
     .dark-input { background-color: #374151; border-color: #4b5563; color: #e5e7eb; }
     .dark-input:focus { border-color: #facc15; box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.3); }
     .week-nav-button { background-color: #374151; border: 1px solid #4b5563; color: #e5e7eb; padding: 0.3rem 0.6rem; border-radius: 0.3rem; font-size: 1rem; }
@@ -104,7 +96,7 @@
   <main class="flex-1 py-8">
     <div class="content-container max-w-[95%] mx-auto space-y-4">
       <div class="bg-[#222222] p-4 rounded-xl shadow-lg z-20">
-        <div class="flex flex-wrap gap-4 items-center justify-between mb-3">
+        <div class="flex flex-wrap gap-4 items-center justify-between">
           <div class="flex items-center gap-4">
              <div>
                 <label for="category-filter" class="sr-only">Filtrar por Categoría:</label>
@@ -120,7 +112,7 @@
             </div>
           </div>
           <div class="flex flex-wrap gap-2 items-center">
-             <span class="text-sm font-medium text-gray-300 mr-2">Acciones:</span>
+             <span class="text-sm font-medium text-gray-300 mr-2">Acciones (para jugadores y horarios seleccionados):</span>
             <button id="btn-apply-availability" class="btn btn-primary !py-1 !px-3 text-sm">
                 <span class="material-icons text-base">check_circle</span> Marcar como Disponible
             </button>
@@ -132,33 +124,11 @@
             </button>
           </div>
         </div>
-         <div class="flex flex-wrap gap-x-4 gap-y-1 items-center text-xs border-t border-gray-700 pt-2">
-            <strong class="mr-1 text-gray-400">Seleccionar Horarios:</strong>
-            <label class="hover:text-white cursor-pointer"><input type="checkbox" class="time-select-cb mr-1" data-day="1" data-slot="mañana">Lun M</label>
-            <label class="hover:text-white cursor-pointer"><input type="checkbox" class="time-select-cb mr-1" data-day="1" data-slot="tarde">Lun T</label>
-            <span class="mx-1 text-gray-600">|</span>
-             <label class="hover:text-white cursor-pointer"><input type="checkbox" class="time-select-cb mr-1" data-day="2" data-slot="mañana">Mar M</label>
-            <label class="hover:text-white cursor-pointer"><input type="checkbox" class="time-select-cb mr-1" data-day="2" data-slot="tarde">Mar T</label>
-             <span class="mx-1 text-gray-600">|</span>
-             <label class="hover:text-white cursor-pointer"><input type="checkbox" class="time-select-cb mr-1" data-day="3" data-slot="mañana">Mié M</label>
-            <label class="hover:text-white cursor-pointer"><input type="checkbox" class="time-select-cb mr-1" data-day="3" data-slot="tarde">Mié T</label>
-             <span class="mx-1 text-gray-600">|</span>
-             <label class="hover:text-white cursor-pointer"><input type="checkbox" class="time-select-cb mr-1" data-day="4" data-slot="mañana">Jue M</label>
-            <label class="hover:text-white cursor-pointer"><input type="checkbox" class="time-select-cb mr-1" data-day="4" data-slot="tarde">Jue T</label>
-             <span class="mx-1 text-gray-600">|</span>
-             <label class="hover:text-white cursor-pointer"><input type="checkbox" class="time-select-cb mr-1" data-day="5" data-slot="mañana">Vie M</label>
-            <label class="hover:text-white cursor-pointer"><input type="checkbox" class="time-select-cb mr-1" data-day="5" data-slot="tarde">Vie T</label>
-             <span class="mx-1 text-gray-600">|</span>
-             <label class="hover:text-white cursor-pointer"><input type="checkbox" class="time-select-cb mr-1" data-day="6" data-slot="mañana">Sáb M</label>
-            <label class="hover:text-white cursor-pointer"><input type="checkbox" class="time-select-cb mr-1" data-day="6" data-slot="tarde">Sáb T</label>
-             <span class="mx-1 text-gray-600">|</span>
-             <label class="hover:text-white cursor-pointer"><input type="checkbox" class="time-select-cb mr-1" data-day="0" data-slot="mañana">Dom M</label>
-            <label class="hover:text-white cursor-pointer"><input type="checkbox" class="time-select-cb mr-1" data-day="0" data-slot="tarde">Dom T</label>
         </div>
-      </div>
 
       <div class="bg-[#222222] p-1 rounded-xl shadow-lg mt-4">
-        <div id="availability-table-container" class="overflow-auto max-h-[calc(100vh - 250px)]"> <p id="loading-indicator" class="text-center text-gray-400 py-16">Cargando datos...</p>
+        <div id="availability-table-container" class="overflow-auto max-h-[calc(100vh - 200px)]">
+          <p id="loading-indicator" class="text-center text-gray-400 py-16">Cargando datos...</p>
            </div>
       </div>
 
