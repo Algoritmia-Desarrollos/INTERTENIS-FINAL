@@ -235,7 +235,6 @@ function applyQuickFilter(mode) {
     applyFiltersAndSort();
 }
 
-// REEMPLAZA esta función en src/admin/matches.js
 function renderMatches(matchesToRender) {
     if (matchesToRender.length === 0) {
         matchesContainer.innerHTML = '<p class="text-center text-gray-400 py-8">No hay partidos que coincidan con los filtros.</p>';
@@ -417,7 +416,6 @@ function renderMatches(matchesToRender) {
 
 // --- MODAL Y ACCIONES (NUEVO CÓDIGO UNIFICADO) ---
 
-// REEMPLAZA esta función en src/admin/matches.js
 function openScoreModal(match) {
     const sets = match.sets || [];
     const isPlayed = !!match.winner_id;
@@ -595,7 +593,6 @@ function openScoreModal(match) {
 }
 
 
-// AGREGA esta nueva función en src/admin/matches.js
 async function handleRetirement(match, retiringSide) {
     const isDoubles = !!(match.player3_id && match.player4_id);
 
@@ -837,6 +834,33 @@ function handleBulkReport() {
 document.addEventListener('DOMContentLoaded', async () => {
     header.innerHTML = renderHeader();
     await loadInitialData();
+
+    // --- INICIO DE LA MODIFICACIÓN: Cargar partidos del Suggester ---
+    // Revisar si venimos del Suggester
+    const preloadedData = sessionStorage.getItem('matchesToPreload');
+    if (preloadedData && massLoaderContainer) {
+        console.log("Datos de sugerencias encontrados. Mostrando carga masiva...");
+        
+        // 1. Mostrar el contenedor
+        massLoaderContainer.classList.remove('hidden');
+        
+        // 2. Actualizar el botón para que diga "Cancelar"
+        btnShowSinglesForm.innerHTML = '<span class="material-icons">close</span> Cancelar';
+        
+        // 3. Inicializar el loader (que leerá el sessionStorage)
+        if (!isSinglesLoaderInitialized) {
+            setupMassMatchLoader({
+                container: massLoaderContainer,
+                allTournaments,
+                allPlayers,
+                tournamentPlayersMap,
+                loadInitialData
+            });
+            isSinglesLoaderInitialized = true;
+        }
+    }
+    // --- FIN DE LA MODIFICACIÓN ---
+
     const cardPendientes = document.getElementById('card-pendientes');
     const cardRecientes = document.getElementById('card-recientes');
     if (cardPendientes) {
@@ -869,6 +893,12 @@ btnShowSinglesForm.addEventListener('click', () => {
         ? '<span class="material-icons">person_add</span> Crear Partido Individual'
         : '<span class="material-icons">close</span> Cancelar';
 
+    // --- INICIO MODIFICACIÓN: Limpiar sessionStorage si se cierra manualmente ---
+    if (isHidden) {
+        sessionStorage.removeItem('matchesToPreload');
+    }
+    // --- FIN MODIFICACIÓN ---
+
     if (!isHidden && !isSinglesLoaderInitialized) {
         setupMassMatchLoader({
             container: massLoaderContainer,
@@ -884,6 +914,9 @@ btnShowSinglesForm.addEventListener('click', () => {
 btnShowDoublesForm.addEventListener('click', () => {
     massLoaderContainer.classList.add('hidden');
     btnShowSinglesForm.innerHTML = '<span class="material-icons">person_add</span> Crear Partido Individual';
+    // --- INICIO MODIFICACIÓN: Limpiar sessionStorage si se abre el otro loader ---
+    sessionStorage.removeItem('matchesToPreload');
+    // --- FIN MODIFICACIÓN ---
 
     const isHidden = doublesLoaderContainer.classList.toggle('hidden');
     btnShowDoublesForm.innerHTML = isHidden
@@ -945,11 +978,9 @@ document.getElementById('bulk-delete').addEventListener('click', handleBulkDelet
 document.getElementById('bulk-report').addEventListener('click', handleBulkReport);
 document.getElementById('bulk-suspend').addEventListener('click', handleBulkSuspend);
 document.getElementById('btn-import-excel').addEventListener('click', () => {
-    // AHORA PASAMOS EL tournamentPlayersMap A LA FUNCIÓN
     importMatchesFromFile(allPlayers, allTournaments, tournamentPlayersMap)
         .then(success => {
             if (success) {
-                // Si la importación fue exitosa, recargamos todos los datos
                 loadInitialData();
             }
         });
