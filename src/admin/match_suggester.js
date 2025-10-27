@@ -2,22 +2,22 @@ import { renderHeader } from '../common/header.js';
 import { requireRole } from '../common/router.js';
 import { supabase, showToast } from '../common/supabase.js';
 // Importamos el "cerebro" (Asegúrate de tener matchmaking_logic.js)
-import { generateMatchSuggestions } from './matchmaking_logic.js'; 
+import { generateMatchSuggestions } from './matchmaking_logic.js';
 
 requireRole('admin');
 
 // --- CONSTANTES ---
 const DAYS = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
-// Horarios fijos como en el PDF de ejemplo
 const HORARIOS = {
     'mañana': ['09:00', '10:30', '12:30'],
     'tarde': ['14:30', '16:00']
 };
-const SEDES = ['funes', 'centro']; // IDs/nombres de las sedes
+const SEDES = ['funes', 'centro'];
 
 // --- ELEMENTOS DEL DOM ---
 const header = document.getElementById('header');
-const categoryMultiSelect = document.getElementById('category-multiselect');
+const tournamentMultiSelect = document.getElementById('tournament-multiselect');
+const btnSelectAllTournaments = document.getElementById('btn-select-all-tournaments'); // NUEVO
 const btnPrevWeek = document.getElementById('btn-prev-week');
 const btnNextWeek = document.getElementById('btn-next-week');
 const btnCurrentWeek = document.getElementById('btn-current-week');
@@ -32,10 +32,10 @@ const slotsFunesDiv = document.getElementById('slots-funes');
 const slotsCentroDiv = document.getElementById('slots-centro');
 
 // --- ESTADO ---
-let allCategories = [];
-let allPlayers = new Map(); // Map[id, {name, category_id}]
-let allTournaments = []; // Guardará {id, name, category_id}
+let allPlayers = new Map();
+let allTournaments = [];
 let currentWeekStartDate = getStartOfWeek(new Date());
+let currentSuggestionsBySlot = {}; // Para guardar las sugerencias generadas y usarlas al programar
 
 // --- FUNCIONES AUXILIARES ---
 
@@ -73,13 +73,13 @@ function getWeekDates(startDate) {
     return dates;
 }
 
-// Ordenar categorías numéricamente
-function sortCategories(categories) {
-    const getCategoryNumber = (name) => {
+// Ordenar torneos numéricamente por nombre
+function sortTournaments(tournaments) {
+    const getTournamentNumber = (name) => {
         if (!name) return Infinity; const match = name.match(/^(\d+)/); return match ? parseInt(match[1], 10) : Infinity;
     };
-    return [...categories].sort((a, b) => { // Crear copia antes de ordenar
-        const numA = getCategoryNumber(a.name); const numB = getCategoryNumber(b.name);
+    return [...tournaments].sort((a, b) => { // Crear copia antes de ordenar
+        const numA = getTournamentNumber(a.name); const numB = getTournamentNumber(b.name);
         if (numA !== Infinity && numB !== Infinity) { if (numA !== numB) { return numA - numB; } return a.name.localeCompare(b.name); }
         if (numA !== Infinity) return -1; if (numB !== Infinity) return 1; return a.name.localeCompare(b.name);
     });
@@ -97,43 +97,41 @@ async function loadInitialData() {
             { data: tournamentsData, error: tError },
             { data: playersData, error: pError }
          ] = await Promise.all([
-             supabase.from('tournaments').select('id, name, category:category_id(id, name)'),
-             supabase.from('players').select('id, name, category_id') // Cargar todos los jugadores
+             supabase.from('tournaments')
+                .select('id, name, category:category_id(id, name)')
+                .not('category.name', 'eq', 'Equipos'),
+             supabase.from('players').select('id, name, category_id')
          ]);
         if (tError) throw tError;
         if (pError) throw pError;
 
-        // Guardar torneos y extraer/ordenar categorías únicas
-        allTournaments = (tournamentsData || []).map(t => ({
-            id: t.id, name: t.name, category_id: t.category.id, categoryName: t.category.name
-        }));
-        const categoriesMap = new Map();
-        allTournaments.forEach(t => {
-            if (t.category && t.category.name.toLowerCase() !== 'equipos') {
-                categoriesMap.set(t.category.id, { id: t.category.id, name: t.category.name });
-            }
-        });
-        allCategories = sortCategories(Array.from(categoriesMap.values()));
+        allTournaments = sortTournaments(
+            (tournamentsData || [])
+            .filter(t => t.category != null)
+            .map(t => ({
+                id: t.id,
+                name: t.name,
+                category_id: t.category.id,
+                categoryName: t.category.name
+            }))
+        );
 
-        // Guardar jugadores en el Map
         allPlayers = new Map((playersData || []).map(p => [p.id, p]));
 
-        // Poblar selector múltiple de categorías
-        if (categoryMultiSelect) {
-            categoryMultiSelect.innerHTML = '';
-            allCategories.forEach(cat => {
-                categoryMultiSelect.innerHTML += `<option value="${cat.id}">${cat.name}</option>`;
+        if (tournamentMultiSelect) {
+            tournamentMultiSelect.innerHTML = '';
+            // ESTA ERA LA LÍNEA 78:
+            allTournaments.forEach(t => { 
+                tournamentMultiSelect.innerHTML += `<option value="${t.id}">${t.name} (${t.categoryName})</option>`;
             });
         } else {
-            console.error("Elemento 'category-multiselect' no encontrado al poblar.");
+            console.error("Elemento 'tournament-multiselect' no encontrado al poblar.");
         }
-
-        displayWeek(currentWeekStartDate); // Muestra semana y renderiza slots
-
-    } catch (error) {
+        displayWeek(currentWeekStartDate);
+    } catch (error) { // ESTA ERA LA LÍNEA 86
         console.error("Error loading initial data:", error);
         showToast("Error al cargar datos iniciales", "error");
-        if (categoryMultiSelect) categoryMultiSelect.innerHTML = '<option value="">Error al cargar</option>';
+        if (tournamentMultiSelect) tournamentMultiSelect.innerHTML = '<option value="">Error al cargar</option>';
     }
 }
 
@@ -237,41 +235,34 @@ function getDefinedSlots() {
     return slots;
 }
 
-// Recopila las categorías que el admin seleccionó
-function getSelectedCategories() {
-    if (!categoryMultiSelect) return []; // Comprobación de seguridad
-    return Array.from(categoryMultiSelect.selectedOptions).map(opt => Number(opt.value)); // Convertir a números
+function getSelectedTournaments() {
+    if (!tournamentMultiSelect) return [];
+    return Array.from(tournamentMultiSelect.selectedOptions).map(opt => Number(opt.value));
 }
 
 // --- LÓGICA PRINCIPAL: GENERACIÓN DE SUGERENCIAS ---
-
 async function handleFindSuggestions() {
-    const selectedCategoryIds = getSelectedCategories();
+    const selectedTournamentIds = getSelectedTournaments();
     const definedSlots = getDefinedSlots();
 
-    if (selectedCategoryIds.length === 0) { showToast("Debes seleccionar al menos una categoría.", "error"); return; }
-    if (definedSlots.length === 0) { showToast("Debes habilitar al menos un slot (horario y N° de canchas > 0).", "error"); return; }
+    if (selectedTournamentIds.length === 0) { showToast("Debes seleccionar al menos un torneo.", "error"); return; }
+    if (definedSlots.length === 0) { showToast("Debes habilitar al menos un slot.", "error"); return; }
 
     if (loadingSuggestionsDiv) loadingSuggestionsDiv.classList.remove('hidden');
     clearResults(true);
+    currentSuggestionsBySlot = {}; // Limpiar sugerencias anteriores
 
     try {
-        // 1. Obtener TODOS los datos necesarios
         const weekDates = getWeekDates(currentWeekStartDate);
         const startStr = formatDateYYYYMMDD(weekDates[0]);
         const endStr = formatDateYYYYMMDD(weekDates[6]);
 
-        const tournamentIds = allTournaments
-            .filter(t => selectedCategoryIds.includes(t.category_id))
-            .map(t => t.id);
+        console.log("Buscando datos para torneos:", selectedTournamentIds, "en fechas:", startStr, "-", endStr);
 
-        if (tournamentIds.length === 0) {
-            showToast("No se encontraron torneos activos para las categorías seleccionadas.", "warning");
-            if (loadingSuggestionsDiv) loadingSuggestionsDiv.classList.add('hidden');
-            return;
-        }
-
-        console.log("Buscando datos para torneos:", tournamentIds, "en fechas:", startStr, "-", endStr);
+        const selectedCategoryIds = allTournaments
+            .filter(t => selectedTournamentIds.includes(t.id))
+            .map(t => t.category_id);
+        const uniqueSelectedCategoryIds = [...new Set(selectedCategoryIds)];
 
         const [
             { data: inscriptionsData, error: iError },
@@ -280,60 +271,63 @@ async function handleFindSuggestions() {
             { data: programmedData, error: mError }
         ] = await Promise.all([
             supabase.from('tournament_players').select('player_id, zone_name, tournament_id')
-                .in('tournament_id', tournamentIds),
+                .in('tournament_id', selectedTournamentIds),
             supabase.from('player_availability').select('player_id, available_date, time_slot, zone')
                 .gte('available_date', startStr).lte('available_date', endStr),
-            supabase.from('matches').select('player1_id, player2_id, category_id, winner_id') // Historial
-                .in('category_id', selectedCategoryIds).not('winner_id', 'is', null),
-            supabase.from('matches').select('match_date, match_time, location') // Ya programados
+            supabase.from('matches').select('player1_id, player2_id, tournament_id, winner_id')
+                .in('tournament_id', selectedTournamentIds).not('winner_id', 'is', null),
+            supabase.from('matches').select('match_date, match_time, location')
                  .gte('match_date', startStr).lte('match_date', endStr)
                  .is('winner_id', null)
         ]);
-        
+
         if (iError) throw new Error(`Error fetching inscriptions: ${iError.message}`);
         if (aError) throw new Error(`Error fetching availability: ${aError.message}`);
         if (hError) throw new Error(`Error fetching history: ${hError.message}`);
         if (mError) throw new Error(`Error fetching programmed matches: ${mError.message}`);
 
-        // 2. Preparar datos para el "cerebro"
         const inputs = {
-            allPlayers: allPlayers, // El Map[id, {name, category_id}]
+            allPlayers: allPlayers,
             inscriptions: inscriptionsData || [],
             availability: (availabilityData || []).map(item => ({ ...item, available_date: item.available_date.split('T')[0] })),
             history: historyData || [],
             programmedMatches: (programmedData || []).map(item => ({...item, match_date: item.match_date.split('T')[0]})),
-            availableSlots: definedSlots, // Los slots que el admin definió
-            categories: allCategories.filter(c => selectedCategoryIds.includes(c.id)),
-            tournaments: allTournaments.filter(t => tournamentIds.includes(t.id))
+            availableSlots: definedSlots,
+            categories: allTournaments
+                .filter(t => selectedTournamentIds.includes(t.id))
+                .reduce((acc, t) => {
+                    if (!acc.some(c => c.id === t.category_id)) {
+                        acc.push({ id: t.category_id, name: t.categoryName });
+                    }
+                    return acc;
+                }, []),
+            tournaments: allTournaments.filter(t => selectedTournamentIds.includes(t.id))
         };
 
-        // 3. Llamar al "Cerebro" (matchmaking_logic.js)
         const { suggestionsBySlot, oddPlayers } = await generateMatchSuggestions(inputs);
 
-        // 4. Renderizar Resultados
+        currentSuggestionsBySlot = suggestionsBySlot; // Guardar para usar con el botón Programar
         renderResults(suggestionsBySlot, oddPlayers);
 
     } catch (error) {
         console.error("Error finding suggestions:", error);
         showToast("Error al buscar sugerencias: " + (error.message || "Error desconocido"), "error");
-        clearResults(true); // Ocultar secciones si hay error
+        clearResults(true);
     } finally {
         if (loadingSuggestionsDiv) loadingSuggestionsDiv.classList.add('hidden');
     }
 }
 
 // --- RENDERIZADO DE RESULTADOS ---
-
 function renderResults(suggestionsBySlot, oddPlayerIds) {
-    
     if (suggestionsGridDiv) {
         if (Object.keys(suggestionsBySlot).length > 0) {
             let gridHTML = '';
-            const sortedSlots = Object.keys(suggestionsBySlot).sort((a, b) => a.localeCompare(b)); // Ordenar Sede|Fecha|Hora
+            const sortedSlots = Object.keys(suggestionsBySlot).sort((a, b) => a.localeCompare(b));
 
             for (const slotKey of sortedSlots) {
                 const matches = suggestionsBySlot[slotKey];
-                if (!matches || matches.length === 0) continue; // Saltar si no hay partidos para este slot
+                if (!matches || matches.length === 0) continue;
 
                 const [sede, date, time] = slotKey.split('|');
                 const dateObj = new Date(date + 'T00:00:00');
@@ -346,29 +340,36 @@ function renderResults(suggestionsBySlot, oddPlayerIds) {
                         <div class="suggestion-card-body">
                             ${matches.map((match, index) => renderSuggestionMatch(match, index + 1)).join('')}
                         </div>
+                        <div class="suggestion-card-footer">
+                           <button class="btn btn-primary btn-program-slot" data-sede="${sede}" data-date="${date}" data-time="${time}">
+                                <span class="material-icons text-sm">schedule_send</span> Programar este Horario
+                           </button>
+                        </div>
                     </div>
                 `;
             }
             suggestionsGridDiv.innerHTML = gridHTML;
-            if(suggestionsSection) suggestionsSection.classList.remove('hidden');
+            if (suggestionsSection) suggestionsSection.classList.remove('hidden');
         } else {
-            suggestionsGridDiv.innerHTML = '<p class="text-gray-500 italic px-4 py-6">No se generaron sugerencias de partidos con los criterios y slots seleccionados.</p>';
+             suggestionsGridDiv.innerHTML = '<p class="text-gray-500 italic px-4 py-6">No se generaron sugerencias de partidos con los criterios y slots seleccionados.</p>';
             if(suggestionsSection) suggestionsSection.classList.remove('hidden');
         }
     }
 
-
     if (oddPlayersListUl) {
-        if (oddPlayerIds.length > 0) {
+        if (oddPlayerIds && oddPlayerIds.length > 0) {
             const oddByCategory = oddPlayerIds.reduce((acc, p) => {
-                const catName = p.categoryName || 'Categoría Desconocida';
+                const playerInfo = allPlayers.get(p.player_id);
+                const catId = playerInfo?.category_id;
+                const tourney = allTournaments.find(t => t.category_id === catId);
+                const catName = tourney?.categoryName || 'Categoría Desconocida';
                 if (!acc[catName]) acc[catName] = { players: [], reason: p.reason };
                 acc[catName].players.push(getPlayerName(p.player_id));
                 return acc;
             }, {});
 
             oddPlayersListUl.innerHTML = Object.entries(oddByCategory).map(([catName, data]) => `
-                <li class="col-span-full md:col-span-1">
+                <li>
                     <strong class="text-yellow-400 text-sm">${catName}:</strong>
                     <span class="text-xs text-gray-300">${data.players.join(', ')}</span>
                     <em class="text-xs text-gray-500 block">(Motivo: ${data.reason})</em>
@@ -376,7 +377,7 @@ function renderResults(suggestionsBySlot, oddPlayerIds) {
             `).join('');
 
         } else {
-            oddPlayersListUl.innerHTML = '<li class="text-gray-500 italic col-span-full">No quedaron jugadores sobrantes.</li>';
+            oddPlayersListUl.innerHTML = '<li class="text-gray-500 italic">No quedaron jugadores sobrantes.</li>';
         }
         if(oddPlayersSection) oddPlayersSection.classList.remove('hidden');
     }
@@ -405,6 +406,7 @@ function renderSuggestionMatch(match, canchaNum) {
 }
 
 function clearResults(hideSections = false) {
+    currentSuggestionsBySlot = {};
     if (suggestionsGridDiv) suggestionsGridDiv.innerHTML = '';
     if (oddPlayersListUl) oddPlayersListUl.innerHTML = '';
     if (hideSections) {
@@ -413,54 +415,81 @@ function clearResults(hideSections = false) {
     }
 }
 
-// --- EVENT LISTENERS GENERALES ---
-    
-// Esperar a que el DOM esté listo
-document.addEventListener('DOMContentLoaded', () => {
-    // Renderizar header
-    if (header) {
-        try {
-            header.innerHTML = renderHeader();
-        } catch (e) {
-            console.error("Error renderizando header:", e);
-        }
-    } else {
-        console.error("Elemento 'header' no encontrado.");
+// --- Lógica para el botón "Programar" ---
+function handleProgramSlotClick(event) {
+    const button = event.target.closest('.btn-program-slot');
+    if (!button) return;
+
+    const sede = button.dataset.sede;
+    const date = button.dataset.date;
+    const time = button.dataset.time;
+    const slotKey = `${sede}|${date}|${time}`;
+
+    const matchesToProgram = currentSuggestionsBySlot[slotKey];
+    if (!matchesToProgram || matchesToProgram.length === 0) {
+        showToast("No hay partidos en este bloque para programar.", "warning");
+        return;
     }
-    
-    // Cargar datos iniciales (torneos, jugadores, etc.)
+
+    const preloadData = matchesToProgram.map((match, index) => {
+        const playerAInfo = allPlayers.get(match.playerA_id);
+        
+        // Encontrar UN torneo correspondiente a la categoría del jugador A
+        const relevantTournament = allTournaments.find(t => t.category_id === playerAInfo?.category_id);
+
+        return {
+            clientId: `suggested_${Date.now()}_${match.playerA_id}_${index}`, // ID temporal único
+            tournament_id: relevantTournament?.id || null,
+            player1_id: match.playerA_id,
+            player2_id: match.playerB_id,
+            match_date: date ? date.split('-').reverse().join('/') : null, // YYYY-MM-DD a DD/MM/YYYY
+            match_time: time || null,
+            sede: sede ? sede.charAt(0).toUpperCase() + sede.slice(1) : null, // Capitalizar (ej: Funes)
+            cancha: `Cancha ${index + 1}` // Asignar Cancha 1, 2, 3...
+        };
+    });
+
+    sessionStorage.setItem('matchesToPreload', JSON.stringify(preloadData));
+    window.location.href = '/src/admin/matches.html'; // Asegúrate que la ruta sea correcta
+    showToast(`Redirigiendo para programar ${preloadData.length} partidos...`, "success");
+}
+
+
+// --- EVENT LISTENERS GENERALES ---
+document.addEventListener('DOMContentLoaded', () => {
+    if (header) { try { header.innerHTML = renderHeader(); } catch (e) { console.error("Error renderizando header:", e); } }
+    else { console.error("Elemento 'header' no encontrado."); }
+
     loadInitialData();
 
-    // --- CORRECCIÓN: Usar 'categoryMultiSelect' en lugar de 'categoryFilter' ---
-    if (categoryMultiSelect) {
-        categoryMultiSelect.addEventListener('change', clearResults);
-    } else {
-        console.error("Elemento 'category-multiselect' no encontrado.");
-    }
-    // --- FIN CORRECCIÓN ---
+    if (tournamentMultiSelect) {
+        tournamentMultiSelect.addEventListener('change', () => clearResults(true));
+    } else { console.error("Elemento 'tournament-multiselect' no encontrado."); }
 
-    if (btnPrevWeek) {
-        btnPrevWeek.addEventListener('click', goToPreviousWeek);
-    } else {
-        console.error("Elemento 'btn-prev-week' no encontrado.");
-    }
+    if (btnSelectAllTournaments) {
+        btnSelectAllTournaments.addEventListener('click', () => {
+            if (tournamentMultiSelect) {
+                Array.from(tournamentMultiSelect.options).forEach(opt => opt.selected = true);
+                clearResults(true);
+            }
+        });
+    } else { console.error("Elemento 'btn-select-all-tournaments' no encontrado."); }
 
-    if (btnNextWeek) {
-        btnNextWeek.addEventListener('click', goToNextWeek);
-    } else {
-         console.error("Elemento 'btn-next-week' no encontrado.");
-    }
+    if (btnPrevWeek) { btnPrevWeek.addEventListener('click', goToPreviousWeek); }
+    else { console.error("Elemento 'btn-prev-week' no encontrado."); }
 
-    if (btnCurrentWeek) {
-        btnCurrentWeek.addEventListener('click', goToCurrentWeek);
-    } else {
-         console.error("Elemento 'btn-current-week' no encontrado.");
-    }
+    if (btnNextWeek) { btnNextWeek.addEventListener('click', goToNextWeek); }
+    else { console.error("Elemento 'btn-next-week' no encontrado."); }
 
-    if (btnFindSuggestions) {
-        btnFindSuggestions.addEventListener('click', handleFindSuggestions);
-    } else {
-         console.error("Elemento 'btn-find-suggestions' no encontrado.");
-    }
+    if (btnCurrentWeek) { btnCurrentWeek.addEventListener('click', goToCurrentWeek); }
+    else { console.error("Elemento 'btn-current-week' no encontrado."); }
 
-}); // Fin DOMContentLoaded
+    if (btnFindSuggestions) { btnFindSuggestions.addEventListener('click', handleFindSuggestions); }
+    else { console.error("Elemento 'btn-find-suggestions' no encontrado."); }
+
+    // Listener delegado para los botones "Programar"
+    if (suggestionsGridDiv) {
+        suggestionsGridDiv.addEventListener('click', handleProgramSlotClick);
+    } else { console.error("Elemento 'suggestions-grid' no encontrado.")}
+
+}); // ESTA ES LA LÍNEA 340

@@ -15,6 +15,7 @@ export function setupMassMatchLoader({
   let uniqueIdCounter = 0;
   let currentSelectedCell = null;
   let clipboardCellValue = null;
+  
   // --- COPIAR Y PEGAR CELDAS CON CTRL+C / CTRL+V ---
   document.addEventListener('keydown', function(e) {
     if (!currentSelectedCell) return;
@@ -143,7 +144,7 @@ export function setupMassMatchLoader({
   headerContainer.style.display = 'flex';
   headerContainer.style.justifyContent = 'flex-end';
   headerContainer.style.padding = '1rem 0';
-  
+
 
 
   if (!btnAddRow) {
@@ -172,20 +173,20 @@ export function setupMassMatchLoader({
       btnSave.style.fontWeight = 'bold';
       headerContainer.appendChild(btnSave);
   }
-  
+
   container.prepend(headerContainer);
 
 
   // --- OPCIONES CACHEADAS ---
   const individualTournaments = allTournaments.filter(t => t.category && t.category.name !== 'Equipos');
   const tournamentOptionsHTML = `<option value="">Seleccionar Torneo</option>` + individualTournaments.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
-  
+
   const sedeOptionsHTML = `<option value="">Seleccionar</option>` + ['Funes', 'Centro'].map(s => `<option value="${s}">${s}</option>`).join('');
   const canchaOptionsHTML = `<option value="">Seleccionar</option>` + [1, 2, 3, 4, 5, 6].map(n => `<option value="Cancha ${n}">Cancha ${n}</option>`).join('');
 
   const tableContainer = document.createElement('div');
   tableContainer.className = 'overflow-x-auto';
-  
+
   const existingTable = container.querySelector('#mass-matches-table');
   if(existingTable) existingTable.parentElement.remove();
   container.appendChild(tableContainer);
@@ -239,7 +240,9 @@ export function setupMassMatchLoader({
     if (editingInput) {
       value = editingInput.value;
     } else {
-      value = this.textContent;
+      // Necesitamos encontrar el valor real en `matchesData` para copiarlo correctamente
+      const match = matchesData.find(m => m.clientId == rowId);
+      value = match ? match[field] : ''; // Usar el valor del estado, no del DOM
     }
     dragCellInfo = { rowId, field, value };
     this.style.opacity = '0.5';
@@ -259,7 +262,7 @@ export function setupMassMatchLoader({
       const matchIdxTo = matchesData.findIndex(m => m.clientId == rowIdTarget);
       if (matchIdxTo > -1) {
         const field = this.dataset.field;
-        matchesData[matchIdxTo][field] = dragCellInfo.value;
+        matchesData[matchIdxTo][field] = dragCellInfo.value; // Pegar el valor del estado
         renderTable();
       }
     }
@@ -270,6 +273,7 @@ export function setupMassMatchLoader({
     this.style.border = '';
     dragCellInfo = null;
   }
+
 
   // --- DRAG AND DROP LOGIC ---
   let dragSrcRowId = null;
@@ -306,7 +310,7 @@ export function setupMassMatchLoader({
     const tournamentName = allTournaments.find(t => t.id == match.tournament_id)?.name || '---';
     const player1Name = allPlayers.find(p => p.id == match.player1_id)?.name || '---';
     const player2Name = allPlayers.find(p => p.id == match.player2_id)?.name || '---';
-    
+
   const cellStyle = "overflow:hidden; white-space:nowrap; text-overflow:ellipsis; color:#fff; background:#18191b;";
     return `
       <tr data-row-id="${match.clientId}">
@@ -335,159 +339,183 @@ export function setupMassMatchLoader({
     const match = matchesData.find(m => m.clientId == rowId);
     if (!match) return;
 
-    const originalContent = cell.innerHTML;
-    cell.innerHTML = ''; 
+    const originalContent = cell.innerHTML; // Guardar contenido HTML para restaurar
+    const originalValue = match[field] || ''; // Guardar valor real del estado
+    cell.innerHTML = '';
 
     let inputElement;
 
-  // Función para guardar cambios (solo una vez)
-  let saveChangeCalled = false;
-  const saveChange = () => {
-    if (saveChangeCalled) return;
-    saveChangeCalled = true;
-    if (!cell.classList.contains('is-editing')) return;
-    const newValue = inputElement.value;
-    const matchIndex = matchesData.findIndex(m => m.clientId == rowId);
-    if (matchIndex > -1) {
-      matchesData[matchIndex][field] = newValue;
-      if (field === 'tournament_id') {
-        matchesData[matchIndex].player1_id = null;
-        matchesData[matchIndex].player2_id = null;
-        renderTable(); return;
-      }
-      let displayValue = newValue;
-      if (inputElement.tagName === 'SELECT') {
-        displayValue = inputElement.options[inputElement.selectedIndex]?.text || '---';
-      }
-      cell.innerHTML = displayValue || '---';
-    }
-    cell.classList.remove('is-editing');
-  };
+    // Función para guardar cambios (solo una vez)
+    let saveChangeCalled = false;
+    const saveChange = () => {
+        if (saveChangeCalled) return;
+        saveChangeCalled = true;
+        if (!cell.classList.contains('is-editing')) return; // Evitar doble guardado en blur + change
 
-  switch (field) {
-    case 'tournament_id': case 'player1_id': case 'player2_id': case 'sede': case 'cancha':
-      inputElement = document.createElement('select');
-      if (field === 'tournament_id') {
-        inputElement.innerHTML = tournamentOptionsHTML;
-        inputElement.value = match.tournament_id || '';
-      } else if (field === 'player1_id' || field === 'player2_id') {
-        const playerIds = tournamentPlayersMap.get(Number(match.tournament_id)) || new Set();
-        const players = allPlayers.filter(p => playerIds.has(p.id));
-        let excludeId = null;
-        if (field === 'player1_id') excludeId = match.player2_id;
-        if (field === 'player2_id') excludeId = match.player1_id;
-        const filteredPlayers = excludeId ? players.filter(p => String(p.id) !== String(excludeId)) : players;
-        inputElement.innerHTML = '<option value="">Seleccionar</option>' + filteredPlayers.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
-        inputElement.value = match[field] || '';
-      } else if (field === 'sede') {
-        inputElement.innerHTML = sedeOptionsHTML;
-        inputElement.value = match.sede || '';
-      } else if (field === 'cancha') {
-        inputElement.innerHTML = canchaOptionsHTML;
-        inputElement.value = match.cancha || '';
-      }
-      break;
-        
-  case 'match_time':
-    inputElement = document.createElement('select');
-    inputElement.className = 'editing-input';
-    inputElement.style.color = 'black';
-    inputElement.style.background = 'white';
-    // Generar opciones de 08:00 a 22:45 cada 15 minutos
-    let options = '<option value="">Seleccionar</option>';
-    for (let h = 8; h <= 22; h++) {
-    for (let m = 0; m < 60; m += 15) {
-      let hour = h.toString().padStart(2, '0');
-      let min = m.toString().padStart(2, '0');
-      let value = `${hour}:${min}`;
-      options += `<option value="${value}">${value}</option>`;
-    }
-    }
-    inputElement.innerHTML = options;
-    inputElement.value = match.match_time || '';
-    break;
+        const newValue = inputElement.value;
+        const matchIndex = matchesData.findIndex(m => m.clientId == rowId);
+
+        if (matchIndex > -1) {
+            // Validar jugador duplicado ANTES de guardar
+            if (field === 'player1_id' && newValue && newValue === matchesData[matchIndex].player2_id) {
+                alert("El Jugador 1 no puede ser igual al Jugador 2.");
+                cell.innerHTML = originalContent; // Restaurar contenido
+                cell.classList.remove('is-editing');
+                return;
+            }
+            if (field === 'player2_id' && newValue && newValue === matchesData[matchIndex].player1_id) {
+                alert("El Jugador 2 no puede ser igual al Jugador 1.");
+                cell.innerHTML = originalContent; // Restaurar contenido
+                cell.classList.remove('is-editing');
+                return;
+            }
+
+            // Actualizar el estado
+            matchesData[matchIndex][field] = newValue;
+
+            // Lógica de reseteo si cambia torneo
+            if (field === 'tournament_id' && newValue !== originalValue) {
+                matchesData[matchIndex].player1_id = null;
+                matchesData[matchIndex].player2_id = null;
+                // Re-renderizar toda la tabla para actualizar opciones de jugador
+                renderTable();
+                return; // Salir porque renderTable() se encarga
+            }
+
+             // Actualizar visualización de la celda editada
+            let displayValue = newValue;
+            if (inputElement.tagName === 'SELECT' && inputElement.selectedIndex > 0) {
+                 displayValue = inputElement.options[inputElement.selectedIndex].text;
+            } else if (inputElement.tagName === 'SELECT' && inputElement.selectedIndex <= 0) {
+                 displayValue = '---'; // Mostrar si se selecciona "-- Seleccionar --"
+            }
+             cell.innerHTML = displayValue || '---';
+
+        } else {
+             // Si algo falló (no debería pasar), restaurar
+             cell.innerHTML = originalContent;
+        }
+        cell.classList.remove('is-editing');
+    };
+
+
+    switch (field) {
+        case 'tournament_id': case 'player1_id': case 'player2_id': case 'sede': case 'cancha':
+            inputElement = document.createElement('select');
+            if (field === 'tournament_id') {
+                inputElement.innerHTML = tournamentOptionsHTML;
+                inputElement.value = match.tournament_id || '';
+            } else if (field === 'player1_id' || field === 'player2_id') {
+                 // Usar tournamentPlayersMap para obtener jugadores del torneo seleccionado
+                const playerIdsInTournament = tournamentPlayersMap.get(Number(match.tournament_id)) || new Set();
+                const playersInTournament = allPlayers.filter(p => playerIdsInTournament.has(p.id));
+
+                let opponentId = null;
+                if (field === 'player1_id') opponentId = match.player2_id;
+                if (field === 'player2_id') opponentId = match.player1_id;
+
+                 // Filtrar para no mostrar el oponente
+                const availablePlayers = opponentId
+                    ? playersInTournament.filter(p => String(p.id) !== String(opponentId))
+                    : playersInTournament;
+
+                inputElement.innerHTML = '<option value="">Seleccionar</option>' + availablePlayers.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+                inputElement.value = match[field] || ''; // Establecer valor actual
+            } else if (field === 'sede') {
+                inputElement.innerHTML = sedeOptionsHTML;
+                inputElement.value = match.sede || '';
+            } else if (field === 'cancha') {
+                inputElement.innerHTML = canchaOptionsHTML;
+                inputElement.value = match.cancha || '';
+            }
+            break;
+
+        case 'match_time':
+            inputElement = document.createElement('select');
+            let timeOptions = '<option value="">Seleccionar</option>';
+            for (let h = 8; h <= 22; h++) {
+                for (let m = 0; m < 60; m += 15) {
+                    let hour = h.toString().padStart(2, '0');
+                    let min = m.toString().padStart(2, '0');
+                    let value = `${hour}:${min}`;
+                    timeOptions += `<option value="${value}">${value}</option>`;
+                }
+            }
+            inputElement.innerHTML = timeOptions;
+            inputElement.value = match.match_time || '';
+            break;
 
         case 'match_date':
-      inputElement = document.createElement('input');
-      inputElement.type = 'text';
-      inputElement.placeholder = 'Seleccionar fecha...';
-      inputElement.style.width = '100%';
-      inputElement.style.height = '100%';
-      inputElement.style.boxSizing = 'border-box';
-      inputElement.style.fontSize = 'inherit';
-      inputElement.style.fontFamily = 'inherit';
-      inputElement.style.background = 'white';
-      inputElement.style.border = 'none';
-      inputElement.style.outline = 'none';
-      inputElement.style.padding = '0 2px';
-      inputElement.style.margin = '0';
-      cell.appendChild(inputElement);
+            inputElement = document.createElement('input');
+            inputElement.type = 'text'; // Para usar flatpickr
+            inputElement.placeholder = 'Seleccionar fecha...';
+            inputElement.className = 'editing-input'; // Aplicar estilo base
+             // Anular estilos conflictivos para input de fecha
+            inputElement.style.position = 'static';
+            inputElement.style.color = '#333';
+            inputElement.style.background = '#fff';
+            inputElement.style.padding = '4px 6px';
+            inputElement.style.border = '1px solid #ccc';
+            inputElement.style.borderRadius = '4px';
 
-      function openCalendar() {
-        const fp = flatpickr(inputElement, {
-          dateFormat: 'd/m/Y', allowInput: true,
-          defaultDate: match.match_date || 'today',
-          onClose: (selectedDates, dateStr, instance) => {
-            const finalValue = instance.input.value;
-            const matchIndex = matchesData.findIndex(m => m.clientId == rowId);
-            if (matchIndex > -1) matchesData[matchIndex].match_date = finalValue;
-            cell.innerHTML = finalValue || '---';
-            cell.classList.remove('is-editing');
-          }
-        });
-        fp.open();
-      }
+            cell.appendChild(inputElement);
 
-      if (window.flatpickr) {
-        openCalendar();
-      } else {
-        const link = document.createElement('link');
-        link.rel = 'stylesheet';
-        link.href = 'https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css';
-        document.head.appendChild(link);
-        const script = document.createElement('script');
-        script.src = 'https://cdn.jsdelivr.net/npm/flatpickr';
-        script.onload = openCalendar;
-        document.body.appendChild(script);
-      }
-      return;
+            // Función para abrir calendario (flatpickr)
+            const openCalendar = () => {
+                flatpickr(inputElement, {
+                    dateFormat: 'd/m/Y', // Formato día/mes/año
+                    allowInput: true, // Permitir escribir
+                    defaultDate: match.match_date || 'today', // Fecha inicial
+                    onClose: (selectedDates, dateStr, instance) => {
+                        // Usar el valor del input, que puede ser tipeado o seleccionado
+                        const finalValue = instance.input.value;
+                        const matchIndex = matchesData.findIndex(m => m.clientId == rowId);
+                        if (matchIndex > -1) {
+                            // Validar formato d/m/Y antes de guardar
+                            if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(finalValue) || finalValue === '') {
+                                matchesData[matchIndex].match_date = finalValue || null;
+                                cell.innerHTML = finalValue || '---';
+                            } else {
+                                // Si el formato es inválido, revertir
+                                cell.innerHTML = originalContent;
+                                alert("Formato de fecha inválido. Use DD/MM/AAAA.");
+                            }
+                        } else {
+                             cell.innerHTML = originalContent; // Restaurar si no se encuentra
+                        }
+                        cell.classList.remove('is-editing'); // Quitar modo edición
+                    }
+                }).open(); // Abrir inmediatamente
+            };
 
-        default:
-            cell.innerHTML = originalContent;
-            cell.classList.remove('is-editing');
-            return;
+            // Cargar flatpickr si no está y luego abrir calendario
+            if (!window.flatpickr) {
+                const link = document.createElement('link'); link.rel = 'stylesheet'; link.href = 'https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css'; document.head.appendChild(link);
+                const script = document.createElement('script'); script.src = 'https://cdn.jsdelivr.net/npm/flatpickr'; script.onload = openCalendar; document.body.appendChild(script);
+            } else { openCalendar(); }
+            return; // No continuar con listeners genéricos
+
+        default: cell.innerHTML = originalContent; cell.classList.remove('is-editing'); return;
     }
 
-  inputElement.className = 'editing-input';
-  inputElement.style.color = 'black';
-  inputElement.style.background = 'white';
-  cell.appendChild(inputElement);
-  inputElement.focus();
-
-  if ((inputElement.tagName === 'SELECT' || inputElement.type === 'time') && typeof inputElement.showPicker === 'function') {
-      setTimeout(() => inputElement.showPicker(), 0);
-  }
-
-  if (inputElement.tagName === 'SELECT') {
-    inputElement.addEventListener('change', () => {
-      saveChange();
-    });
-  }
-
-  inputElement.addEventListener('blur', saveChange);
-  inputElement.addEventListener('keydown', e => {
+    inputElement.className = 'editing-input';
+    cell.appendChild(inputElement);
+    inputElement.focus();
+    
+    // Si es un select, intentar abrirlo
+    if (inputElement.tagName === 'SELECT' && typeof inputElement.showPicker === 'function') {
+         setTimeout(() => inputElement.showPicker(), 0); // Intentar abrir el dropdown
+    } else if (inputElement.tagName === 'SELECT') {
+         // Fallback para navegadores que no soportan showPicker
+         const event = new MouseEvent('mousedown'); inputElement.dispatchEvent(event);
+    }
+    
+    inputElement.addEventListener('change', saveChange);
+    inputElement.addEventListener('blur', saveChange);
+    inputElement.addEventListener('keydown', e => {
       if (e.key === 'Enter' || e.key === 'Tab') { e.preventDefault(); inputElement.blur(); } 
       else if (e.key === 'Escape') { cell.innerHTML = originalContent; cell.classList.remove('is-editing'); }
-  });
-  if (inputElement.tagName === 'SELECT') {
-    inputElement.style.color = 'black';
-    inputElement.style.background = 'white';
-    inputElement.style.direction = 'ltr';
-    inputElement.style.position = '';
-    inputElement.style.zIndex = '';
-    inputElement.style.boxShadow = '';
-    setTimeout(() => inputElement.focus(), 0);
-  }
+    });
   }
 
   // --- OPERACIONES DE FILA ---
@@ -527,6 +555,26 @@ export function setupMassMatchLoader({
   btnSave.addEventListener('click', saveAllMatches);
   
   // --- INICIALIZACIÓN ---
-  renderTable();
-  if (matchesData.length === 0) addRow();
+  // AÑADIDO: Comprobar si hay datos pre-cargados en sessionStorage
+  const preloadedData = sessionStorage.getItem('matchesToPreload');
+  if (preloadedData) {
+      try {
+          matchesData = JSON.parse(preloadedData);
+          // Limpiar sessionStorage después de cargarlo
+          sessionStorage.removeItem('matchesToPreload');
+          console.log("Datos de sugerencias cargados desde sessionStorage:", matchesData);
+      } catch (e) {
+          console.error("Error al parsear datos pre-cargados:", e);
+          matchesData = []; // Resetear si hay error
+      }
+  } else {
+      matchesData = []; // Empezar vacío si no hay nada pre-cargado
+  }
+
+  renderTable(); // Renderizar la tabla con los datos (pre-cargados o vacíos)
+  if (matchesData.length === 0) {
+      addRow(); // Añadir una fila vacía si no se cargó nada
+  } else {
+      updateSaveButton(); // Actualizar el contador del botón si se cargaron datos
+  }
 }
