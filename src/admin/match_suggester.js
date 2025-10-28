@@ -40,19 +40,20 @@ let allCategories = [];
 let currentWeekStartDate = getStartOfWeek(new Date());
 let currentSuggestions = [];
 let playersByTournament = new Map();
-let activeEditingCell = null;
-let playerMatchCounts = new Map(); // Partidos Jugados (PJ) = Jugados + Pendientes Pasados
-let playerPendingCounts = new Map(); // Partidos Pendientes Futuros (P) = Pendientes con fecha >= hoy
+let activeEditingCell = null; // Celda TD que se está editando actualmente
+let playerMatchCounts = new Map();
+let playerPendingCounts = new Map();
 
 // --- FUNCIONES AUXILIARES ---
 function getStartOfWeek(date) {
     const d = new Date(date);
     const day = d.getDay();
-    const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Lunes como inicio de semana
-    return new Date(d.setDate(diff));
+    const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+    const monday = new Date(d.setDate(diff));
+    monday.setHours(0,0,0,0);
+    return monday;
 }
 function formatDateYYYYMMDD(date) {
-    // Usar hora local para comparar con la fecha actual del navegador
     const y = date.getFullYear();
     const m = (date.getMonth() + 1).toString().padStart(2, '0');
     const d = date.getDate().toString().padStart(2, '0');
@@ -82,9 +83,18 @@ function sortTournaments(tournaments) {
         if (numA !== Infinity) return -1; if (numB !== Infinity) return 1; return a.name.localeCompare(b.name);
     });
 }
-function getPlayerName(playerId) {
+function getPlayerInfo(playerId) {
     const id = Number(playerId);
-    return allPlayers.get(id)?.name || 'N/A';
+    return allPlayers.get(id) || null;
+}
+function isColorLight(hex) {
+    if (!hex) return false;
+    let c = hex.replace('#', '');
+    if (c.length === 3) c = c.split('').map(x => x + x).join('');
+    const r = parseInt(c.substr(0, 2), 16),
+          g = parseInt(c.substr(2, 2), 16),
+          b = parseInt(c.substr(4, 2), 16);
+    return ((0.299 * r + 0.587 * g + 0.114 * b) > 150);
 }
 
 // --- CARGA INICIAL ---
@@ -96,9 +106,11 @@ async function loadInitialData() {
             { data: inscriptionsData, error: iError }
          ] = await Promise.all([
              supabase.from('tournaments')
-                .select('id, name, category:category_id(id, name)')
+                .select('id, name, category:category_id(id, name, color)')
                 .not('category.name', 'eq', 'Equipos'),
-             supabase.from('players').select('id, name, category_id'),
+             supabase.from('players')
+                .select('id, name, category_id, team:team_id(name, image_url, color)')
+                .order('name'),
              supabase.from('tournament_players').select('player_id, tournament_id')
          ]);
         if (tError) throw tError; if (pError) throw pError; if (iError) throw iError;
@@ -106,8 +118,8 @@ async function loadInitialData() {
         const categoriesMap = new Map();
         allTournaments = sortTournaments(
             (tournamentsData || []).filter(t => t.category != null).map(t => {
-                categoriesMap.set(t.category.id, { id: t.category.id, name: t.category.name });
-                return { id: t.id, name: t.name, category_id: t.category.id, categoryName: t.category.name };
+                categoriesMap.set(t.category.id, { id: t.category.id, name: t.category.name, color: t.category.color });
+                return { id: t.id, name: t.name, category_id: t.category.id, categoryName: t.category.name, categoryColor: t.category.color };
             })
         );
         allCategories = Array.from(categoriesMap.values());
@@ -152,7 +164,7 @@ async function loadInitialData() {
 function displayWeek(startDate) {
     currentWeekStartDate = new Date(startDate);
     const endDate = new Date(startDate);
-    endDate.setDate(startDate.getDate() + 6);
+    endDate.setDate(endDate.getDate() + 6);
     if (currentWeekDisplay) currentWeekDisplay.textContent = `${formatDateDDMM(startDate)} - ${formatDateDDMM(endDate)}`;
     renderSlotDefiners(getWeekDates(startDate));
     clearResults(true);
@@ -236,18 +248,15 @@ async function handleFindSuggestions() {
 
     try {
         const weekDates = getWeekDates(currentWeekStartDate);
-        const startStr = formatDateYYYYMMDD(weekDates[0]); // Inicio de la semana objetivo
-        const endStr = formatDateYYYYMMDD(weekDates[6]);   // Fin de la semana objetivo
-        const today = new Date(); today.setHours(0, 0, 0, 0); // Establecer a medianoche para comparar solo la fecha
-        const todayStr = formatDateYYYYMMDD(today); // Fecha de hoy en YYYY-MM-DD local
+        const startStr = formatDateYYYYMMDD(weekDates[0]);
+        const endStr = formatDateYYYYMMDD(weekDates[6]);
+        const today = new Date(); today.setHours(0, 0, 0, 0);
+        const todayStr = formatDateYYYYMMDD(today);
 
-        // Fetch de datos necesarios
         const [
             { data: inscriptionsData, error: iError },
             { data: availabilityData, error: aError },
-            // Fetch TODOS los partidos (jugados y pendientes) de los TORNEOS SELECCIONADOS
             { data: allSelectedTournamentMatches, error: tMatchesError },
-            // Fetch PENDIENTES matches OUTSIDE selected tournaments but WITHIN the target week (para slot checking)
             { data: programmedOutsideData, error: mError }
         ] = await Promise.all([
             supabase.from('tournament_players').select('player_id, zone_name, tournament_id').in('tournament_id', selectedTournamentIds),
@@ -258,22 +267,22 @@ async function handleFindSuggestions() {
         if (iError) throw iError; if (aError) throw aError; if (tMatchesError) throw tMatchesError;
         if (mError) throw mError;
 
-        // Calcular PJ (Jugados + Pendientes Pasados) y P (Pendientes Futuros)
         playerMatchCounts.clear();
         playerPendingCounts.clear();
         (allSelectedTournamentMatches || []).forEach(match => {
             if (!match.match_date) return;
-
             const matchDateStr = match.match_date.split('T')[0];
             const isPast = matchDateStr < todayStr;
             const isPlayed = !!match.winner_id;
-            const playersInMatch = [match.player1_id, match.player2_id, match.player3_id, match.player4_id].filter(Boolean);
+            const playersInMatch = [match.player1_id, match.player2_id, match.player3_id, match.player4_id].filter(p => p !== null && p !== undefined);
 
             playersInMatch.forEach(playerId => {
-                if (isPlayed || (!isPlayed && isPast)) {
-                    playerMatchCounts.set(playerId, (playerMatchCounts.get(playerId) || 0) + 1);
-                } else if (!isPlayed && !isPast) {
-                    playerPendingCounts.set(playerId, (playerPendingCounts.get(playerId) || 0) + 1);
+                if (playerId) {
+                    if (isPlayed || (!isPlayed && isPast)) {
+                        playerMatchCounts.set(playerId, (playerMatchCounts.get(playerId) || 0) + 1);
+                    } else if (!isPlayed && !isPast) {
+                        playerPendingCounts.set(playerId, (playerPendingCounts.get(playerId) || 0) + 1);
+                    }
                 }
             });
         });
@@ -312,26 +321,23 @@ function flattenSuggestions(suggestionsBySlot) {
     for (const slotKey in suggestionsBySlot) {
         const [sede, date, time] = slotKey.split('|');
         const matches = suggestionsBySlot[slotKey];
-        matches.forEach((match, index) => {
-            const playerA = allPlayers.get(match.playerA_id);
-            const playerB = allPlayers.get(match.playerB_id);
+        matches.forEach((match) => {
+            const playerA = getPlayerInfo(match.playerA_id);
+            const playerB = getPlayerInfo(match.playerB_id);
             const tournament = allTournaments.find(t => t.category_id === playerA?.category_id);
-            const player1_matchesPlayed = playerMatchCounts.get(match.playerA_id) || 0;
-            const player2_matchesPlayed = playerMatchCounts.get(match.playerB_id) || 0;
-            const player1_pendingCount = playerPendingCounts.get(match.playerA_id) || 0;
-            const player2_pendingCount = playerPendingCounts.get(match.playerB_id) || 0;
+            const categoryColor = tournament?.categoryColor || '#b45309';
 
             flatList.push({
-                _id: `match_${matchCounter++}`, sede, date, time,
+                _id: `match_${matchCounter++}`,
+                sede, date, time,
                 canchaNum: match.canchaNum,
                 player1_id: match.playerA_id,
                 player2_id: match.playerB_id,
-                player1_matchesPlayed: player1_matchesPlayed,
-                player2_matchesPlayed: player2_matchesPlayed,
-                player1_pendingCount: player1_pendingCount,
-                player2_pendingCount: player2_pendingCount,
+                player1_info: playerA,
+                player2_info: playerB,
                 tournament_id: tournament?.id || null,
                 categoryName: match.categoryName,
+                categoryColor: categoryColor,
                 isRevancha: match.isRevancha
             });
         });
@@ -339,72 +345,122 @@ function flattenSuggestions(suggestionsBySlot) {
 }
 
 function renderResults(suggestionsList, oddPlayerInfo) {
-    if (suggestionsGridContainer) {
-        if (suggestionsList.length > 0) {
-            const grouped = suggestionsList.reduce((acc, match) => {
-                const key = `${match.sede}|${match.date}|${match.time}`;
-                if (!acc[key]) acc[key] = []; acc[key].push(match); return acc;
-            }, {});
-            let tableHTML = `<table class="suggestion-program-table"><thead><tr>
-                <th>Cancha</th><th>Hora</th>
-                <th class="!text-right">Jugador 1</th><th>vs</th><th class="!text-left">Jugador 2</th>
-                <th class="!text-left">Torneo</th><th>Eliminar</th>
-                </tr></thead><tbody>`;
-            const sortedSlotKeys = Object.keys(grouped).sort();
-            for (const slotKey of sortedSlotKeys) {
-                const matches = grouped[slotKey];
-                matches.sort((a, b) => {
-                    const totalA = a.player1_matchesPlayed + a.player1_pendingCount + a.player2_matchesPlayed + a.player2_pendingCount;
-                    const totalB = b.player1_matchesPlayed + b.player1_pendingCount + b.player2_matchesPlayed + b.player2_pendingCount;
-                    if (totalA !== totalB) return totalA - totalB;
-                    return a.canchaNum - b.canchaNum;
-                });
-                const [sede, date, time] = slotKey.split('|');
-                const dateObj = new Date(date + 'T00:00:00Z'); // Usar Z para indicar UTC
-                const headerText = `${sede.toUpperCase()} - ${DAYS[dateObj.getUTCDay()]} ${formatDateDDMM(dateObj)} - ${time} hs`;
-                tableHTML += `<tr class="group-header-row"><td colspan="7">${headerText} (${matches.length} Partidos)</td></tr>`;
-                matches.forEach(match => { tableHTML += renderSuggestionRow(match); });
+    if (!suggestionsGridContainer) return;
+
+    if (suggestionsList.length > 0) {
+        const groupedByDateSede = suggestionsList.reduce((acc, match) => {
+            const date = match.date;
+            const sede = match.sede || 'Sin Sede';
+            if (!acc[date]) acc[date] = {};
+            if (!acc[date][sede]) acc[date][sede] = [];
+            acc[date][sede].push(match);
+            return acc;
+        }, {});
+
+        const sortedDates = Object.keys(groupedByDateSede).sort((a, b) => new Date(a) - new Date(b));
+        let tableHTML = '';
+
+        for (const date of sortedDates) {
+            const sedesInDate = groupedByDateSede[date];
+            if (tableHTML !== '') {
+                 tableHTML += `<tr><td colspan="10" style="height: 18px; background: #000; border: none;"></td></tr>`;
             }
-            tableHTML += '</tbody></table>';
-            suggestionsGridContainer.innerHTML = tableHTML;
-            if (suggestionsSection) suggestionsSection.classList.remove('hidden');
-        } else {
-            suggestionsGridContainer.innerHTML = '<p class="text-gray-500 italic px-4 py-6 text-center">No se generaron sugerencias.</p>';
-            if (suggestionsSection) suggestionsSection.classList.add('hidden');
+
+            for (const sede in sedesInDate) {
+                const matchesInSede = sedesInDate[sede];
+                matchesInSede.sort((a, b) => a.canchaNum - b.canchaNum || a.time.localeCompare(b.time));
+
+                const dateObj = new Date(date + 'T00:00:00Z');
+                const weekday = dateObj.toLocaleDateString('es-AR', { weekday: 'long', timeZone: 'UTC' });
+                const day = dateObj.getUTCDate();
+                const month = dateObj.toLocaleDateString('es-AR', { month: 'long', timeZone: 'UTC' });
+                let formattedDate = `${weekday} ${day} de ${month}`;
+                formattedDate = formattedDate.charAt(0).toUpperCase() + formattedDate.slice(1);
+
+                const headerBgColor = sede.toLowerCase() === 'centro' ? '#222222' : '#fdc100';
+                const headerTextColor = sede.toLowerCase() === 'centro' ? '#ffc000' : '#000000';
+
+                tableHTML += `
+                    <tr>
+                        <td colspan="3" style="background-color: ${headerBgColor}; color: ${headerTextColor}; font-weight: 700; text-align: center; vertical-align: middle; padding: 12px 0 8px 0; font-size: 15pt; border-radius: 0; letter-spacing: 1px; border-right: none;">
+                            ${sede.toUpperCase()}
+                        </td>
+                        <td colspan="7" style="background-color: ${headerBgColor}; color: ${headerTextColor}; font-weight: 700; text-align: center; vertical-align: middle; padding: 12px 0 8px 0; font-size: 15pt; border-radius: 0; letter-spacing: 1px; border-left: none;">
+                            ${formattedDate} (${matchesInSede.length} Partidos)
+                        </td>
+                    </tr>`;
+
+                matchesInSede.forEach(match => {
+                    tableHTML += renderSuggestionRow(match);
+                });
+            }
         }
+
+        suggestionsGridContainer.innerHTML = `
+            <table class="matches-report-style">
+                <colgroup>
+                    <col style="width: 4%"> <col style="width: 5%"> <col style="width: 4%">
+                    <col style="width: 25%"> <col style="width: 5%"> <col style="width: 13%">
+                    <col style="width: 5%"> <col style="width: 25%"> <col style="width: 5%">
+                    <col style="width: 5%">
+                </colgroup>
+                <thead>
+                 <tr>
+                    <th></th>
+                    <th>Cancha</th><th>Hora</th><th style="text-align: right; padding-right: 8px;">Jugador 1</th>
+                    <th>Pts</th><th>Resultado</th><th>Pts</th>
+                    <th style="text-align: left; padding-left: 8px;">Jugador 2</th><th>Cat.</th><th>Acción</th>
+                 </tr>
+                </thead>
+                <tbody>${tableHTML}</tbody>
+            </table>
+        `;
+        if (suggestionsSection) suggestionsSection.classList.remove('hidden');
+    } else {
+        suggestionsGridContainer.innerHTML = '<p class="text-gray-500 italic px-4 py-6 text-center">No se generaron sugerencias.</p>';
+        if (suggestionsSection) suggestionsSection.classList.add('hidden');
     }
     if (loadingSuggestionsDiv) loadingSuggestionsDiv.classList.add('hidden');
     updateProgramButtonState();
 }
 
 function renderSuggestionRow(match) {
-    const playerA_name = getPlayerName(match.player1_id);
-    const playerB_name = getPlayerName(match.player2_id);
-    const tournament = allTournaments.find(t => t.id === match.tournament_id);
-    const pendingSpan1 = match.player1_pendingCount > 0 ? `<span class="player-pending-count">(+${match.player1_pendingCount} P)</span>` : '';
-    const pendingSpan2 = match.player2_pendingCount > 0 ? `<span class="player-pending-count">(+${match.player2_pendingCount} P)</span>` : '';
+    const player1 = match.player1_info;
+    const player2 = match.player2_info;
+    const player1Name = player1?.name || 'N/A';
+    const player2Name = player2?.name || 'N/A';
+    const p1TeamColor = player1?.team?.color;
+    const p2TeamColor = player2?.team?.color;
+    const p1TeamImage = player1?.team?.image_url;
+    const p2TeamImage = player2?.team?.image_url;
+    const p1TextColor = isColorLight(p1TeamColor) ? '#222' : '#fff';
+    const p2TextColor = isColorLight(p2TeamColor) ? '#222' : '#fff';
+    const sede = match.sede || '';
+    const cancha = match.canchaNum || '?';
+    const canchaBackgroundColor = sede.toLowerCase() === 'centro' ? '#222222' : '#ffc000';
+    const canchaTextColor = sede.toLowerCase() === 'centro' ? '#ffc000' : '#222';
+    const hora = match.time ? match.time.substring(0, 5) : 'HH:MM';
+    const categoryName = match.categoryName || 'N/A';
+    const categoryColor = match.categoryColor || '#b45309';
+    const team1PointsDisplay = p1TeamImage ? `<img src="${p1TeamImage}" alt="" style="height: 20px; object-fit: contain; margin: auto; display: block;">` : '';
+    const team2PointsDisplay = p2TeamImage ? `<img src="${p2TeamImage}" alt="" style="height: 20px; object-fit: contain; margin: auto; display: block;">` : '';
 
     return `
         <tr class="data-row" data-match-id="${match._id}">
-            <td class="editable-cell" data-field="canchaNum" data-type="number">${match.canchaNum}</td>
-            <td class="editable-cell" data-field="time" data-type="time">${match.time}</td>
-            <td class="player-name player-name-right editable-cell" data-field="player1_id" data-type="player">
-                ${playerA_name || 'Seleccionar...'}
-                <span class="player-match-count">(${match.player1_matchesPlayed} PJ)</span>
-                ${pendingSpan1}
+            <td style="padding: 4px; background-color: #1a1a1a;">
+                <input type="checkbox" disabled class="match-checkbox" style="transform: scale(1.2); opacity: 0.3;">
             </td>
-            <td class="vs">vs</td>
-            <td class="player-name player-name-left editable-cell" data-field="player2_id" data-type="player">
-                ${playerB_name || 'Seleccionar...'}
-                <span class="player-match-count">(${match.player2_matchesPlayed} PJ)</span>
-                ${pendingSpan2}
-            </td>
-            <td class="!text-left editable-cell" data-field="tournament_id" data-type="tournament">
-                ${tournament?.name || 'Seleccionar...'}
-            </td>
-            <td>
-                <button class="action-btn" data-action="delete-suggestion" title="Eliminar Sugerencia">
-                    <span class="material-icons text-base">delete</span>
+            <td class="editable-cell" data-field="canchaNum" data-type="number" style="background-color: ${canchaBackgroundColor} !important; color: ${canchaTextColor} !important; font-weight: bold; font-size: 12pt">${cancha}</td>
+            <td class="editable-cell" data-field="time" data-type="time" style="background:#000;color:#fff;">${hora}</td>
+            <td class="player-name player-name-right editable-cell" data-field="player1_id" data-type="player" style='background:#000;color:#fff;font-size:12pt;'>${player1Name}</td>
+            <td class="pts-col" style='background:${p1TeamColor || '#3a3838'};color:${p1TextColor};'>${team1PointsDisplay}</td>
+            <td class="font-mono" style="background:#000;color:#fff;"></td>
+            <td class="pts-col" style='background:${p2TeamColor || '#3a3838'};color:${p2TextColor};'>${team2PointsDisplay}</td>
+            <td class="player-name player-name-left editable-cell" data-field="player2_id" data-type="player" style='background:#000;color:#fff;font-size:12pt;'>${player2Name}</td>
+            <td class="cat-col editable-cell" data-field="tournament_id" data-type="tournament" style="background:#000;color:${categoryColor};">${categoryName}</td>
+            <td class="action-cell" style="background:#000;">
+                <button class="p-1 rounded-full hover:bg-gray-700" data-action="delete-suggestion" title="Eliminar Sugerencia">
+                    <span class="material-icons text-base" style="color:#f87171;">delete</span>
                 </button>
             </td>
         </tr>`;
@@ -415,37 +471,34 @@ function clearResults(hideSections = false) {
     playerMatchCounts.clear();
     playerPendingCounts.clear();
     if (suggestionsGridContainer) suggestionsGridContainer.innerHTML = '<p class="text-gray-500 italic px-4 py-6 text-center">Genera sugerencias para ver la grilla editable.</p>';
-    if (hideSections) {
-        if (suggestionsSection) suggestionsSection.classList.add('hidden');
+    if (hideSections && suggestionsSection) {
+        suggestionsSection.classList.add('hidden');
     }
     updateProgramButtonState();
 }
 
 // --- LÓGICA DE EDICIÓN DE TABLA ---
 function getCellContent(match, field) {
+    const player1 = match.player1_info;
+    const player2 = match.player2_info;
     switch(field) {
-        case 'canchaNum': return match.canchaNum;
-        case 'time': return match.time;
-        case 'player1_id':
-            const pendingSpan1 = match.player1_pendingCount > 0 ? `<span class="player-pending-count">(+${match.player1_pendingCount} P)</span>` : '';
-            return `${getPlayerName(match.player1_id) || 'Seleccionar...'}<span class="player-match-count">(${match.player1_matchesPlayed} PJ)</span>${pendingSpan1}`;
-        case 'player2_id':
-            const pendingSpan2 = match.player2_pendingCount > 0 ? `<span class="player-pending-count">(+${match.player2_pendingCount} P)</span>` : '';
-            return `${getPlayerName(match.player2_id) || 'Seleccionar...'}<span class="player-match-count">(${match.player2_matchesPlayed} PJ)</span>${pendingSpan2}`;
-        case 'tournament_id':
-            const tournament = allTournaments.find(t => t.id === match.tournament_id);
-            return tournament?.name || 'Seleccionar...';
+        case 'canchaNum': return match.canchaNum || '?';
+        case 'time': return match.time ? match.time.substring(0, 5) : 'HH:MM';
+        case 'player1_id': return player1?.name || 'N/A';
+        case 'player2_id': return player2?.name || 'N/A';
+        case 'tournament_id': return match.categoryName || 'N/A'; // Usamos categoryName para mostrar
         default: return match[field] ?? '---';
     }
 }
+
 function updateMatchData(matchId, field, value) {
     const matchIndex = currentSuggestions.findIndex(m => m._id === matchId);
     if (matchIndex === -1) return;
     const match = currentSuggestions[matchIndex];
     let conversionError = false;
     let valueChanged = false;
-
     let finalValue;
+
     if (field === 'player1_id' || field === 'player2_id' || field === 'tournament_id') {
         finalValue = value ? parseInt(value, 10) : null; if (isNaN(finalValue)) finalValue = null;
     } else if (field === 'canchaNum') {
@@ -457,38 +510,76 @@ function updateMatchData(matchId, field, value) {
 
     if (valueChanged && !conversionError) {
         match[field] = finalValue;
-        if (field === 'player1_id') {
-            match.player1_matchesPlayed = playerMatchCounts.get(finalValue) || 0;
-            match.player1_pendingCount = playerPendingCounts.get(finalValue) || 0;
-        } else if (field === 'player2_id') {
-            match.player2_matchesPlayed = playerMatchCounts.get(finalValue) || 0;
-            match.player2_pendingCount = playerPendingCounts.get(finalValue) || 0;
+        if (field === 'player1_id' && finalValue) match.player1_info = getPlayerInfo(finalValue);
+        if (field === 'player2_id' && finalValue) match.player2_info = getPlayerInfo(finalValue);
+        // ▼▼▼ LÓGICA MODIFICADA ▼▼▼
+        if (field === 'tournament_id' && finalValue) {
+            const tournament = allTournaments.find(t => t.id === finalValue);
+            match.categoryName = tournament?.categoryName || 'N/A';
+            match.categoryColor = tournament?.categoryColor || '#b45309';
+            // Resetear jugadores
+            match.player1_id = null; match.player1_info = null;
+            match.player2_id = null; match.player2_info = null;
         }
-        if (field === 'tournament_id' && finalValue !== null) {
-            match.player1_id = null; match.player2_id = null;
-            match.player1_matchesPlayed = 0; match.player2_matchesPlayed = 0;
-            match.player1_pendingCount = 0; match.player2_pendingCount = 0;
-        }
+        // ▲▲▲ FIN LÓGICA MODIFICADA ▲▲▲
     }
 
-    const tableBody = suggestionsGridContainer.querySelector('tbody');
+    const tableBody = suggestionsGridContainer?.querySelector('tbody');
     const rowElement = tableBody?.querySelector(`tr[data-match-id="${matchId}"]`);
     if (rowElement) {
         const editedCell = rowElement.querySelector(`td[data-field="${field}"]`);
         if (editedCell) {
             editedCell.innerHTML = getCellContent(match, field);
-        }
-        if (field === 'tournament_id') {
-            const player1Cell = rowElement.querySelector('td[data-field="player1_id"]');
-            const player2Cell = rowElement.querySelector('td[data-field="player2_id"]');
-            if(player1Cell) player1Cell.innerHTML = getCellContent(match, 'player1_id');
-            if(player2Cell) player2Cell.innerHTML = getCellContent(match, 'player2_id');
-        } else if (field === 'player1_id') {
-             const player1Cell = rowElement.querySelector('td[data-field="player1_id"]');
-             if(player1Cell) player1Cell.innerHTML = getCellContent(match, 'player1_id');
-        } else if (field === 'player2_id') {
-             const player2Cell = rowElement.querySelector('td[data-field="player2_id"]');
-             if(player2Cell) player2Cell.innerHTML = getCellContent(match, 'player2_id');
+            // ▼▼▼ LÓGICA MODIFICADA ▼▼▼
+            if (field === 'tournament_id') {
+                // Actualizar celdas de jugador a N/A
+                const player1Cell = rowElement.querySelector(`td[data-field="player1_id"]`);
+                if (player1Cell) player1Cell.innerHTML = getCellContent(match, 'player1_id'); // Mostrará N/A
+
+                const player2Cell = rowElement.querySelector(`td[data-field="player2_id"]`);
+                if (player2Cell) player2Cell.innerHTML = getCellContent(match, 'player2_id'); // Mostrará N/A
+
+                // Actualizar color de la celda de categoría
+                const catCell = rowElement.querySelector(`td[data-field="tournament_id"]`);
+                if(catCell) catCell.style.color = match.categoryColor;
+
+                 // Resetear también los logos/fondos de las celdas Pts
+                 const pts1Cell = rowElement.querySelector('td.pts-col:nth-of-type(1)');
+                 const pts2Cell = rowElement.querySelector('td.pts-col:nth-of-type(2)');
+                 if(pts1Cell) {
+                     pts1Cell.style.background = '#3a3838'; // Color por defecto
+                     pts1Cell.innerHTML = ''; // Limpiar logo
+                 }
+                 if(pts2Cell) {
+                    pts2Cell.style.background = '#3a3838'; // Color por defecto
+                    pts2Cell.innerHTML = ''; // Limpiar logo
+                 }
+            }
+             else if (field === 'player1_id' || field === 'player2_id') {
+                 // Actualizar colores/logos de equipo al cambiar jugador (igual que antes)
+                 const player1 = match.player1_info;
+                 const player2 = match.player2_info;
+                 const pts1Cell = rowElement.querySelector('td.pts-col:nth-of-type(1)');
+                 const pts2Cell = rowElement.querySelector('td.pts-col:nth-of-type(2)');
+
+                 if(pts1Cell && field === 'player1_id'){
+                    const p1TeamColor = player1?.team?.color;
+                    const p1TextColor = isColorLight(p1TeamColor) ? '#222' : '#fff';
+                    const p1TeamImage = player1?.team?.image_url;
+                    pts1Cell.style.background = p1TeamColor || '#3a3838';
+                    pts1Cell.style.color = p1TextColor;
+                    pts1Cell.innerHTML = p1TeamImage ? `<img src="${p1TeamImage}" alt="" style="height: 20px; object-fit: contain; margin: auto; display: block;">` : '';
+                 }
+                 if(pts2Cell && field === 'player2_id'){
+                    const p2TeamColor = player2?.team?.color;
+                    const p2TextColor = isColorLight(p2TeamColor) ? '#222' : '#fff';
+                    const p2TeamImage = player2?.team?.image_url;
+                    pts2Cell.style.background = p2TeamColor || '#3a3838';
+                    pts2Cell.style.color = p2TextColor;
+                    pts2Cell.innerHTML = p2TeamImage ? `<img src="${p2TeamImage}" alt="" style="height: 20px; object-fit: contain; margin: auto; display: block;">` : '';
+                 }
+            }
+            // ▲▲▲ FIN LÓGICA MODIFICADA ▲▲▲
         }
     } else {
         console.warn("No se encontró fila/celda para actualizar:", matchId, field);
@@ -496,160 +587,183 @@ function updateMatchData(matchId, field, value) {
     }
     updateProgramButtonState();
 }
+
 function handleCellDoubleClick(e) {
     const cell = e.target.closest('.editable-cell');
     if (!cell || cell === activeEditingCell) return;
     if (activeEditingCell) closeActiveEditor(false);
 
     activeEditingCell = cell;
-    const matchId = cell.closest('tr').dataset.matchId;
+    const matchId = cell.closest('tr')?.dataset.matchId;
     const match = currentSuggestions.find(m => m._id === matchId);
     if (!match) { activeEditingCell = null; return; }
 
     const field = cell.dataset.field;
     const type = cell.dataset.type;
     const currentValue = match[field];
-    cell.dataset.originalContent = cell.innerHTML; // Guardar contenido actual
+    cell.dataset.originalContent = cell.innerHTML;
+    cell.classList.add('is-editing');
 
     let inputElement;
+
     if (type === 'player' || type === 'tournament') {
         inputElement = document.createElement('select');
-        // *** INICIO MODIFICACIÓN: Estilo del Select ***
-        inputElement.style.backgroundColor = '#ffffff'; // Fondo blanco
-        inputElement.style.color = '#000000';           // Texto negro
-        inputElement.style.border = '1px solid #ccc';   // Borde estándar
-        inputElement.style.padding = '4px 6px';        // Padding interno
-        inputElement.style.position = 'absolute';      // Para superponerse
-        inputElement.style.left = '0';
-        inputElement.style.top = '0';
-        inputElement.style.width = '100%';
-        inputElement.style.height = '100%';
-        inputElement.style.fontSize = 'inherit';
-        inputElement.style.fontFamily = 'inherit';
-        inputElement.style.fontWeight = 'normal';
-        // *** FIN MODIFICACIÓN: Estilo del Select ***
-
         let options = '<option value="">Seleccionar...</option>';
+
         if (type === 'player') {
             const tournamentId = match.tournament_id;
-            const otherPlayerId = (field === 'player1_id') ? match.player2_id : match.player1_id;
-            const enrolledPlayerIds = playersByTournament.get(tournamentId) || new Set();
-            enrolledPlayerIds.forEach(playerId => {
-                // Comprobar si el jugador está disponible para la selección
-                const playerCanPlay = !otherPlayerId || playerId !== otherPlayerId;
-                if (playerCanPlay) {
-                    // *** INICIO MODIFICACIÓN: Añadir PJ ***
-                    const pjCount = playerMatchCounts.get(playerId) || 0;
-                    options += `<option value="${playerId}" ${Number(playerId) === Number(currentValue) ? 'selected' : ''}>${getPlayerName(playerId)} (${pjCount} PJ)</option>`;
-                    // *** FIN MODIFICACIÓN: Añadir PJ ***
-                }
-            });
+            // ▼▼▼ MODIFICADO: Asegurar que tournamentId exista antes de filtrar ▼▼▼
+            if (!tournamentId) {
+                options = '<option value="">Elija Torneo primero</option>';
+                inputElement.disabled = true;
+            } else {
+                const otherPlayerId = (field === 'player1_id') ? match.player2_id : match.player1_id;
+                const enrolledPlayerIds = playersByTournament.get(tournamentId) || new Set();
+                enrolledPlayerIds.forEach(playerId => {
+                    const playerCanPlay = !otherPlayerId || playerId !== otherPlayerId;
+                    if (playerCanPlay) {
+                        const playerInfo = getPlayerInfo(playerId);
+                        if(playerInfo){
+                            options += `<option value="${playerId}" ${Number(playerId) === Number(currentValue) ? 'selected' : ''}>${playerInfo.name}</option>`;
+                        }
+                    }
+                });
+            }
+            // ▲▲▲ FIN MODIFICACIÓN ▲▲▲
         } else { // type === 'tournament'
-            const player1Id = Number(match.player1_id);
-            const categoryId = allPlayers.get(player1Id)?.category_id;
-            if(categoryId) {
-                 allTournaments.filter(t => t.category_id === categoryId).forEach(t => {
-                     options += `<option value="${t.id}" ${Number(t.id) === Number(currentValue) ? 'selected' : ''}>${t.name}</option>`;
-                 });
-            } else { options = '<option value="">Error: Jugador 1 sin categoría</option>'; }
+            // Mostrar todos los torneos disponibles (no filtrar por categoría aquí, se hace al guardar)
+             allTournaments.forEach(t => {
+                options += `<option value="${t.id}" ${Number(t.id) === Number(currentValue) ? 'selected' : ''}>${t.name}</option>`;
+             });
         }
         inputElement.innerHTML = options;
+
     } else if (type === 'time') {
-        inputElement = document.createElement('input'); inputElement.type = 'text'; inputElement.value = currentValue || '';
+        inputElement = document.createElement('input');
+        inputElement.type = 'text';
+        inputElement.value = currentValue || '';
+
     } else { // type === 'number' (canchaNum)
-        inputElement = document.createElement('input'); inputElement.type = 'number';
-        inputElement.value = currentValue || ''; inputElement.min = "1";
+        inputElement = document.createElement('input');
+        inputElement.type = 'number';
+        inputElement.value = currentValue || '';
+        inputElement.min = "1";
+        inputElement.max = "6";
     }
 
-    // Aplicar clase DESPUÉS de aplicar estilos inline al select para que estos últimos prevalezcan si hay conflicto
     inputElement.className = 'editing-input-cell';
-    inputElement.dataset.field = field; inputElement.dataset.matchId = matchId;
-    cell.innerHTML = ''; cell.appendChild(inputElement);
+    inputElement.dataset.field = field;
+    inputElement.dataset.matchId = matchId;
+    cell.innerHTML = '';
+    cell.appendChild(inputElement);
 
     if (type === 'time') {
-        flatpickr(inputElement, { enableTime: true, noCalendar: true, dateFormat: "H:i", time_24hr: true, defaultDate: currentValue,
-            onClose: (selectedDates, dateStr) => { closeActiveEditor(true, dateStr); } // Flatpickr maneja el guardado
+        flatpickr(inputElement, {
+            enableTime: true, noCalendar: true, dateFormat: "H:i",
+            time_24hr: true, defaultDate: currentValue,
+            onClose: (selectedDates, dateStr, instance) => {
+                closeActiveEditor(true, dateStr);
+            }
         }).open();
     } else {
         inputElement.focus();
-        if (inputElement.tagName === 'SELECT' && typeof inputElement.showPicker === 'function') { try { inputElement.showPicker(); } catch(e) {} }
+        if (inputElement.tagName === 'SELECT' && typeof inputElement.showPicker === 'function') {
+            try { inputElement.showPicker(); } catch(e) {}
+        }
     }
 }
+
+
 function closeActiveEditor(save = false, newValue = null) {
     if (!activeEditingCell) return;
-    const input = activeEditingCell.querySelector('.editing-input-cell, select'); // Buscar select también
+
+    const input = activeEditingCell.querySelector('.editing-input-cell');
     let needsUpdate = false;
 
     if (input) {
-        if (save && !input._flatpickr) { // Guardar si 'save' es true y no es flatpickr
-           needsUpdate = true;
-        }
-        if (input._flatpickr) { // Destruir instancia de flatpickr si existe
+        if (input._flatpickr) {
             input._flatpickr.destroy();
+             needsUpdate = save && newValue !== null;
+        }
+        else if (save) {
+            newValue = input.value;
+            needsUpdate = true;
         }
     }
 
     const field = activeEditingCell.dataset.field;
     const rowId = activeEditingCell.closest('tr')?.dataset.matchId;
 
-    if (needsUpdate) {
-        const valueToSave = newValue !== null ? newValue : input.value;
-        updateMatchData(rowId, field, valueToSave); // updateMatchData ahora maneja la actualización del DOM
-    } else if (!save && rowId && field) { // Restaurar si no se guardó
+    activeEditingCell.classList.remove('is-editing');
+
+    if (needsUpdate && rowId && field) {
+        updateMatchData(rowId, field, newValue);
+    } else if (!save && rowId && field) {
         const match = currentSuggestions.find(m => m._id === rowId);
         if(match) {
-            activeEditingCell.innerHTML = getCellContent(match, field); // Usar helper
+            activeEditingCell.innerHTML = getCellContent(match, field);
         } else if (activeEditingCell.dataset.originalContent) {
              activeEditingCell.innerHTML = activeEditingCell.dataset.originalContent;
         } else {
-            activeEditingCell.innerHTML = 'Error'; // Fallback extremo
+            activeEditingCell.innerHTML = 'Error';
         }
         if (activeEditingCell.dataset.originalContent) {
             delete activeEditingCell.dataset.originalContent;
         }
     }
-
-    if(activeEditingCell) activeEditingCell.classList.remove('is-editing');
     activeEditingCell = null;
 }
+
 function handleEditorChange(e) {
-    // Buscar select con o sin la clase, por si acaso
-    if ((e.target.classList.contains('editing-input-cell') || e.target.tagName === 'SELECT') && e.target.tagName === 'SELECT') {
+    const target = e.target;
+    if (target.tagName === 'SELECT' && target.closest('.is-editing')) {
         closeActiveEditor(true);
     }
 }
+
 function handleEditorKeyDown(e) {
-    // Buscar input/select con o sin la clase
-    if (e.target.classList.contains('editing-input-cell') || e.target.tagName === 'SELECT' || e.target.tagName === 'INPUT') {
-        if (e.key === 'Enter') { e.preventDefault(); closeActiveEditor(true); }
-        else if (e.key === 'Escape') { closeActiveEditor(false); }
+    const target = e.target;
+    if ((target.classList.contains('editing-input-cell') || target.tagName === 'SELECT') && target.closest('.is-editing')) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            closeActiveEditor(true);
+        } else if (e.key === 'Escape') {
+            closeActiveEditor(false);
+        } else if (e.key === 'Tab') {
+             setTimeout(() => closeActiveEditor(true), 0);
+        }
     }
 }
+
 function handleDocumentClick(e) {
     if (activeEditingCell && !activeEditingCell.contains(e.target) && !e.target.closest('.flatpickr-calendar')) {
-        const input = activeEditingCell.querySelector('.editing-input-cell, select'); // Buscar select también
-        // Solo guardar si es input de texto/número (no select ni flatpickr que se guardan onChange/onClose)
+        const input = activeEditingCell.querySelector('.editing-input-cell');
         if (input && (input.type === 'text' || input.type === 'number') && !input._flatpickr) {
-            closeActiveEditor(true);
-        } else if (!input || (input.tagName !== 'SELECT' && !input._flatpickr)) {
-            // Si no es un input (raro) o no es select/flatpickr, intenta restaurar
+             closeActiveEditor(true);
+        } else {
              closeActiveEditor(false);
         }
-        // No hacer nada para selects o flatpickr (se manejan con sus eventos)
     }
 }
+
+// --- MANEJO DE ELIMINACIÓN DE SUGERENCIA ---
 function handleDeleteSuggestion(e) {
-    const button = e.target.closest('[data-action="delete-suggestion"]');
+    const button = e.target.closest('button[data-action="delete-suggestion"]');
     if (!button) return;
-    const row = button.closest('tr'); const matchId = row.dataset.matchId;
+    const row = button.closest('tr');
+    const matchId = row?.dataset.matchId;
+    if (!matchId) return;
     currentSuggestions = currentSuggestions.filter(m => m._id !== matchId);
-    row.remove(); showToast("Sugerencia eliminada", "info"); updateProgramButtonState();
+    row.remove();
+    showToast("Sugerencia eliminada", "info");
+    updateProgramButtonState();
 }
 
 // --- PROGRAMACIÓN FINAL ---
 async function handleProgramAll() {
     if (currentSuggestions.length === 0) { showToast("No hay partidos para programar.", "warning"); return; }
-    btnProgramAll.disabled = true; btnProgramAll.innerHTML = '<div class="spinner inline-block mr-2"></div> Programando...';
+    btnProgramAll.disabled = true;
+    btnProgramAll.innerHTML = '<div class="spinner inline-block mr-2"></div> Programando...';
 
     const matchesToInsert = []; let validationFailed = false; let invalidRowsInfo = [];
     currentSuggestions.forEach((match) => {
@@ -661,35 +775,53 @@ async function handleProgramAll() {
         if (!match.time) errors.push("Hora");
         if (!match.sede) errors.push("Sede");
         if (!match.canchaNum || match.canchaNum < 1) errors.push("Cancha");
+         // ▼▼▼ NUEVA VALIDACIÓN: Categoría de jugadores vs Torneo ▼▼▼
+         const tournament = allTournaments.find(t => t.id === match.tournament_id);
+         const player1 = getPlayerInfo(match.player1_id);
+         const player2 = getPlayerInfo(match.player2_id);
+         if (tournament && player1 && player1.category_id !== tournament.category_id) {
+             errors.push(`Jugador 1 no pertenece a ${tournament.categoryName}`);
+         }
+         if (tournament && player2 && player2.category_id !== tournament.category_id) {
+            errors.push(`Jugador 2 no pertenece a ${tournament.categoryName}`);
+         }
+         // ▲▲▲ FIN NUEVA VALIDACIÓN ▲▲▲
+
 
         if (errors.length > 0) {
             validationFailed = true;
-            invalidRowsInfo.push(`Partido ${getPlayerName(match.player1_id)} vs ${getPlayerName(match.player2_id)} (Falta: ${errors.join(', ')})`);
+            const p1Name = player1?.name || '?';
+            const p2Name = player2?.name || '?';
+            invalidRowsInfo.push(`Partido ${p1Name} vs ${p2Name} (${match._id}) (Error: ${errors.join(', ')})`);
         } else {
-            const tournament = allTournaments.find(t => t.id === match.tournament_id);
+            // const tournament = allTournaments.find(t => t.id === match.tournament_id); // Ya obtenido arriba
             matchesToInsert.push({
                 tournament_id: match.tournament_id, category_id: tournament?.category_id || null,
                 player1_id: match.player1_id, player2_id: match.player2_id,
+                player3_id: null, player4_id: null,
                 match_date: match.date, match_time: match.time,
-                location: `${match.sede.charAt(0).toUpperCase() + match.sede.slice(1)} - Cancha ${match.canchaNum}`
+                location: `${match.sede.charAt(0).toUpperCase() + match.sede.slice(1)} - Cancha ${match.canchaNum}`,
+                status: 'programado', sets: null, winner_id: null, bonus_loser: false
             });
         }
     });
 
     if (validationFailed) {
-        showToast(`Error: ${invalidRowsInfo.length} partido(s) con datos incompletos. Revísalos.`, "error");
+        // Mostrar solo el primer error para no saturar
+        showToast(`Error: ${invalidRowsInfo[0]}. Revísalo.`, "error");
         console.error("Partidos inválidos:", invalidRowsInfo);
         btnProgramAll.disabled = false; updateProgramButtonState();
         return;
     }
 
     try {
+        console.log("Insertando partidos:", matchesToInsert);
         const { error } = await supabase.from('matches').insert(matchesToInsert); if (error) throw error;
         showToast(`${matchesToInsert.length} partidos programados con éxito. Redirigiendo...`, "success");
         clearResults(true); currentSuggestions = [];
         setTimeout(() => { window.location.href = '/src/admin/matches.html'; }, 1500);
     } catch (error) {
-        console.error("Error al programar:", error); showToast("Error al guardar los partidos directamente: " + error.message, "error");
+        console.error("Error al programar:", error); showToast("Error al guardar los partidos: " + error.message, "error");
         btnProgramAll.disabled = false; updateProgramButtonState();
     }
 }
@@ -710,11 +842,11 @@ function updateProgramButtonState() {
 // --- Lógica de Pasos (Mostrar/Ocultar) ---
 function showStep(stepName) {
     if (stepName === 'configuration') {
-        configurationStepDiv.classList.remove('hidden');
-        resultsStepDiv.classList.add('hidden');
+        configurationStepDiv?.classList.remove('hidden');
+        resultsStepDiv?.classList.add('hidden');
     } else if (stepName === 'results') {
-        configurationStepDiv.classList.add('hidden');
-        resultsStepDiv.classList.remove('hidden');
+        configurationStepDiv?.classList.add('hidden');
+        resultsStepDiv?.classList.remove('hidden');
     }
 }
 
@@ -737,13 +869,15 @@ document.addEventListener('DOMContentLoaded', () => {
     if (btnCurrentWeek) btnCurrentWeek.addEventListener('click', goToCurrentWeek);
     if (btnFindSuggestions) btnFindSuggestions.addEventListener('click', handleFindSuggestions);
     if (btnBackToConfig) btnBackToConfig.addEventListener('click', () => showStep('configuration'));
+
     if (suggestionsGridContainer) {
         suggestionsGridContainer.addEventListener('dblclick', handleCellDoubleClick);
         suggestionsGridContainer.addEventListener('change', handleEditorChange);
         suggestionsGridContainer.addEventListener('keydown', handleEditorKeyDown);
         suggestionsGridContainer.addEventListener('click', handleDeleteSuggestion);
     }
-    document.addEventListener('click', handleDocumentClick);
+    document.addEventListener('click', handleDocumentClick, true);
+
     if (btnProgramAll) btnProgramAll.addEventListener('click', handleProgramAll);
     updateProgramButtonState();
 });

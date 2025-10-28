@@ -109,7 +109,19 @@
               <span class="material-icons absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 !text-base">search</span>
               <input type="text" id="player-search-input" class="input-field dark-input !pl-8 !w-48 !h-9 !py-1 !text-sm" placeholder="Buscar jugador...">
           </div>
-          <div class="flex items-center gap-1">
+           <div>
+               <label for="habitual-filter" class="sr-only">Disponibilidad Habitual:</label>
+               <select id="habitual-filter" class="input-field dark-input !w-auto !h-9 !py-1 !text-sm">
+                   <option value="">Disp. Habitual...</option>
+                   <option value="Vie-mañana">Viernes Mañana</option>
+                   <option value="Vie-tarde">Viernes Tarde</option>
+                   <option value="Sab-mañana">Sábado Mañana</option>
+                   <option value="Sab-tarde">Sábado Tarde</option>
+                   <option value="Dom-mañana">Domingo Mañana</option>
+                   <option value="Dom-tarde">Domingo Tarde</option>
+               </select>
+           </div>
+           <div class="flex items-center gap-1">
               <button id="btn-prev-week" class="week-nav-button !text-sm !px-2" title="Semana Anterior">&lt;</button>
               <span id="current-week-display" class="!text-sm !min-w-[140px]">Semana Actual</span>
               <button id="btn-next-week" class="week-nav-button !text-sm !px-2" title="Semana Siguiente">&gt;</button>
