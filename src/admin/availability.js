@@ -14,12 +14,12 @@ const DEFAULT_ZONE = 'Ambas'; // Define la zona por defecto aquí
 // --- ELEMENTOS DEL DOM ---
 const header = document.getElementById('header');
 const categoryFilter = document.getElementById('category-filter');
+const playerSearchInput = document.getElementById('player-search-input'); // <-- Input de búsqueda
 const tableContainer = document.getElementById('availability-table-container');
 const loadingIndicator = document.getElementById('loading-indicator');
 const btnApplyAvailability = document.getElementById('btn-apply-availability');
 const btnClearAvailability = document.getElementById('btn-clear-availability');
 const btnSaveAll = document.getElementById('btn-save-all');
-// Ya no se necesita referencia global a timeSelectCheckboxes
 const btnPrevWeek = document.getElementById('btn-prev-week');
 const btnNextWeek = document.getElementById('btn-next-week');
 const btnCurrentWeek = document.getElementById('btn-current-week');
@@ -37,6 +37,13 @@ let selectedPlayerIds = new Set();
 let currentWeekStartDate = getStartOfWeek(new Date()); // Lunes de la semana actual
 
 // --- FUNCIONES ---
+
+// Función para normalizar texto (búsqueda sin acentos)
+function normalizeText(text) {
+    if (!text) return '';
+    // Corregido: Rango Unicode correcto para diacríticos
+    return text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+}
 
 function getStartOfWeek(date) {
   const d = new Date(date);
@@ -91,8 +98,10 @@ async function loadAvailabilityForWeek(startDate) {
         // Actualizar el estado inicial para comparar cambios DENTRO de esta semana
         initialAvailabilityForCurrentWeek.clear();
         availabilityForCurrentWeek.forEach(a =>
-            initialAvailabilityForCurrentWeek.add(`${a.player_id}-${a.available_date}-${a.time_slot}-${a.zone}`)
+            initialAvailabilityForCurrentWeek.add(`${a.player_id}-${a.available_date}-${a.time_slot}-${a.zone || DEFAULT_ZONE}`)
         );
+        console.log("Initial Availability Loaded:", initialAvailabilityForCurrentWeek);
+
 
         // Ahora renderizar la tabla con los datos cargados para la semana
         filterAndRenderTable(); // Llama a renderAvailabilityTable internamente
@@ -170,23 +179,45 @@ function goToCurrentWeek() {
     displayWeek(getStartOfWeek(new Date()));
 }
 
+// Filtra también por nombre
 function filterAndRenderTable() {
     const selectedCategoryId = categoryFilter.value;
-    displayedPlayers = selectedCategoryId === 'all'
-        ? allPlayers
-        : allPlayers.filter(p => p.category_id == selectedCategoryId);
-    renderAvailabilityTable(); // Renderiza con datos ya cargados para la semana
-    // No limpiar selectedPlayerIds para persistir selección si se desea
-    updateSelectedPlayerVisuals(); // Asegura visualización correcta
+    const searchTerm = normalizeText(playerSearchInput.value); // Obtener y normalizar término de búsqueda
+
+    let playersToDisplay = allPlayers;
+
+    // Filtrar por categoría
+    if (selectedCategoryId !== 'all') {
+        playersToDisplay = playersToDisplay.filter(p => p.category_id == selectedCategoryId);
+    }
+
+    // Filtrar por término de búsqueda
+    if (searchTerm) {
+        playersToDisplay = playersToDisplay.filter(p => normalizeText(p.name).includes(searchTerm));
+    }
+
+    displayedPlayers = playersToDisplay; // Actualizar la lista de jugadores a mostrar
+    renderAvailabilityTable(); // Renderiza con datos ya cargados para la semana y jugadores filtrados
+    updateSelectedPlayerVisuals(); // Asegura visualización correcta de seleccionados
 }
 
 // Renderiza tabla con checkboxes en la segunda fila del header
 function renderAvailabilityTable() {
+    // Mensaje si no hay jugadores
     if (displayedPlayers.length === 0) {
-        tableContainer.innerHTML = '<p class="text-center text-gray-400 py-16">No hay jugadores en esta categoría.</p>';
+        const searchTerm = playerSearchInput.value;
+        const categorySelected = categoryFilter.value !== 'all';
+        let message = "No hay jugadores ";
+        if(categorySelected) message += `en esta categoría `;
+        if(searchTerm) message += `que coincidan con "${searchTerm}"`;
+        else if (!categorySelected) message += `registrados.`
+        else message += `.`;
+
+        tableContainer.innerHTML = `<p class="text-center text-gray-400 py-16">${message}</p>`;
         loadingIndicator.classList.add('hidden');
         return;
     }
+
 
     let tableHTML = '<table class="availability-table">';
     tableHTML += '<thead>';
@@ -247,7 +278,10 @@ function renderAvailabilityTable() {
 // Verifica disponibilidad por fecha específica
 function isPlayerAvailableOnDate(playerId, dateStr, timeSlot) {
     return availabilityForCurrentWeek.some(a =>
-        a.player_id == playerId && a.available_date === dateStr && a.time_slot === timeSlot
+        a.player_id == playerId &&
+        a.available_date === dateStr &&
+        a.time_slot === timeSlot &&
+        (a.zone || DEFAULT_ZONE) // Considerar default si no hay zona específica
     );
 }
 
@@ -258,9 +292,13 @@ function handleCellClick(event) {
     const playerId = cell.dataset.playerId;
     const dateStr = cell.dataset.date;
     const slot = cell.dataset.slot;
+    const currentZone = DEFAULT_ZONE; // Siempre usamos DEFAULT_ZONE al agregar/quitar
 
     const availabilityIndex = availabilityForCurrentWeek.findIndex(a =>
-        a.player_id == playerId && a.available_date === dateStr && a.time_slot === slot
+        a.player_id == playerId &&
+        a.available_date === dateStr &&
+        a.time_slot === slot &&
+        (a.zone || DEFAULT_ZONE) === currentZone // Comparar con la zona
     );
 
     if (availabilityIndex !== -1) {
@@ -268,10 +306,14 @@ function handleCellClick(event) {
         cell.classList.remove('available');
     } else {
         availabilityForCurrentWeek.push({
-            player_id: parseInt(playerId), available_date: dateStr, time_slot: slot, zone: DEFAULT_ZONE
+            player_id: parseInt(playerId),
+            available_date: dateStr,
+            time_slot: slot,
+            zone: currentZone // Guardar la zona
         });
         cell.classList.add('available');
     }
+     console.log("Availability after click:", availabilityForCurrentWeek); // Log para depurar
 }
 
 // Obtiene checkboxes seleccionados DEL HEADER
@@ -302,6 +344,7 @@ function applyMassAvailability(makeAvailable) {
         selectedDaySlots.forEach(daySlot => {
             const targetDayOfWeek = daySlot.dayOfWeek;
             const slot = daySlot.slot;
+            const currentZone = DEFAULT_ZONE; // Siempre usamos DEFAULT_ZONE
 
             let targetDate = null;
             for (let i = 0; i < 7; i++) { /* ... calcula targetDate ... */
@@ -313,19 +356,25 @@ function applyMassAvailability(makeAvailable) {
 
             const cell = tableContainer.querySelector(`.slot-cell[data-player-id="${playerIdStr}"][data-date="${dateStr}"][data-slot="${slot}"]`);
             const availabilityIndex = availabilityForCurrentWeek.findIndex(a =>
-                a.player_id === playerId && a.available_date === dateStr && a.time_slot === slot
+                a.player_id === playerId &&
+                a.available_date === dateStr &&
+                a.time_slot === slot &&
+                (a.zone || DEFAULT_ZONE) === currentZone // Buscar con zona
             );
 
             if (makeAvailable) {
-                // Marcar como disponible (añadir si no existe para esta FECHA)
+                // Marcar como disponible (añadir si no existe para esta FECHA y ZONA)
                 if (availabilityIndex === -1) {
                     availabilityForCurrentWeek.push({
-                        player_id: playerId, available_date: dateStr, time_slot: slot, zone: DEFAULT_ZONE
+                        player_id: playerId,
+                        available_date: dateStr,
+                        time_slot: slot,
+                        zone: currentZone // Guardar zona
                     });
                 }
                 if (cell) cell.classList.add('available');
             } else {
-                // Marcar como NO disponible (quitar si existe para esta FECHA)
+                // Marcar como NO disponible (quitar si existe para esta FECHA y ZONA)
                 if (availabilityIndex !== -1) {
                     availabilityForCurrentWeek.splice(availabilityIndex, 1);
                 }
@@ -333,6 +382,8 @@ function applyMassAvailability(makeAvailable) {
             }
         });
     });
+
+     console.log("Availability after mass action:", availabilityForCurrentWeek); // Log para depurar
 
     // Desmarcar checkboxes del encabezado después de aplicar
     const checkboxesInHeader = tableContainer.querySelectorAll('thead .column-select-cb');
@@ -345,63 +396,145 @@ async function saveAllChanges() {
     btnSaveAll.disabled = true;
     btnSaveAll.innerHTML = '<div class="spinner inline-block mr-2"></div> Guardando...';
 
+    // Generar el Set del estado actual A PARTIR del array availabilityForCurrentWeek
     const currentWeekSet = new Set();
     availabilityForCurrentWeek
         .filter(a => a.time_slot === 'mañana' || a.time_slot === 'tarde')
-        .forEach(a => currentWeekSet.add(`${a.player_id}-${a.available_date}-${a.time_slot}-${a.zone}`) );
+        .forEach(a => currentWeekSet.add(`${a.player_id}-${a.available_date}-${a.time_slot}-${a.zone || DEFAULT_ZONE}`) );
 
     const toInsert = [];
     const toDeleteConditions = [];
 
-    const parseKey = (key) => { /* ... (función parseKey corregida con player_id) ... */
-        const parts = key.split('-'); if (parts.length < 6) return null;
-        const playerId = parts[0]; const dateStr = `${parts[1]}-${parts[2]}-${parts[3]}`; const timeSlot = parts[4]; const zone = parts[5];
-        if (!playerId || !dateStr.match(/^\d{4}-\d{2}-\d{2}$/) || !timeSlot || !zone) { console.warn("Clave inválida:", key); return null; }
-        return { player_id: parseInt(playerId), available_date: dateStr, time_slot: timeSlot, zone: zone };
-    };
+    // *** INICIO CORRECCIÓN parseKey ***
+    const parseKey = (key) => {
+        // Formato esperado: player_id-YYYY-MM-DD-slot-zone
+        // Ejemplo: 208-2025-10-30-tarde-Ambas
+        const parts = key.split('-');
+        
+        // La clave debería tener exactamente 4 guiones para dar 5 partes (ID, YYYY-MM-DD, slot, zone)
+        // Ojo: si la fecha tiene un formato como '2025-10-30', split('-') sobre '2025-10-30' dará ['2025', '10', '30'].
+        // Esto es lo que causaba el error. Vamos a reensamblar la fecha si es necesario.
 
-    currentWeekSet.forEach(key => { /* ... cálculo toInsert ... */
+        if (parts.length < 4) { // ID, YYYY-MM-DD, slot, zone => 4 partes MINIMO si la fecha es solo 1 elemento
+             console.warn("Clave inválida (pocas partes en general):", key);
+             return null;
+        }
+
+        const playerId = parseInt(parts[0], 10);
+        let dateStr = '';
+        let timeSlot = '';
+        let zone = '';
+
+        // Intento 1: La fecha es una sola parte YYYY-MM-DD
+        if (parts[1].match(/^\d{4}-\d{2}-\d{2}$/) && parts.length === 4) {
+             dateStr = parts[1];
+             timeSlot = parts[2];
+             zone = parts[3];
+        } else {
+            // Intento 2: La fecha se dividió en YYYY, MM, DD por los guiones.
+            // Esto sucede si la clave fue generada como "ID-YYYY-MM-DD-SLOT-ZONE"
+            // y split('-') se usó indiscriminadamente.
+            // Debemos detectar esto y reensamblar la fecha.
+            if (parts.length >= 5 && parts[1].match(/^\d{4}$/) && parts[2].match(/^\d{2}$/) && parts[3].match(/^\d{2}$/)) {
+                dateStr = `${parts[1]}-${parts[2]}-${parts[3]}`; // Reensamblar la fecha
+                timeSlot = parts[4]; // El slot es la 5ta parte
+                zone = parts[5] || DEFAULT_ZONE; // La zona es la 6ta parte, o default
+            } else {
+                console.warn("Clave inválida (formato de fecha o partes):", key);
+                return null;
+            }
+        }
+        
+        // Validar partes
+        if (isNaN(playerId) || !dateStr.match(/^\d{4}-\d{2}-\d{2}$/) || !timeSlot || !zone) {
+            console.warn("Clave inválida (validación final):", key, { playerId, dateStr, timeSlot, zone });
+            return null;
+        }
+        return { player_id: playerId, available_date: dateStr, time_slot: timeSlot, zone: zone };
+    };
+    // *** FIN CORRECCIÓN parseKey ***
+
+    console.log("Initial Set:", initialAvailabilityForCurrentWeek); // Depuración
+    console.log("Current Set:", currentWeekSet); // Depuración
+
+    currentWeekSet.forEach(key => {
         if (!initialAvailabilityForCurrentWeek.has(key)) {
             const parsed = parseKey(key);
-            if (parsed && (parsed.time_slot === 'mañana' || parsed.time_slot === 'tarde')) { toInsert.push(parsed); }
-        }
-    });
-    initialAvailabilityForCurrentWeek.forEach(key => { /* ... cálculo toDeleteConditions ... */
-        if (!currentWeekSet.has(key)) {
-             const parsed = parseKey(key);
-             if (parsed && (parsed.time_slot === 'mañana' || parsed.time_slot === 'tarde')) {
-                toDeleteConditions.push({ player_id: parsed.player_id, available_date: parsed.available_date, time_slot: parsed.time_slot, zone: parsed.zone });
+            // Solo insertar si son slots válidos ('mañana' o 'tarde')
+            if (parsed && (parsed.time_slot === 'mañana' || parsed.time_slot === 'tarde')) {
+                 toInsert.push(parsed);
+             } else if (parsed) {
+                 console.log("Skipping insert (not M/T):", parsed);
+             } else {
+                 console.log("Skipping insert (parse failed):", key);
              }
         }
     });
 
-    if (toInsert.length === 0 && toDeleteConditions.length === 0) { /* ... sin cambios ... */
-        showToast("No hay cambios para guardar.", "success"); btnSaveAll.disabled = false;
-        btnSaveAll.innerHTML = '<span class="material-icons text-base">save</span> Guardar Cambios'; return;
+    initialAvailabilityForCurrentWeek.forEach(key => {
+        if (!currentWeekSet.has(key)) {
+             const parsed = parseKey(key);
+             // Solo borrar si son slots válidos ('mañana' o 'tarde')
+             if (parsed && (parsed.time_slot === 'mañana' || parsed.time_slot === 'tarde')) {
+                // Asegurarse que player_id esté en la condición
+                toDeleteConditions.push({
+                    player_id: parsed.player_id,
+                    available_date: parsed.available_date,
+                    time_slot: parsed.time_slot,
+                    zone: parsed.zone
+                });
+             } else if (parsed) {
+                 console.log("Skipping delete (not M/T):", parsed);
+             } else {
+                 console.log("Skipping delete (parse failed):", key);
+             }
+        }
+    });
+
+    console.log("To Insert:", toInsert); // Depuración
+    console.log("To Delete:", toDeleteConditions); // Depuración
+
+    // Comprobar si hay cambios ANTES de mostrar el mensaje
+    if (toInsert.length === 0 && toDeleteConditions.length === 0) {
+        showToast("No hay cambios para guardar.", "success"); // Usar success para indicar que no había nada que hacer
+        btnSaveAll.disabled = false;
+        btnSaveAll.innerHTML = '<span class="material-icons !text-base">save</span> Guardar'; // Restaurar texto original
+        return;
     }
 
     try {
         let deleteError = null; let insertError = null;
-        if (toDeleteConditions.length > 0) { /* ... ejecución deletes ... */
-             console.log("Borrando:", toDeleteConditions);
-             const deletePromises = toDeleteConditions.map(cond => supabase.from('player_availability').delete().match(cond) );
-             const deleteResults = await Promise.all(deletePromises);
-             deleteError = deleteResults.find(res => res.error)?.error;
+        if (toDeleteConditions.length > 0) {
+             console.log("Executing Deletes:", toDeleteConditions);
+             const BATCH_SIZE = 100;
+             for (let i = 0; i < toDeleteConditions.length; i += BATCH_SIZE) {
+                 const batch = toDeleteConditions.slice(i, i + BATCH_SIZE);
+                 const deletePromises = batch.map(cond => supabase.from('player_availability').delete().match(cond));
+                 const deleteResults = await Promise.all(deletePromises);
+                 const batchError = deleteResults.find(res => res.error)?.error;
+                 if (batchError) {
+                     deleteError = batchError;
+                     break;
+                 }
+             }
              if (deleteError) { console.error("Error borrado:", deleteError); throw new Error(`Error al borrar ${toDeleteConditions.length}. Detalle: ${deleteError.message}`); }
         }
-        if (toInsert.length > 0) { /* ... ejecución inserts ... */
-            console.log("Insertando:", toInsert);
+        if (toInsert.length > 0) {
+            console.log("Executing Inserts:", toInsert);
             const { error } = await supabase.from('player_availability').insert(toInsert);
             insertError = error;
             if (insertError) { console.error("Error inserción:", insertError); throw new Error(`Error al insertar ${toInsert.length}. Detalle: ${insertError.message}`); }
         }
-        initialAvailabilityForCurrentWeek = new Set(currentWeekSet); // Actualizar estado inicial
+        // Actualizar estado inicial SOLO si todo fue exitoso
+        initialAvailabilityForCurrentWeek = new Set(currentWeekSet);
         showToast(`Cambios guardados: ${toInsert.length} añadidos, ${toDeleteConditions.length} quitados.`, "success");
-    } catch (error) { /* ... manejo de error y recarga ... */
+    } catch (error) {
         console.error("Error saveAllChanges:", error); showToast("Error al guardar: " + (error.message || "Error desconocido"), "error");
+        // Volver a cargar solo la dispo de la semana actual tras error para asegurar consistencia
         await loadAvailabilityForWeek(currentWeekStartDate);
-    } finally { /* ... restaurar botón ... */
-        btnSaveAll.disabled = false; btnSaveAll.innerHTML = '<span class="material-icons text-base">save</span> Guardar Cambios';
+    } finally {
+        btnSaveAll.disabled = false;
+        btnSaveAll.innerHTML = '<span class="material-icons !text-base">save</span> Guardar'; // Restaurar texto original
     }
 }
 
@@ -418,7 +551,7 @@ function handlePlayerSelection(event) {
 function handleSelectAllPlayers(event) {
     const isChecked = event.target.checked;
     const playerCheckboxes = tableContainer.querySelectorAll('tbody .player-select-cb');
-    selectedPlayerIds.clear();
+    selectedPlayerIds.clear(); // Limpiar siempre antes de (re)seleccionar
     if (isChecked) {
         playerCheckboxes.forEach(cb => { cb.checked = true; selectedPlayerIds.add(cb.dataset.playerId); });
     } else {
@@ -427,16 +560,17 @@ function handleSelectAllPlayers(event) {
     updateSelectedPlayerVisuals();
 }
 
+
 function updateSelectedPlayerVisuals() {
      const rows = tableContainer.querySelectorAll('.player-row');
     rows.forEach(row => {
         const playerId = row.dataset.playerId; // String
         const checkbox = row.querySelector('.player-select-cb');
         if (selectedPlayerIds.has(playerId)) { // Comparar strings
-            row.style.backgroundColor = '#4b5563';
+            row.style.backgroundColor = '#4b5563'; // gray-600
             if (checkbox && !checkbox.checked) checkbox.checked = true;
         } else {
-            row.style.backgroundColor = '';
+            row.style.backgroundColor = ''; // Quitar fondo
             if (checkbox && checkbox.checked) checkbox.checked = false;
         }
     });
@@ -453,6 +587,7 @@ function updateSelectedPlayerVisuals() {
      }
 }
 
+
 // --- EVENT LISTENERS ---
 document.addEventListener('DOMContentLoaded', () => {
     header.innerHTML = renderHeader();
@@ -460,6 +595,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 categoryFilter.addEventListener('change', filterAndRenderTable);
+playerSearchInput.addEventListener('input', filterAndRenderTable); // <-- Listener para búsqueda
 btnPrevWeek.addEventListener('click', goToPreviousWeek);
 btnNextWeek.addEventListener('click', goToNextWeek);
 btnCurrentWeek.addEventListener('click', goToCurrentWeek);
@@ -508,7 +644,5 @@ tableContainer.addEventListener('click', (event) => {
 
 
 btnApplyAvailability.addEventListener('click', () => applyMassAvailability(true));
-// --- CORRECCIÓN: Llamar a applyMassAvailability con false ---
 btnClearAvailability.addEventListener('click', () => applyMassAvailability(false));
-// -----------------------------------------------------------
 btnSaveAll.addEventListener('click', saveAllChanges);

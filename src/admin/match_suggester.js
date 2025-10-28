@@ -514,6 +514,21 @@ function handleCellDoubleClick(e) {
     let inputElement;
     if (type === 'player' || type === 'tournament') {
         inputElement = document.createElement('select');
+        // *** INICIO MODIFICACIÓN: Estilo del Select ***
+        inputElement.style.backgroundColor = '#ffffff'; // Fondo blanco
+        inputElement.style.color = '#000000';           // Texto negro
+        inputElement.style.border = '1px solid #ccc';   // Borde estándar
+        inputElement.style.padding = '4px 6px';        // Padding interno
+        inputElement.style.position = 'absolute';      // Para superponerse
+        inputElement.style.left = '0';
+        inputElement.style.top = '0';
+        inputElement.style.width = '100%';
+        inputElement.style.height = '100%';
+        inputElement.style.fontSize = 'inherit';
+        inputElement.style.fontFamily = 'inherit';
+        inputElement.style.fontWeight = 'normal';
+        // *** FIN MODIFICACIÓN: Estilo del Select ***
+
         let options = '<option value="">Seleccionar...</option>';
         if (type === 'player') {
             const tournamentId = match.tournament_id;
@@ -523,7 +538,10 @@ function handleCellDoubleClick(e) {
                 // Comprobar si el jugador está disponible para la selección
                 const playerCanPlay = !otherPlayerId || playerId !== otherPlayerId;
                 if (playerCanPlay) {
-                    options += `<option value="${playerId}" ${Number(playerId) === Number(currentValue) ? 'selected' : ''}>${getPlayerName(playerId)}</option>`;
+                    // *** INICIO MODIFICACIÓN: Añadir PJ ***
+                    const pjCount = playerMatchCounts.get(playerId) || 0;
+                    options += `<option value="${playerId}" ${Number(playerId) === Number(currentValue) ? 'selected' : ''}>${getPlayerName(playerId)} (${pjCount} PJ)</option>`;
+                    // *** FIN MODIFICACIÓN: Añadir PJ ***
                 }
             });
         } else { // type === 'tournament'
@@ -543,7 +561,9 @@ function handleCellDoubleClick(e) {
         inputElement.value = currentValue || ''; inputElement.min = "1";
     }
 
-    inputElement.className = 'editing-input-cell'; inputElement.dataset.field = field; inputElement.dataset.matchId = matchId;
+    // Aplicar clase DESPUÉS de aplicar estilos inline al select para que estos últimos prevalezcan si hay conflicto
+    inputElement.className = 'editing-input-cell';
+    inputElement.dataset.field = field; inputElement.dataset.matchId = matchId;
     cell.innerHTML = ''; cell.appendChild(inputElement);
 
     if (type === 'time') {
@@ -557,7 +577,7 @@ function handleCellDoubleClick(e) {
 }
 function closeActiveEditor(save = false, newValue = null) {
     if (!activeEditingCell) return;
-    const input = activeEditingCell.querySelector('.editing-input-cell');
+    const input = activeEditingCell.querySelector('.editing-input-cell, select'); // Buscar select también
     let needsUpdate = false;
 
     if (input) {
@@ -593,19 +613,21 @@ function closeActiveEditor(save = false, newValue = null) {
     activeEditingCell = null;
 }
 function handleEditorChange(e) {
-    if (e.target.classList.contains('editing-input-cell') && e.target.tagName === 'SELECT') {
+    // Buscar select con o sin la clase, por si acaso
+    if ((e.target.classList.contains('editing-input-cell') || e.target.tagName === 'SELECT') && e.target.tagName === 'SELECT') {
         closeActiveEditor(true);
     }
 }
 function handleEditorKeyDown(e) {
-    if (e.target.classList.contains('editing-input-cell')) {
+    // Buscar input/select con o sin la clase
+    if (e.target.classList.contains('editing-input-cell') || e.target.tagName === 'SELECT' || e.target.tagName === 'INPUT') {
         if (e.key === 'Enter') { e.preventDefault(); closeActiveEditor(true); }
         else if (e.key === 'Escape') { closeActiveEditor(false); }
     }
 }
 function handleDocumentClick(e) {
     if (activeEditingCell && !activeEditingCell.contains(e.target) && !e.target.closest('.flatpickr-calendar')) {
-        const input = activeEditingCell.querySelector('.editing-input-cell');
+        const input = activeEditingCell.querySelector('.editing-input-cell, select'); // Buscar select también
         // Solo guardar si es input de texto/número (no select ni flatpickr que se guardan onChange/onClose)
         if (input && (input.type === 'text' || input.type === 'number') && !input._flatpickr) {
             closeActiveEditor(true);

@@ -95,40 +95,44 @@
   <header id="header"></header>
   <main class="flex-1 py-8">
     <div class="content-container max-w-[95%] mx-auto space-y-4">
-      <div class="bg-[#222222] p-4 rounded-xl shadow-lg z-20">
-        <div class="flex flex-wrap gap-4 items-center justify-between">
-          <div class="flex items-center gap-4">
-             <div>
-                <label for="category-filter" class="sr-only">Filtrar por Categoría:</label>
-                <select id="category-filter" class="input-field dark-input !w-auto !h-10">
-                  <option value="all">Todas las Categorías</option>
-                </select>
-            </div>
-            <div class="flex items-center gap-2">
-                <button id="btn-prev-week" class="week-nav-button" title="Semana Anterior">&lt;</button>
-                <span id="current-week-display">Semana Actual</span>
-                <button id="btn-next-week" class="week-nav-button" title="Semana Siguiente">&gt;</button>
-                <button id="btn-current-week" class="btn btn-secondary !py-1 !px-2 text-xs" title="Ir a Semana Actual">Hoy</button>
-            </div>
+      <div class="bg-[#222222] p-3 rounded-xl shadow-lg z-20 flex flex-wrap gap-x-4 gap-y-2 items-center justify-between">
+
+        <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
+           <div>
+              <label for="category-filter" class="sr-only">Filtrar por Categoría:</label>
+              <select id="category-filter" class="input-field dark-input !w-auto !h-9 !py-1 !text-sm">
+                <option value="all">Todas las Categorías</option>
+              </select>
           </div>
-          <div class="flex flex-wrap gap-2 items-center">
-             <span class="text-sm font-medium text-gray-300 mr-2">Acciones (para jugadores y horarios seleccionados):</span>
-            <button id="btn-apply-availability" class="btn btn-primary !py-1 !px-3 text-sm">
-                <span class="material-icons text-base">check_circle</span> Marcar como Disponible
-            </button>
-            <button id="btn-clear-availability" class="btn btn-secondary !py-1 !px-3 text-sm">
-                 <span class="material-icons text-base">cancel</span> Marcar como No Disponible
-            </button>
-             <button id="btn-save-all" class="btn btn-primary !py-1 !px-3 text-sm ml-4">
-                 <span class="material-icons text-base">save</span> Guardar Cambios
-            </button>
+          <div class="relative">
+              <label for="player-search-input" class="sr-only">Buscar Jugador:</label>
+              <span class="material-icons absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 !text-base">search</span>
+              <input type="text" id="player-search-input" class="input-field dark-input !pl-8 !w-48 !h-9 !py-1 !text-sm" placeholder="Buscar jugador...">
           </div>
-        </div>
+          <div class="flex items-center gap-1">
+              <button id="btn-prev-week" class="week-nav-button !text-sm !px-2" title="Semana Anterior">&lt;</button>
+              <span id="current-week-display" class="!text-sm !min-w-[140px]">Semana Actual</span>
+              <button id="btn-next-week" class="week-nav-button !text-sm !px-2" title="Semana Siguiente">&gt;</button>
+              <button id="btn-current-week" class="btn btn-secondary !py-1 !px-2 !text-sm !h-9" title="Ir a Semana Actual">Hoy</button>
+          </div>
         </div>
 
+        <div class="flex flex-wrap items-center gap-2">
+           <span class="text-sm font-medium text-gray-400 hidden sm:inline">Acciones:</span>
+          <button id="btn-apply-availability" class="btn btn-primary !py-1 !px-3 !text-sm !h-9">
+              <span class="material-icons !text-base">check_circle</span> Disponible
+          </button>
+          <button id="btn-clear-availability" class="btn btn-secondary !py-1 !px-3 !text-sm !h-9">
+               <span class="material-icons !text-base">cancel</span> No Disponible
+          </button>
+           <button id="btn-save-all" class="btn btn-primary !py-1 !px-3 !text-sm !h-9">
+               <span class="material-icons !text-base">save</span> Guardar
+          </button>
+        </div>
+
+      </div>
       <div class="bg-[#222222] p-1 rounded-xl shadow-lg mt-4">
-        <div id="availability-table-container" class="overflow-auto max-h-[calc(100vh - 200px)]">
-          <p id="loading-indicator" class="text-center text-gray-400 py-16">Cargando datos...</p>
+        <div id="availability-table-container" class="overflow-auto max-h-[calc(100vh - 180px)]"> <p id="loading-indicator" class="text-center text-gray-400 py-16">Cargando datos...</p>
            </div>
       </div>
 
