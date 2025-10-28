@@ -29,12 +29,12 @@ let lastDateRangeStr = '';
 
 const clearFiltersBtn = document.getElementById('btn-clear-all-filters');
 
-function anyFilterActive() {
+function anyFilterActive() { /* ... (sin cambios) ... */
     return filterTournamentSelect.value || filterStatusSelect.value || filterSedeSelect.value || filterCanchaSelect.value || searchInput.value || (filterDateRange && filterDateRange[0] && filterDateRange[1]) || quickFilterMode;
 }
 
 
-clearFiltersBtn.onclick = function() {
+clearFiltersBtn.onclick = function() { /* ... (sin cambios) ... */
     filterTournamentSelect.value = '';
     filterStatusSelect.value = '';
     filterSedeSelect.value = '';
@@ -60,7 +60,7 @@ let isSinglesLoaderInitialized = false;
 let isDoublesLoaderInitialized = false;
 
 // --- Funciones Auxiliares ---
-function isColorLight(hex) {
+function isColorLight(hex) { /* ... (sin cambios) ... */
     if (!hex) return false;
     let c = hex.replace('#', '');
     if (c.length === 3) c = c.split('').map(x => x + x).join('');
@@ -70,13 +70,13 @@ function isColorLight(hex) {
     return ((0.299 * r + 0.587 * g + 0.114 * b) > 150);
 }
 
-function normalizeText(text) {
+function normalizeText(text) { /* ... (sin cambios) ... */
     if (!text) return '';
     return text.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 }
 
 // --- Carga de Datos ---
-async function loadInitialData() {
+async function loadInitialData() { /* ... (sin cambios) ... */
     matchesContainer.innerHTML = '<p class="text-center p-8 text-white">Cargando datos...</p>';
     const [
         { data: playersData },
@@ -88,10 +88,10 @@ async function loadInitialData() {
         supabase.from('players').select('*').order('name'),
         supabase.from('tournaments').select('*, category:category_id(id, name)').order('name'),
         supabase.from('teams').select('*').order('name'),
-        supabase.from('matches').select(`*, 
-            category:category_id(id, name, color), 
-            player1:player1_id(*, team:team_id(name, image_url, color)), 
-            player2:player2_id(*, team:team_id(name, image_url, color)), 
+        supabase.from('matches').select(`*,
+            category:category_id(id, name, color),
+            player1:player1_id(*, team:team_id(name, image_url, color)),
+            player2:player2_id(*, team:team_id(name, image_url, color)),
             player3:player3_id(*, team:team_id(name, image_url, color)),
             player4:player4_id(*, team:team_id(name, image_url, color)),
             winner:winner_id(name)`)
@@ -104,7 +104,7 @@ async function loadInitialData() {
     allTournaments = tournamentsData || [];
     allTeams = teamsData || [];
     allMatches = matchesData || [];
-    
+
     tournamentPlayersMap.clear();
     if (tournamentPlayersData) {
         tournamentPlayersData.forEach(link => {
@@ -135,7 +135,7 @@ async function loadInitialData() {
     applyFiltersAndSort();
 }
 
-function updateSummaryCards() {
+function updateSummaryCards() { /* ... (sin cambios) ... */
     const pendientes = allMatches.filter(m => !m.winner_id && m.status !== 'suspendido').length;
     const now = new Date();
     const sieteDiasAtras = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7, 0, 0, 0, 0);
@@ -149,13 +149,13 @@ function updateSummaryCards() {
     document.getElementById('count-recientes').textContent = recientes;
 }
 
-function populateFilterSelects() {
+function populateFilterSelects() { /* ... (sin cambios) ... */
     filterTournamentSelect.innerHTML = '<option value="">Todos los Torneos</option>';
     allTournaments.forEach(t => filterTournamentSelect.innerHTML += `<option value="${t.id}">${t.name}</option>`);
     updateClearFiltersBtn();
 }
 
-function applyFiltersAndSort() {
+function applyFiltersAndSort() { /* ... (sin cambios) ... */
     let processedMatches = [...allMatches];
     const tournamentFilter = filterTournamentSelect.value;
     const statusFilter = filterStatusSelect.value;
@@ -164,8 +164,8 @@ function applyFiltersAndSort() {
     const searchTerm = normalizeText(searchInput.value.toLowerCase());
 
     if (searchTerm) {
-        processedMatches = processedMatches.filter(m => 
-            (m.player1 && normalizeText(m.player1.name.toLowerCase()).includes(searchTerm)) || 
+        processedMatches = processedMatches.filter(m =>
+            (m.player1 && normalizeText(m.player1.name.toLowerCase()).includes(searchTerm)) ||
             (m.player2 && normalizeText(m.player2.name.toLowerCase()).includes(searchTerm)) ||
             (m.player3 && normalizeText(m.player3.name.toLowerCase()).includes(searchTerm)) ||
             (m.player4 && normalizeText(m.player4.name.toLowerCase()).includes(searchTerm))
@@ -213,7 +213,7 @@ function applyFiltersAndSort() {
 }
 
 
-function updateClearFiltersBtn() {
+function updateClearFiltersBtn() { /* ... (sin cambios) ... */
     if (anyFilterActive()) {
         clearFiltersBtn.classList.remove('hidden');
     } else {
@@ -223,19 +223,19 @@ function updateClearFiltersBtn() {
 
 // --- Filtros rápidos por tarjetas resumen y orden ---
 let quickFilterMode = null;
-let sortOrderDesc = true; 
+let sortOrderDesc = true;
 
-function clearQuickFilter() {
+function clearQuickFilter() { /* ... (sin cambios) ... */
     quickFilterMode = null;
     applyFiltersAndSort();
 }
 
-function applyQuickFilter(mode) {
+function applyQuickFilter(mode) { /* ... (sin cambios) ... */
     quickFilterMode = mode;
     applyFiltersAndSort();
 }
 
-function renderMatches(matchesToRender) {
+function renderMatches(matchesToRender) { /* ... (sin cambios) ... */
     if (matchesToRender.length === 0) {
         matchesContainer.innerHTML = '<p class="text-center text-gray-400 py-8">No hay partidos que coincidan con los filtros.</p>';
         return;
@@ -310,14 +310,14 @@ function renderMatches(matchesToRender) {
                 if (isDoubles && match.player4) team2_names += ` / ${match.player4.name}`;
 
                 let hora = match.match_time ? match.match_time.substring(0, 5) : 'HH:MM';
-                
+
                 const setsDisplayRaw = (match.sets || []).map(s => {
                     if (match.winner_id && !team1_winner) {
                         return `${s.p2}/${s.p1}`;
                     }
                     return `${s.p1}/${s.p2}`;
                 }).join(' ');
-                
+
                 let resultadoDisplay = '';
                 if (match.status === 'suspendido') {
                     resultadoDisplay = '<span style="color:#fff;font-weight:700;text-decoration:none !important;">Suspendido</span>';
@@ -334,7 +334,7 @@ function renderMatches(matchesToRender) {
                 const p1TextColor = isColorLight(p1TeamColor) ? '#222' : '#fff';
                 const p2TextColor = isColorLight(p2TeamColor) ? '#222' : '#fff';
                 const played = !!match.winner_id;
-                
+
                 let team1NameStyle = played && !team1_winner ? 'color:#888;' : '';
                 let team2NameStyle = played && !team2_winner ? 'color:#888;' : '';
 
@@ -381,7 +381,7 @@ function renderMatches(matchesToRender) {
             }
         }
     }
-    
+
     matchesContainer.innerHTML = `
     <div class="bg-[#18191b] p-4 sm:p-6 rounded-xl shadow-lg overflow-x-auto">
     <table class="matches-report-style">
@@ -414,9 +414,8 @@ function renderMatches(matchesToRender) {
     }
 }
 
-// --- MODAL Y ACCIONES (NUEVO CÓDIGO UNIFICADO) ---
-
-function openScoreModal(match) {
+// --- MODAL Y ACCIONES ---
+function openScoreModal(match) { /* ... (sin cambios) ... */
     const sets = match.sets || [];
     const isPlayed = !!match.winner_id;
     let playersInTournament = [];
@@ -435,26 +434,23 @@ function openScoreModal(match) {
         sede = parts[0]?.trim() || '';
         cancha = parts[1]?.trim() || '';
     }
-    
+
     const sedeOptions = ['Centro', 'Funes'].map(s => `<option value="${s}" ${sede === s ? 'selected' : ''}>${s}</option>`).join('');
     const canchaOptions = [1, 2, 3, 4, 5, 6].map(c => `<option value="Cancha ${c}" ${cancha === `Cancha ${c}` ? 'selected' : ''}>Cancha ${c}</option>`).join('');
 
     modalContainer.innerHTML = `
         <div id="score-modal-overlay" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-2 z-50">
             <div id="score-modal-content" class="bg-[#232323] rounded-xl shadow-lg w-full max-w-md lg:max-w-2xl border border-[#444] mx-2 sm:mx-0 flex flex-col max-h-[90vh]">
-                
+
                 <style>
-                    .modal-player-name {
-                        font-size: 0.875rem; white-space: nowrap;
-                        overflow: hidden; text-overflow: ellipsis; display: block;
-                    }
+                    .modal-player-name { font-size: 0.875rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
                     @media (max-width: 640px) { .modal-player-name { font-size: 0.75rem; } }
                 </style>
 
                 <div class="p-4 sm:p-6 border-b border-[#333] flex-shrink-0">
                     <h3 class="text-lg sm:text-xl font-bold text-yellow-400">Editar Partido / Resultado</h3>
                 </div>
-                
+
                 <div class="overflow-y-auto">
                     <form id="score-form" class="p-4 sm:p-6 space-y-4">
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -525,7 +521,7 @@ function openScoreModal(match) {
                             </div>
                         `).join('')}
                     </form>
-                    
+
                     ${!isPlayed ? `
                         <div id="wo-section" class="p-4 bg-[#1d1d1d] border-y border-[#333] text-center"></div>
                         <div id="ret-section" class="p-4 bg-[#1d1d1d] border-b border-[#333] text-center"></div>
@@ -545,7 +541,7 @@ function openScoreModal(match) {
             </div>
         </div>
     `;
-    
+
     document.getElementById('player1-select-modal').addEventListener('change', () => updateTeamNamesInModal(isDoubles));
     document.getElementById('player2-select-modal').addEventListener('change', () => updateTeamNamesInModal(isDoubles));
     if (isDoubles) {
@@ -577,7 +573,7 @@ function openScoreModal(match) {
             document.getElementById('btn-wo-p1').onclick = () => handleWoWin(match, 'p1');
             document.getElementById('btn-wo-p2').onclick = () => handleWoWin(match, 'p2');
         }
-        
+
         if(retSection) {
             retSection.innerHTML = `
                 <p class="text-sm font-medium text-gray-400 mb-2">Si un jugador se retira a mitad de partido:</p>
@@ -593,10 +589,8 @@ function openScoreModal(match) {
 }
 
 
-async function handleRetirement(match, retiringSide) {
+async function handleRetirement(match, retiringSide) { /* ... (sin cambios) ... */
     const isDoubles = !!(match.player3_id && match.player4_id);
-
-    // 1. Recopila los resultados de los sets ingresados
     const sets = [];
     let p1SetsWon = 0, p2SetsWon = 0;
     for (let i = 1; i <= 3; i++) {
@@ -610,32 +604,17 @@ async function handleRetirement(match, retiringSide) {
             if (p2 > p1) p2SetsWon++;
         }
     }
-
     if (sets.length === 0) {
         return alert("Por favor, ingrese el resultado de al menos un game antes de registrar un retiro.");
     }
-
-    // 2. Determina el ganador y si el perdedor obtiene punto bonus
     const winner_id = retiringSide === 'p1' ? match.player2_id : match.player1_id;
     const bonus_loser = (retiringSide === 'p1' && p1SetsWon >= 1) || (retiringSide === 'p2' && p2SetsWon >= 1);
-
-    // 3. Pide confirmación al administrador
     const retiringPlayerName = retiringSide === 'p1' ? (isDoubles ? `Equipo A` : match.player1.name) : (isDoubles ? `Equipo B` : match.player2.name);
     if (!confirm(`¿Confirmas que ${retiringPlayerName} se retira del partido?`)) {
         return;
     }
-
-    // 4. Prepara los datos para guardar
-    const updateData = {
-        winner_id,
-        sets,
-        status: 'completado_ret', // Nuevo estado para identificar retiros
-        bonus_loser
-    };
-
-    // 5. Guarda en la base de datos
+    const updateData = { winner_id, sets, status: 'completado_ret', bonus_loser };
     const { error } = await supabase.from('matches').update(updateData).eq('id', match.id);
-
     if (error) {
         alert("Error al registrar el retiro: " + error.message);
     } else {
@@ -646,12 +625,9 @@ async function handleRetirement(match, retiringSide) {
 }
 
 
-async function handleWoWin(match, winnerSide) {
+async function handleWoWin(match, winnerSide) { /* ... (sin cambios) ... */
     const isDoubles = !!(match.player3_id && match.player4_id);
-    
-    // El winner_id se establece como el del primer jugador del equipo ganador para consistencia.
     const winner_id = winnerSide === 'p1' ? match.player1_id : match.player2_id;
-    
     let winnerName, loserName;
     if (isDoubles) {
         winnerName = winnerSide === 'p1' ? `${match.player1.name} / ${match.player3.name}` : `${match.player2.name} / ${match.player4.name}`;
@@ -660,20 +636,11 @@ async function handleWoWin(match, winnerSide) {
         winnerName = winnerSide === 'p1' ? match.player1.name : match.player2.name;
         loserName = winnerSide === 'p1' ? match.player2.name : match.player1.name;
     }
-
     if (!confirm(`¿Confirmas que ${winnerName} gana por no presentación de ${loserName}?`)) {
         return;
     }
-
-    const updateData = {
-        winner_id: winner_id,
-        sets: null, // Los W.O. no tienen sets
-        status: 'completado_wo', // Nuevo estado para identificarlo
-        bonus_loser: false
-    };
-
+    const updateData = { winner_id: winner_id, sets: null, status: 'completado_wo', bonus_loser: false };
     const { error } = await supabase.from('matches').update(updateData).eq('id', match.id);
-
     if (error) {
         alert("Error al registrar el WO: " + error.message);
     } else {
@@ -684,16 +651,13 @@ async function handleWoWin(match, winnerSide) {
 }
 
 
-function updateTeamNamesInModal(isDoubles) {
+function updateTeamNamesInModal(isDoubles) { /* ... (sin cambios) ... */
     const p1Select = document.getElementById('player1-select-modal');
     const p2Select = document.getElementById('player2-select-modal');
-    
     const p1Name = p1Select.options[p1Select.selectedIndex].text;
     const p2Name = p2Select.options[p2Select.selectedIndex].text;
-
     let teamAName = p1Name;
     let teamBName = p2Name;
-
     if (isDoubles) {
         const p3Select = document.getElementById('player3-select-modal');
         const p4Select = document.getElementById('player4-select-modal');
@@ -702,23 +666,20 @@ function updateTeamNamesInModal(isDoubles) {
         teamAName += ` / ${p3Name}`;
         teamBName += ` / ${p4Name}`;
     }
-
     document.getElementById('teamA-name').textContent = teamAName;
     document.getElementById('teamB-name').textContent = teamBName;
 }
 
 
-function closeModal() {
+function closeModal() { /* ... (sin cambios) ... */
     modalContainer.innerHTML = '';
 }
 
-async function saveScores(match) {
+async function saveScores(match) { /* ... (sin cambios) ... */
     const matchId = match.id;
     const isDoubles = !!(match.player3_id && match.player4_id);
-
     const sets = [];
     let p1SetsWon = 0, p2SetsWon = 0;
-    
     for (let i = 1; i <= 3; i++) {
         const p1Score = document.getElementById(`p1_set${i}`).value;
         const p2Score = document.getElementById(`p2_set${i}`).value;
@@ -730,49 +691,36 @@ async function saveScores(match) {
             if (p2 > p1) p2SetsWon++;
         }
     }
-    
     const p1_id = document.getElementById('player1-select-modal').value;
     const p2_id = document.getElementById('player2-select-modal').value;
     const p3_id = isDoubles ? document.getElementById('player3-select-modal').value : null;
     const p4_id = isDoubles ? document.getElementById('player4-select-modal').value : null;
-
     if (p1_id === p2_id || (isDoubles && (p1_id === p3_id || p1_id === p4_id || p2_id === p3_id || p2_id === p4_id || p3_id === p4_id))) {
         return alert("Los jugadores no pueden repetirse.");
     }
-    
     let winner_id = null;
     if (sets.length > 0) {
         if (sets.length < 2 || (p1SetsWon < 2 && p2SetsWon < 2)) return alert("El resultado no es válido. Un equipo debe ganar al menos 2 sets.");
         winner_id = p1SetsWon > p2SetsWon ? p1_id : p2_id;
     }
-
     const newDate = document.getElementById('match-date-modal').value;
     const newTime = document.getElementById('match-time-modal').value;
     const newSede = document.getElementById('match-sede-modal').value;
     const newCancha = document.getElementById('match-cancha-modal').value;
     const newLocation = newSede && newCancha ? `${newSede} - ${newCancha}` : (newSede || newCancha || '');
-
-    const matchData = { 
-        sets: sets.length > 0 ? sets : null, 
-        winner_id, 
-        player1_id: p1_id,
-        player2_id: p2_id,
-        player3_id: p3_id,
-        player4_id: p4_id,
+    const matchData = {
+        sets: sets.length > 0 ? sets : null, winner_id,
+        player1_id: p1_id, player2_id: p2_id, player3_id: p3_id, player4_id: p4_id,
         status: winner_id ? 'completado' : 'programado',
         bonus_loser: (p1SetsWon === 1 && winner_id == p2_id) || (p2SetsWon === 1 && winner_id == p1_id),
-        match_date: newDate || null,
-        match_time: newTime || null,
-        location: newLocation || null
+        match_date: newDate || null, match_time: newTime || null, location: newLocation || null
     };
-    
     const { error } = await supabase.from('matches').update(matchData).eq('id', matchId);
-    
     if (error) alert("Error al guardar: " + error.message);
     else { closeModal(); await loadInitialData(); }
 }
 
-async function clearScore(matchId) {
+async function clearScore(matchId) { /* ... (sin cambios) ... */
     if (confirm("¿Limpiar el resultado de este partido?")) {
         const { error } = await supabase.from('matches').update({ sets: null, winner_id: null, bonus_loser: false, status: 'programado' }).eq('id', matchId);
         if (error) alert("Error: " + error.message);
@@ -780,7 +728,7 @@ async function clearScore(matchId) {
     }
 }
 
-async function deleteMatch(matchId) {
+async function deleteMatch(matchId) { /* ... (sin cambios) ... */
     if (confirm("¿ELIMINAR este partido permanentemente?")) {
         const { error } = await supabase.from('matches').delete().eq('id', matchId);
         if (error) alert("Error: " + error.message);
@@ -788,13 +736,13 @@ async function deleteMatch(matchId) {
     }
 }
 
-function updateBulkActionBar() {
+function updateBulkActionBar() { /* ... (sin cambios) ... */
     selectedCountSpan.textContent = selectedMatches.size;
     bulkActionBar.classList.toggle('translate-y-24', selectedMatches.size === 0);
     bulkActionBar.classList.toggle('opacity-0', selectedMatches.size === 0);
 }
 
-async function handleBulkDelete() {
+async function handleBulkDelete() { /* ... (sin cambios) ... */
     if (selectedMatches.size === 0) return;
     if (confirm(`¿Eliminar ${selectedMatches.size} partidos seleccionados?`)) {
         const { error } = await supabase.from('matches').delete().in('id', Array.from(selectedMatches));
@@ -803,13 +751,12 @@ async function handleBulkDelete() {
     }
 }
 
-async function handleBulkSuspend() {
+async function handleBulkSuspend() { /* ... (sin cambios) ... */
     if (selectedMatches.size === 0) return;
     if (confirm(`¿Marcar ${selectedMatches.size} partidos seleccionados como suspendidos?`)) {
         const { error } = await supabase.from('matches')
             .update({ status: 'suspendido', sets: null, winner_id: null, bonus_loser: false })
             .in('id', Array.from(selectedMatches));
-
         if (error) {
             alert("Error al suspender los partidos: " + error.message);
         } else {
@@ -819,7 +766,7 @@ async function handleBulkSuspend() {
     }
 }
 
-function handleBulkReport() {
+function handleBulkReport() { /* ... (sin cambios) ... */
     if (selectedMatches.size === 0) {
         alert("No hay partidos seleccionados.");
         return;
@@ -835,47 +782,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     header.innerHTML = renderHeader();
     await loadInitialData();
 
-    // --- INICIO DE LA MODIFICACIÓN: Cargar partidos del Suggester ---
-    // Revisar si venimos del Suggester
-    const preloadedData = sessionStorage.getItem('matchesToPreload');
-    if (preloadedData && massLoaderContainer) {
-        console.log("Datos de sugerencias encontrados. Mostrando carga masiva...");
-        
-        // 1. Mostrar el contenedor
-        massLoaderContainer.classList.remove('hidden');
-        
-        // 2. Actualizar el botón para que diga "Cancelar"
-        btnShowSinglesForm.innerHTML = '<span class="material-icons">close</span> Cancelar';
-        
-        // 3. Inicializar el loader (que leerá el sessionStorage)
-        if (!isSinglesLoaderInitialized) {
-            setupMassMatchLoader({
-                container: massLoaderContainer,
-                allTournaments,
-                allPlayers,
-                tournamentPlayersMap,
-                loadInitialData
-            });
-            isSinglesLoaderInitialized = true;
-        }
-    }
-    // --- FIN DE LA MODIFICACIÓN ---
+    // **ELIMINADO:** Ya no se verifica 'matchesToPreload'
+    // const preloadedData = sessionStorage.getItem('matchesToPreload');
+    // if (preloadedData && massLoaderContainer) { ... }
 
-    const cardPendientes = document.getElementById('card-pendientes');
-    const cardRecientes = document.getElementById('card-recientes');
-    if (cardPendientes) {
-        cardPendientes.style.cursor = 'pointer';
-        cardPendientes.onclick = () => applyQuickFilter('pendientes');
-    }
-    if (cardRecientes) {
-        cardRecientes.style.cursor = 'pointer';
-        cardRecientes.onclick = () => applyQuickFilter('recientes');
-    }
-    const btnSortOrder = document.getElementById('btn-sort-order');
+    const cardPendientes = document.getElementById('card-pendientes'); /* ... (sin cambios) ... */
+    const cardRecientes = document.getElementById('card-recientes'); /* ... (sin cambios) ... */
+    if (cardPendientes) { cardPendientes.style.cursor = 'pointer'; cardPendientes.onclick = () => applyQuickFilter('pendientes'); }
+    if (cardRecientes) { cardRecientes.style.cursor = 'pointer'; cardRecientes.onclick = () => applyQuickFilter('recientes'); }
+    const btnSortOrder = document.getElementById('btn-sort-order'); /* ... (sin cambios) ... */
     if (btnSortOrder) {
         const sortText = btnSortOrder.querySelector('span:last-child');
         if (sortText) sortText.textContent = sortOrderDesc ? 'Más recientes' : 'Más antiguos';
-        
         btnSortOrder.onclick = () => {
             sortOrderDesc = !sortOrderDesc;
             if (sortText) sortText.textContent = sortOrderDesc ? 'Más recientes' : 'Más antiguos';
@@ -884,65 +802,42 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 });
 
-btnShowSinglesForm.addEventListener('click', () => {
+btnShowSinglesForm.addEventListener('click', () => { /* ... (sin cambios, excepto la eliminación del sessionStorage.removeItem) ... */
     doublesLoaderContainer.classList.add('hidden');
     btnShowDoublesForm.innerHTML = '<span class="material-icons">groups</span> Crear Partido Dobles';
-
     const isHidden = massLoaderContainer.classList.toggle('hidden');
     btnShowSinglesForm.innerHTML = isHidden
         ? '<span class="material-icons">person_add</span> Crear Partido Individual'
         : '<span class="material-icons">close</span> Cancelar';
-
-    // --- INICIO MODIFICACIÓN: Limpiar sessionStorage si se cierra manualmente ---
-    if (isHidden) {
-        sessionStorage.removeItem('matchesToPreload');
-    }
-    // --- FIN MODIFICACIÓN ---
-
+    // **ELIMINADO:** sessionStorage.removeItem('matchesToPreload');
     if (!isHidden && !isSinglesLoaderInitialized) {
-        setupMassMatchLoader({
-            container: massLoaderContainer,
-            allTournaments,
-            allPlayers,
-            tournamentPlayersMap,
-            loadInitialData
-        });
+        setupMassMatchLoader({ container: massLoaderContainer, allTournaments, allPlayers, tournamentPlayersMap, loadInitialData });
         isSinglesLoaderInitialized = true;
     }
 });
 
-btnShowDoublesForm.addEventListener('click', () => {
+btnShowDoublesForm.addEventListener('click', () => { /* ... (sin cambios, excepto la eliminación del sessionStorage.removeItem) ... */
     massLoaderContainer.classList.add('hidden');
     btnShowSinglesForm.innerHTML = '<span class="material-icons">person_add</span> Crear Partido Individual';
-    // --- INICIO MODIFICACIÓN: Limpiar sessionStorage si se abre el otro loader ---
-    sessionStorage.removeItem('matchesToPreload');
-    // --- FIN MODIFICACIÓN ---
-
+    // **ELIMINADO:** sessionStorage.removeItem('matchesToPreload');
     const isHidden = doublesLoaderContainer.classList.toggle('hidden');
     btnShowDoublesForm.innerHTML = isHidden
         ? '<span class="material-icons">groups</span> Crear Partido Dobles'
         : '<span class="material-icons">close</span> Cancelar';
-
     if (!isHidden && !isDoublesLoaderInitialized) {
-        setupDoublesMatchLoader({
-            container: doublesLoaderContainer,
-            allTournaments,
-            allPlayers,
-            allTeams,
-            loadInitialData
-        });
+        setupDoublesMatchLoader({ container: doublesLoaderContainer, allTournaments, allPlayers, allTeams, loadInitialData });
         isDoublesLoaderInitialized = true;
     }
 });
 
 
-[filterTournamentSelect, filterStatusSelect, filterSedeSelect, filterCanchaSelect, searchInput].forEach(el => {
+[filterTournamentSelect, filterStatusSelect, filterSedeSelect, filterCanchaSelect, searchInput].forEach(el => { /* ... (sin cambios) ... */
     if (el) el.addEventListener('input', applyFiltersAndSort);
 });
 
-let lastClickTime = 0;
-const DOUBLE_CLICK_INTERVAL = 200;
-matchesContainer.addEventListener('click', (e) => {
+let lastClickTime = 0; /* ... (sin cambios) ... */
+const DOUBLE_CLICK_INTERVAL = 200; /* ... (sin cambios) ... */
+matchesContainer.addEventListener('click', (e) => { /* ... (sin cambios) ... */
     const row = e.target.closest('tr[data-match-id]');
     if (!row) return;
     const matchId = Number(row.dataset.matchId);
@@ -974,18 +869,14 @@ matchesContainer.addEventListener('click', (e) => {
     }
 });
 
-document.getElementById('bulk-delete').addEventListener('click', handleBulkDelete);
-document.getElementById('bulk-report').addEventListener('click', handleBulkReport);
-document.getElementById('bulk-suspend').addEventListener('click', handleBulkSuspend);
-document.getElementById('btn-import-excel').addEventListener('click', () => {
+document.getElementById('bulk-delete').addEventListener('click', handleBulkDelete); /* ... (sin cambios) ... */
+document.getElementById('bulk-report').addEventListener('click', handleBulkReport); /* ... (sin cambios) ... */
+document.getElementById('bulk-suspend').addEventListener('click', handleBulkSuspend); /* ... (sin cambios) ... */
+document.getElementById('btn-import-excel').addEventListener('click', () => { /* ... (sin cambios) ... */
     importMatchesFromFile(allPlayers, allTournaments, tournamentPlayersMap)
-        .then(success => {
-            if (success) {
-                loadInitialData();
-            }
-        });
+        .then(success => { if (success) { loadInitialData(); } });
 });
-document.getElementById('bulk-deselect').addEventListener('click', () => {
+document.getElementById('bulk-deselect').addEventListener('click', () => { /* ... (sin cambios) ... */
     selectedMatches.clear();
     applyFiltersAndSort();
 });
