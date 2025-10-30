@@ -22,10 +22,13 @@ export function renderHeader() {
         <a class="${getLinkClasses('matches.html')}" href="/src/admin/matches.html">Partidos</a>
                 <a class="${getLinkClasses('reportes-historicos.html')}" href="/src/admin/reportes-historicos.html">Reportes</a>
         <a class="${getLinkClasses('rankings.html')}" href="/src/admin/rankings.html">Ranking</a>
+        <a class="${getLinkClasses('availability.html')}" href="/src/admin/availability.html">Disponibilidad</a>
+        <a class="${getLinkClasses('match_suggester.html')}" href="/src/admin/match_suggester.html">Sugerencia de Partidos</a>
         <a class="${getLinkClasses('players.html')}" href="/src/admin/players.html">Jugadores</a>
         <a class="${getLinkClasses('tournaments.html')}" href="/src/admin/tournaments.html">Torneos</a>
         <a class="${getLinkClasses('teams.html')}" href="/src/admin/teams.html">Equipos</a>
         <a class="${getLinkClasses('categories.html')}" href="/src/admin/categories.html">Categorías</a>
+        
     `;
   }
   
