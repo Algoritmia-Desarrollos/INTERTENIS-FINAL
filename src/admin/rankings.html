@@ -37,6 +37,114 @@
             min-width: 200px;
         }
       }
+
+      /* --- INICIO: NUEVOS ESTILOS PARA DIVISIONES Y ETIQUETAS --- */
+      
+      /* Estilo para la fila que actúa como línea divisoria */
+      .ranking-divider-row td {
+        height: 2px !important;
+        padding: 0 !important;
+        background-color: #facc15 !important; /* Amarillo */
+        border-bottom: 2px solid #facc15 !important;
+        border-top: 2px solid #facc15 !important;
+        overflow: hidden;
+      }
+      /* Ocultar el botón de admin en la fila divisoria */
+      .ranking-divider-row .admin-actions {
+        visibility: hidden;
+      }
+
+      /* Estilo para la etiqueta de color (Ascenso/Descenso) */
+      .special-tag {
+        display: inline-block;
+        padding: 2px 6px;
+        font-size: 0.7rem;
+        font-weight: 900;
+        border-radius: 4px;
+        /* margin-left: 8px; <-- ELIMINADO */
+        line-height: 1;
+        vertical-align: middle;
+        text-shadow: 0 0 2px rgba(0,0,0,0.5);
+      }
+
+      /* Contenedor para los botones de admin en la tabla */
+      .admin-actions {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+        width: 80px; /* Ancho fijo para los botones */
+      }
+      .admin-actions .admin-btn {
+        background: none;
+        border: none;
+        cursor: pointer;
+        padding: 4px;
+        border-radius: 99px; /* Círculo */
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .admin-actions .admin-btn .material-icons {
+        font-size: 18px;
+        color: #9ca3af; /* gray-400 */
+        transition: all 0.2s;
+      }
+      .admin-actions .admin-btn:hover .material-icons {
+        color: #fff;
+      }
+      /* Color específico para el botón de dividir */
+      .admin-actions .admin-btn.toggle-divider-btn:hover .material-icons {
+        color: #facc15; /* Amarillo */
+      }
+      .admin-actions .admin-btn.toggle-divider-btn.active .material-icons {
+        color: #facc15; /* Amarillo */
+        font-weight: bold;
+      }
+      /* Color específico para el botón de etiqueta */
+      .admin-actions .admin-btn.edit-tag-btn:hover .material-icons {
+        color: #60a5fa; /* blue-400 */
+      }
+      .admin-actions .admin-btn.edit-tag-btn.active .material-icons {
+        color: #60a5fa; /* blue-400 */
+      }
+
+      /* Estilos para el editor de etiquetas (pop-up o inline) */
+      .tag-editor-inline {
+        display: flex;
+        gap: 6px;
+        align-items: center;
+        background-color: #374151;
+        padding: 4px;
+        border-radius: 6px;
+        /* margin-left: 8px; <-- ELIMINADO */
+      }
+      .tag-editor-inline input[type="text"] {
+        background-color: #4b5563;
+        border: 1px solid #6b7280;
+        color: #fff;
+        font-size: 0.75rem;
+        padding: 4px 6px;
+        border-radius: 4px;
+        width: 50px;
+      }
+      .tag-editor-inline input[type="color"] {
+        border: none;
+        background: none;
+        width: 24px;
+        height: 24px;
+        padding: 0;
+        cursor: pointer;
+      }
+      .tag-editor-inline .action-icon {
+        cursor: pointer;
+        font-size: 20px;
+      }
+      .tag-editor-inline .icon-save { color: #4ade80; } /* green-400 */
+      .tag-editor-inline .icon-cancel { color: #f87171; } /* red-400 */
+      
+      /* --- FIN: NUEVOS ESTILOS --- */
+
     </style>
 </head>
 <body class="bg-black text-gray-200">
@@ -53,6 +161,13 @@
                     <label id="filter-label" for="tournament-filter" class="block text-sm font-medium text-gray-300 mb-2">Seleccionar Torneo</label>
                     <select id="tournament-filter" class="input-field dark-input"></select>
                 </div>
+            </div>
+
+            <div id="save-changes-container" class="text-right hidden sticky z-40" style="top: 100px;">
+                <button id="save-ranking-changes-btn" class="btn btn-primary !py-3 !px-6 text-lg">
+                    <span class="material-icons">save</span>
+                    Guardar Cambios en Ranking
+                </button>
             </div>
 
             <div id="rankings-container" class="space-y-8">

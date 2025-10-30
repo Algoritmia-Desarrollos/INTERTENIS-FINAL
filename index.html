@@ -28,12 +28,38 @@
             padding-left: 0.5rem; /* Mantenemos el texto a la izquierda */
         }
 
-        /* Columna del nombre del jugador (CORREGIDO) */
         .rankings-table .col-player {
-            /* 👇 ESTE ES EL CAMBIO FINAL Y CORRECTO 👇 */
             min-width: 200px; /* Ancho mínimo para ver el nombre */
         }
     }
+
+    /* --- INICIO: NUEVOS ESTILOS PÚBLICOS (Dividers y Tags) --- */
+    
+    /* Estilo para la fila que actúa como línea divisoria */
+    .ranking-divider-row td {
+      height: 2px !important;
+      padding: 0 !important;
+      background-color: #facc15 !important; /* Amarillo */
+      border-bottom: 2px solid #757170 !important;
+      border-top: 2px solid #757170 !important;
+      overflow: hidden;
+    }
+
+    /* Estilo para la etiqueta de color (Ascenso/Descenso) */
+    .special-tag {
+      display: inline-block;
+      padding: 2px 6px;
+      font-size: 0.7rem;
+      font-weight: 900;
+      border-radius: 4px;
+      /* margin-left: 8px; <-- ELIMINADO */
+      line-height: 1;
+      vertical-align: middle;
+      text-shadow: 0 0 2px rgba(0,0,0,0.5);
+    }
+    
+    /* --- FIN: NUEVOS ESTILOS PÚBLICOS --- */
+
 </style>
     </head>
 <body class="bg-black text-gray-200">

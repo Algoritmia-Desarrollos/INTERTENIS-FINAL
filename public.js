@@ -14,6 +14,7 @@ const pageTitle = document.querySelector('h1');
 // --- Estado Global ---
 let allTournaments = [];
 let currentView = 'category';
+let currentRankingMetadata = new Map(); // Para guardar metadata
 
 // --- Lógica de Vistas y Filtros ---
 
@@ -99,7 +100,7 @@ function renderTeamRankings(teamToHighlight = null) {
 }
 
 
-// --- RANKING POR CATEGORÍA ---
+// --- RANKING POR CATEGORÍA (Modificado) ---
 async function renderCategoryRankings(playerToHighlight = null) {
     const tournamentId = tournamentFilter.value;
     rankingsContainer.innerHTML = '<p class="text-center p-8 text-gray-400">Calculando POSICIONES...</p>';
@@ -109,16 +110,50 @@ async function renderCategoryRankings(playerToHighlight = null) {
         return;
     }
 
-    const { data: tournamentPlayersLinks } = await supabase.from('tournament_players').select('player_id').eq('tournament_id', tournamentId);
+    // 1. Cargar 'tournamentPlayersLinks' PRIMERO
+    const { data: tournamentPlayersLinks, error: tpError } = await supabase
+        .from('tournament_players')
+        .select('player_id')
+        .eq('tournament_id', tournamentId);
+    
+    if (tpError) {
+         rankingsContainer.innerHTML = '<div class="bg-[#222222] p-8 rounded-xl"><p class="text-center text-red-500">Error al cargar jugadores.</p></div>';
+         return;
+    }
     if (!tournamentPlayersLinks || tournamentPlayersLinks.length === 0) {
         rankingsContainer.innerHTML = '<div class="bg-[#222222] p-8 rounded-xl"><p class="text-center text-gray-400">Este torneo no tiene jugadores inscritos.</p></div>';
         return;
     }
+
+    // 2. Crear 'playerIds' AHORA
     const playerIds = tournamentPlayersLinks.map(link => link.player_id);
 
-    const { data: playersInTournament } = await supabase.from('players').select('*, teams(name, image_url), categories(id, name)').in('id', playerIds);
-    const { data: matchesInTournament } = await supabase.from('matches').select('*, status, sets, winner_id, bonus_loser, player1_id, player2_id, player3_id, player4_id').eq('tournament_id', tournamentId).not('winner_id', 'is', null);
+    // 3. Cargar el resto de datos en un 'Promise.all'
+    const [
+        { data: playersInTournament, error: pError },
+        { data: matchesInTournament, error: mError },
+        { data: metadataData, error: metaError }
+    ] = await Promise.all([
+        supabase.from('players').select('*, teams(name, image_url), categories(id, name)').in('id', playerIds),
+        supabase.from('matches').select('*, status, sets, winner_id, bonus_loser, player1_id, player2_id, player3_id, player4_id').eq('tournament_id', tournamentId).not('winner_id', 'is', null),
+        supabase.from('player_ranking_metadata').select('*').eq('tournament_id', tournamentId) // Cargar metadata
+    ]);
 
+    if (pError || mError) {
+        rankingsContainer.innerHTML = '<div class="bg-[#222222] p-8 rounded-xl"><p class="text-center text-red-500">Error al cargar datos del torneo.</p></div>';
+        return;
+    }
+    if (metaError) {
+        console.warn("Error al cargar la metadata del ranking", metaError);
+    }
+
+    // Guardar metadata en el estado global
+    currentRankingMetadata.clear();
+    (metadataData || []).forEach(meta => {
+        currentRankingMetadata.set(meta.player_id, meta);
+    });
+
+    // 4. Calcular estadísticas
     const stats = calculateCategoryStats(playersInTournament || [], matchesInTournament || []);
     const categoriesInTournament = [...new Map(playersInTournament.map(p => p && [p.category_id, p.categories]).filter(Boolean)).values()];
 
@@ -128,12 +163,14 @@ async function renderCategoryRankings(playerToHighlight = null) {
         return;
     }
 
+    // 5. Renderizar cada categoría
     categoriesInTournament.forEach(category => {
         let categoryStats = stats.filter(s => s.categoryId === category.id);
         
         const tableContainer = document.createElement('div');
         tableContainer.className = 'bg-[#222222] p-4 rounded-xl shadow-lg overflow-x-auto mb-8';
-        tableContainer.innerHTML = generateCategoryRankingsHTML(category, categoryStats, playerToHighlight);
+        // Pasar la metadata al generador HTML
+        tableContainer.innerHTML = generateCategoryRankingsHTML(category, categoryStats, playerToHighlight, currentRankingMetadata);
         rankingsContainer.appendChild(tableContainer);
     });
 }
@@ -219,7 +256,37 @@ function calculateCategoryStats(players, matches) {
     return stats;
 }
 
-function generateCategoryRankingsHTML(category, stats, playerToHighlight = null) {
+/**
+ * Genera el HTML para la tabla de ranking pública (MODIFICADO)
+ * @param {object} category - La categoría
+ * @param {Array} stats - Los stats de los jugadores
+ * @param {string} playerToHighlight - ID del jugador a resaltar
+ * @param {Map} metadataMap - Map(playerId -> metadata)
+ */
+function generateCategoryRankingsHTML(category, stats, playerToHighlight = null, metadataMap) {
+    
+    // Función helper para la etiqueta (para no repetir código)
+    const renderTag = (meta) => {
+        if (meta && meta.special_tag) {
+            const tagColor = meta.tag_color || '#374151';
+            const textColor = isColorLight(tagColor) ? '#000' : '#fff';
+            return `<span class="special-tag" style="background-color: ${tagColor}; color: ${textColor};">${meta.special_tag}</span>`;
+        }
+        return '';
+    };
+
+    // Función helper para el color de texto de la etiqueta
+    const isColorLight = (hex) => {
+        if (!hex || typeof hex !== 'string') return false;
+        let c = hex.startsWith('#') ? hex.slice(1) : hex;
+        if (c.length === 3) c = c.split('').map(char => char + char).join('');
+        const r = parseInt(c.substring(0, 2), 16);
+        const g = parseInt(c.substring(2, 4), 16);
+        const b = parseInt(c.substring(4, 6), 16);
+        const luminance = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+        return luminance > 0.5;
+    };
+    
     let tableHTML = `
         <table class="rankings-table min-w-full font-bold text-sm text-gray-200" style="border-spacing: 0; border-collapse: separate;">
             <thead class="bg-black]">
@@ -238,12 +305,14 @@ function generateCategoryRankingsHTML(category, stats, playerToHighlight = null)
                     <th class="col-points px-3 py-3 text-center text-[18px] font-bold text-white tracking-wider" style="border-width: 1px 2px 3px 1px; background: #757170; border-color: black;">Pts.</th>
                     <th class="col-partial px-1 py-3 text-center text-[18px] font-bold text-white tracking-wider" style="border-width: 1px 2px 3px 1px; background: #757170; border-color: black;">Parcial</th>
                     <th class="col-prom px-3 py-3 text-center text-[18px] font-bold text-white tracking-wider" style="border-width: 1px 2px 3px 1px; background: #757170; border-color: black;">Prom. %</th>
-                </tr>
+                    <th class="col-tag px-0 py-3 text-center text-[18px] font-bold text-white tracking-wider" style="border-width: 1px 1px 3px 1px; background: black; border-color: black; width: 50px;"></th>
+                    </tr>
             </thead>
             <tbody>`;
     
     if (stats.length === 0) {
-        tableHTML += '<tr><td colspan="15" class="text-center font-bold p-8 text-gray-400">No hay jugadores en esta categoría para mostrar.</td></tr>';
+        // Colspan aumentado a 16
+        tableHTML += '<tr><td colspan="16" class="text-center font-bold p-8 text-gray-400">No hay jugadores en esta categoría para mostrar.</td></tr>';
     } else {
         stats.forEach((s, index) => {
             const hasPlayed = s.pj > 0;
@@ -252,12 +321,18 @@ function generateCategoryRankingsHTML(category, stats, playerToHighlight = null)
             const difGClass = 'text-[#e8b83a]';
             const highlightClass = s.playerId == playerToHighlight ? 'bg-yellow-900/50' : '';
 
+            // Obtener metadata para este jugador
+            const meta = metadataMap.get(s.playerId) || { is_divider_after: false, special_tag: null, tag_color: null };
+            const tagHTML = renderTag(meta);
+
             tableHTML += `
                 <tr class="${highlightClass}">
                     <td class="col-rank px-2 py-0 text-xl font-bold text-white text-center" style="border-width: 0 0 3px 1px; background-color: #757170; border-color: black;">${index + 1}°</td>
                     <td class="col-player bg-black px-0 text-xl py-0 whitespace-nowrap" style="border-width: 0 0 2px 1px; border-color: #4b556352;">
                         <div class="flex items-center bg-black font-light player-cell-content">
-                            <span class="flex-grow bg-black font-bold text-gray-100 player-name-container text-center">${s.name}</span>
+                            <span class="flex-grow bg-black font-bold text-gray-100 player-name-container text-center">
+                                ${s.name}
+                                </span>
                             <img src="${s.teamImageUrl || 'https://via.placeholder.com/40'}" alt="${s.teamName}" class="h-10 w-10 object-cover bg-black team-logo ml-4">
                         </div>
                     </td>
@@ -277,7 +352,16 @@ function generateCategoryRankingsHTML(category, stats, playerToHighlight = null)
                         ${s.promedio.toFixed(2)}
                         <span class="text-xs text-gray-500">/${s.partidosParaPromediar}</span>
                     </td>
-                </tr>`;
+                    <td class="col-tag bg-black px-1 py-0 text-center" style="border-width: 0 1px 1px 1px; border-color: #4b556352;">
+                        ${tagHTML}
+                    </td>
+                    </tr>`;
+            
+            // Renderizar la fila divisoria si está activada
+            if (meta.is_divider_after) {
+                // Colspan aumentado a 16
+                tableHTML += `<tr class="ranking-divider-row"><td colspan="16"></td></tr>`;
+            }
         });
     }
     tableHTML += '</tbody></table>';
