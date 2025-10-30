@@ -1,8 +1,4 @@
 // --- CONSTANTES ---
-const HORARIOS_TURNOS = {
-    '09:00': 'mañana', '10:30': 'mañana', '12:30': 'mañana',
-    '14:30': 'tarde', '16:00': 'tarde'
-};
 const ALLOW_REMATCH_IF_NEEDED = true;
 
 /**
@@ -166,7 +162,7 @@ function prepareSlotQueue(availableSlots, programmedMatches) {
         for (let i = 1; i <= canchasLibres; i++) {
             slotQueue.push({
                 key: key, sede: slot.sede, date: slot.date, time: slot.time,
-                turno: HORARIOS_TURNOS[slot.time],
+                turno: slot.turno,
                 canchaNum: programmedCount + i, // Asignar número de cancha secuencial
                 filledBy: null
             });
@@ -184,6 +180,7 @@ function fillSlots(slotQueue, sortedPlayerPool, assignedPlayers, suggestionsBySl
     for (const slot of slotQueue) {
         if (slot.filledBy) continue;
 
+        // Ahora usamos 'turno' ('mañana'/'tarde') que viene del slot
         const availabilityKey = `${slot.date}|${slot.turno}`;
 
         // 1. Encontrar Jugador A (el que tenga menos PJ disponible)
@@ -242,7 +239,6 @@ function fillSlots(slotQueue, sortedPlayerPool, assignedPlayers, suggestionsBySl
                 playerB_id: playerB.id,
                 categoryName: playerA.categoryName,
                 isRevancha: isRevancha
-                // Ya no hay 'priority'
             });
 
             assignedPlayers.add(playerA.id);
