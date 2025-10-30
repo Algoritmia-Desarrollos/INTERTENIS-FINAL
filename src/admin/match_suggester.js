@@ -2,6 +2,7 @@ import { renderHeader } from '../common/header.js';
 import { requireRole } from '../common/router.js';
 import { supabase, showToast } from '../common/supabase.js';
 import { generateMatchSuggestions } from './matchmaking_logic.js';
+import { calculatePoints } from './calculatePoints.js'; // Importar la función
 
 requireRole('admin');
 
@@ -25,24 +26,38 @@ const suggestionsSection = document.getElementById('suggestions-section');
 const suggestionsGridContainer = document.getElementById('suggestions-grid-container');
 const btnProgramAll = document.getElementById('btn-program-all');
 const programCountSpan = document.getElementById('program-count');
-// Nuevos elementos para slots dinámicos
 const slotsListContainer = document.getElementById('slots-list-container');
 const btnAddSlotRow = document.getElementById('btn-add-slot-row');
+// INICIO MODIFICACIÓN: Nuevos selectores
+const playersJuegaDosList = document.getElementById('players-juega-dos-list'); // Cambiado de Select a List
+const juegaDosCategoryFilter = document.getElementById('juega-dos-category-filter');
+const juegaDosSearchInput = document.getElementById('juega-dos-search-input');
+const juegaDosCounter = document.getElementById('juega-dos-counter');
+const btnClearJuegaDos = document.getElementById('btn-clear-juega-dos');
+// FIN MODIFICACIÓN
 
 
 // --- ESTADO ---
 let allPlayers = new Map();
+let allPlayersArray = []; // Array de jugadores para filtrar
 let allTournaments = [];
 let allCategories = [];
 let currentWeekStartDate = getStartOfWeek(new Date());
-let currentWeekDaysOptions = []; // Opciones para el select de día
+let currentWeekDaysOptions = [];
 let currentSuggestions = [];
 let playersByTournament = new Map();
 let activeEditingCell = null;
 let playerMatchCounts = new Map();
 let playerPendingCounts = new Map();
+let playerMatchCountInSuggestions = new Map();
+// NUEVO ESTADO: Set para guardar selecciones de "Juega 2"
+let juegaDosSelectedPlayerIds = new Set();
 
 // --- FUNCIONES AUXILIARES ---
+function normalizeText(text) {
+    if (!text) return '';
+    return text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+}
 function getStartOfWeek(date) {
     const d = new Date(date);
     const day = d.getDay();
@@ -94,39 +109,138 @@ function isColorLight(hex) {
           b = parseInt(c.substr(4, 2), 16);
     return ((0.299 * r + 0.587 * g + 0.114 * b) > 150);
 }
-
-// --- INICIO DE LA MODIFICACIÓN (Lógica de Turno) ---
-/**
- * Determina si una hora (HH:MM) pertenece al turno "mañana" o "tarde".
- * Mañana: 07:00 a 13:00 inclusive.
- * Tarde: 13:01 en adelante (y horas de madrugada).
- */
 function getTurno(timeString) {
-    if (!timeString) return 'tarde'; // Default si está vacío
+    if (!timeString) return 'tarde';
     try {
         const parts = timeString.split(':');
         const hour = parseInt(parts[0], 10);
         const minutes = parseInt(parts[1], 10);
-
-        // Regla: "7 de la mañana hasta la 1" (13:00) es MAÑANA.
-        if (hour >= 7 && hour < 13) {
-            // (7:00 - 12:59) -> Mañana
-            return 'mañana';
-        }
-        if (hour === 13 && minutes === 0) {
-            // (13:00 exactas) -> Mañana
-            return 'mañana';
-        }
-        
-        // Regla: "pasadas las 13 horas" es TARDE.
-        // (13:01 en adelante, y 00:00-06:59)
+        if (hour >= 7 && hour < 13) return 'mañana';
+        if (hour === 13 && minutes === 0) return 'mañana';
         return 'tarde';
-
     } catch (e) {
-        return 'tarde'; // Default en caso de error
+        return 'tarde';
     }
 }
-// --- FIN DE LA MODIFICACIÓN ---
+// Función de cálculo de ranking (copiada de rankings.js y adaptada)
+function calculateCategoryStats(players, matches) {
+    const stats = players.map(player => ({
+        playerId: player.id, name: player.name, categoryId: player.category_id, 
+        pj: 0, pg: 0, pp: 0, sg: 0, sp: 0, gg: 0, gp: 0, bonus: 0, puntos: 0,
+    }));
+
+    matches.forEach(match => {
+        // Solo procesar partidos de singles para el ranking de singles
+        if (match.player3_id || match.player4_id) return;
+
+        const p1Stat = stats.find(s => s.playerId === match.player1_id);
+        const p2Stat = stats.find(s => s.playerId === match.player2_id);
+        if (!p1Stat || !p2Stat) return;
+        
+        p1Stat.pj++; 
+        p2Stat.pj++;
+        
+        let p1SetsWon = 0, p2SetsWon = 0;
+        let p1TotalGames = 0, p2TotalGames = 0;
+        (match.sets || []).forEach(set => {
+            p1TotalGames += set.p1;
+            p2TotalGames += set.p2;
+            if(set.p1 > set.p2) p1SetsWon++; else p2SetsWon++;
+        });
+
+        p1Stat.gg += p1TotalGames;
+        p1Stat.gp += p2TotalGames;
+        p2Stat.gg += p2TotalGames;
+        p2Stat.gp += p1TotalGames;
+
+        p1Stat.sg += p1SetsWon; 
+        p1Stat.sp += p2SetsWon;
+        p2Stat.sg += p2SetsWon; 
+        p2Stat.sp += p1SetsWon;
+        
+        const { p1_points, p2_points } = calculatePoints(match);
+        p1Stat.puntos += p1_points;
+        p2Stat.puntos += p2_points;
+
+        const winnerIsSide1 = match.winner_id === match.player1_id;
+
+        if (winnerIsSide1) {
+            p1Stat.pg++; 
+            p2Stat.pp++;
+        } else {
+            p2Stat.pg++; 
+            p1Stat.pp++;
+        }
+
+        if (match.status !== 'completado_wo') {
+            if (winnerIsSide1) {
+                if (p2TotalGames <= 3) p1Stat.bonus++;
+                if (p2SetsWon === 1) p2Stat.bonus++;
+            } else {
+                if (p1TotalGames <= 3) p2Stat.bonus++;
+                if (p1SetsWon === 1) p1Stat.bonus++;
+            }
+        }
+    });
+
+    stats.forEach(s => {
+        s.difP = s.pg - s.pp;
+        s.difS = s.sg - s.sp;
+        s.difG = s.gg - s.gp;
+        s.parcial = s.pj > 0 ? (s.puntos / s.pj) : 0;
+        s.partidosParaPromediar = Math.max(s.pj, 8);
+        s.promedio = s.pj > 0 ? (s.puntos / s.partidosParaPromediar) : 0;
+    });
+
+    stats.sort((a, b) => {
+        if (a.pj === 0 && b.pj > 0) return 1;
+        if (b.pj === 0 && a.pj > 0) return -1;
+        if (b.promedio !== a.promedio) return b.promedio - a.promedio;
+        if (b.difP !== a.difP) return b.difP - a.difP;
+        if (b.difS !== a.difS) return b.difS - a.difS;
+        if (b.difG !== a.difG) return b.difG - a.difG;
+        return b.puntos - a.puntos;
+    });
+
+    return stats;
+}
+
+// *** INICIO CORRECCIÓN DE BUG ***
+// Mover funciones auxiliares (que se llaman antes) aquí
+function updateProgramButtonState() {
+    const count = currentSuggestions.length;
+    if (programCountSpan) programCountSpan.textContent = count;
+    if (btnProgramAll) {
+        btnProgramAll.disabled = count === 0;
+        if (!btnProgramAll.disabled && !btnProgramAll.innerHTML.includes('spinner')) {
+             btnProgramAll.innerHTML = `<span class="material-icons">schedule_send</span> Programar Partidos (<span id="program-count">${count}</span>)`;
+        } else if (count === 0) {
+             btnProgramAll.innerHTML = `<span class="material-icons">schedule_send</span> Programar Partidos (<span id="program-count">0</span>)`;
+        }
+    }
+}
+
+function clearResults(hideSections = false) {
+    currentSuggestions = [];
+    playerMatchCounts.clear();
+    playerPendingCounts.clear();
+    if (suggestionsGridContainer) suggestionsGridContainer.innerHTML = '<p class="text-gray-500 italic px-4 py-6 text-center">Genera sugerencias para ver la grilla editable.</p>';
+    if (hideSections && suggestionsSection) {
+        suggestionsSection.classList.add('hidden');
+    }
+    updateProgramButtonState();
+}
+
+function showStep(stepName) {
+    if (stepName === 'configuration') {
+        configurationStepDiv?.classList.remove('hidden');
+        resultsStepDiv?.classList.add('hidden');
+    } else if (stepName === 'results') {
+        configurationStepDiv?.classList.add('hidden');
+        resultsStepDiv?.classList.remove('hidden');
+    }
+}
+// *** FIN CORRECCIÓN DE BUG ***
 
 
 // --- CARGA INICIAL ---
@@ -154,8 +268,9 @@ async function loadInitialData() {
                 return { id: t.id, name: t.name, category_id: t.category.id, categoryName: t.category.name, categoryColor: t.category.color };
             })
         );
-        allCategories = Array.from(categoriesMap.values());
+        allCategories = Array.from(categoriesMap.values()).sort((a,b) => a.name.localeCompare(b.name));
         allPlayers = new Map((playersData || []).map(p => [p.id, { ...p }]));
+        allPlayersArray = playersData || []; // Guardar el array para filtrar
 
         playersByTournament.clear();
         inscriptionsData.forEach(ins => {
@@ -165,13 +280,14 @@ async function loadInitialData() {
             playersByTournament.get(ins.tournament_id).add(ins.player_id);
         });
 
+        // Popular lista de torneos
         if (tournamentCheckboxList) {
             if (allTournaments.length > 0) {
                 tournamentCheckboxList.innerHTML = allTournaments.map(t => `
-                    <div class="tournament-checkbox-item">
+                    <div class="checkbox-list-item">
                         <label>
                             <input type="checkbox" class="tournament-checkbox" value="${t.id}">
-                            ${t.name} <span class="tournament-category-span">(${t.categoryName})</span>
+                            ${t.name} <span class="category-span">(${t.categoryName})</span>
                         </label>
                     </div>
                 `).join('');
@@ -182,8 +298,17 @@ async function loadInitialData() {
                  tournamentCheckboxList.innerHTML = '<p class="text-gray-400 text-sm p-4 text-center">No hay torneos disponibles.</p>';
             }
         }
+        
+        // Popular filtro de categoría y lista de "Juega 2"
+        if (juegaDosCategoryFilter) {
+            juegaDosCategoryFilter.innerHTML = '<option value="all">Todas las Categorías</option>';
+            allCategories.forEach(cat => {
+                juegaDosCategoryFilter.innerHTML += `<option value="${cat.id}">${cat.name}</option>`;
+            });
+        }
+        populateJuegaDosPlayerList(); // Popular la lista de jugadores
+        updateJuegaDosCounter(); // Poner contador en 0
 
-        // Llama a displayWeek, que ahora también inicializa el editor de slots
         displayWeek(currentWeekStartDate);
         showStep('configuration');
     } catch (error) {
@@ -193,6 +318,86 @@ async function loadInitialData() {
     }
 }
 
+// --- INICIO MODIFICACIÓN: Lógica de "Juega 2 Partidos" ---
+
+/**
+ * Actualiza la lista de jugadores en "Juega 2" basado en los filtros.
+ * Mantiene las selecciones guardadas en `juegaDosSelectedPlayerIds`.
+ */
+function populateJuegaDosPlayerList() {
+    if (!playersJuegaDosList) return;
+
+    const categoryId = juegaDosCategoryFilter.value;
+    const searchTerm = normalizeText(juegaDosSearchInput.value);
+
+    let filteredPlayers = allPlayersArray;
+
+    if (categoryId !== 'all') {
+        filteredPlayers = filteredPlayers.filter(p => p.category_id == categoryId);
+    }
+
+    if (searchTerm) {
+        filteredPlayers = filteredPlayers.filter(p => normalizeText(p.name).includes(searchTerm));
+    }
+
+    // Regenerar HTML
+    playersJuegaDosList.innerHTML = filteredPlayers
+        .map(p => {
+            const isChecked = juegaDosSelectedPlayerIds.has(p.id) ? 'checked' : ''; // Usar Set
+            const categoryName = allCategories.find(c => c.id === p.category_id)?.name || 'N/A';
+            return `
+                <div class="checkbox-list-item">
+                    <label>
+                        <input type="checkbox" class="juega-dos-checkbox" value="${p.id}" ${isChecked}>
+                        ${p.name} <span class="category-span">(${categoryName})</span>
+                    </label>
+                </div>
+            `;
+        })
+        .join('');
+    
+    if (filteredPlayers.length === 0) {
+        playersJuegaDosList.innerHTML = '<p class="text-gray-400 text-sm p-4 text-center">No hay jugadores que coincidan.</p>';
+    }
+}
+
+/**
+ * Actualiza el contador de jugadores seleccionados para "Juega 2".
+ */
+function updateJuegaDosCounter() {
+    if (juegaDosCounter) {
+        juegaDosCounter.textContent = `${juegaDosSelectedPlayerIds.size} seleccionados`;
+    }
+}
+
+/**
+ * Maneja el clic en un checkbox de la lista "Juega 2".
+ * @param {Event} e
+ */
+function handleJuegaDosCheck(e) {
+    const checkbox = e.target.closest('.juega-dos-checkbox');
+    if (!checkbox) return;
+    
+    const playerId = Number(checkbox.value);
+    if (checkbox.checked) {
+        juegaDosSelectedPlayerIds.add(playerId);
+    } else {
+        juegaDosSelectedPlayerIds.delete(playerId);
+    }
+    updateJuegaDosCounter();
+}
+
+/**
+ * Limpia la selección de jugadores "Juega 2".
+ */
+function handleClearJuegaDos() {
+    juegaDosSelectedPlayerIds.clear();
+    updateJuegaDosCounter();
+    populateJuegaDosPlayerList(); // Re-renderizar para desmarcar todos los checkboxes visibles
+}
+// --- FIN MODIFICACIÓN ---
+
+
 // --- NAVEGACIÓN SEMANAL Y EDITOR DE SLOTS ---
 function displayWeek(startDate) {
     currentWeekStartDate = new Date(startDate);
@@ -200,7 +405,6 @@ function displayWeek(startDate) {
     endDate.setDate(endDate.getDate() + 6);
     if (currentWeekDisplay) currentWeekDisplay.textContent = `${formatDateDDMM(startDate)} - ${formatDateDDMM(endDate)}`;
     
-    // Generar las opciones de día para TODA la semana (7 días)
     const weekDates = getWeekDates(startDate);
     currentWeekDaysOptions = weekDates
         .map(date => {
@@ -210,11 +414,9 @@ function displayWeek(startDate) {
             return { value: dateStr, text: `${dayName} ${dateLabel}` };
         });
 
-    // Inicializar (o reiniciar) el editor de slots
     initSlotEditor();
-    clearResults(true);
+    clearResults(true); // <-- BUG CORREGIDO: Esta función ahora existe
 }
-
 function goToPreviousWeek() {
     const prevWeek = new Date(currentWeekStartDate); prevWeek.setDate(prevWeek.getDate() - 7); displayWeek(prevWeek);
 }
@@ -224,52 +426,39 @@ function goToNextWeek() {
 function goToCurrentWeek() {
     displayWeek(getStartOfWeek(new Date()));
 }
-
-/**
- * Inicializa el editor de slots: limpia el contenedor y añade una fila en blanco.
- */
 function initSlotEditor() {
     if (!slotsListContainer) return;
     slotsListContainer.innerHTML = '';
-    addSlotRow(); // Añadir la primera fila por defecto
+    addSlotRow();
 }
 
-/**
- * Añade una nueva fila de slot al DOM.
- * @param {object} [data] - Datos opcionales para pre-rellenar la fila (para duplicar).
- * @param {HTMLElement} [insertAfterRow] - Fila opcional después de la cual insertar la nueva.
- */
 function addSlotRow(data = {}, insertAfterRow = null) {
     if (!slotsListContainer) return;
-
     const slotRow = document.createElement('div');
     slotRow.className = 'slot-row';
-
     const dayOptions = currentWeekDaysOptions
         .map(opt => `<option value="${opt.value}">${opt.text}</option>`)
         .join('');
-
-    // --- INICIO DE LA MODIFICACIÓN (Botón Duplicar) ---
     slotRow.innerHTML = `
         <div>
-            <label for="slot-sede">Sede</label>
+            <label>Sede</label>
             <select class="slot-row-input slot-sede">
                 <option value="Funes">Funes</option>
                 <option value="Centro">Centro</option>
             </select>
         </div>
         <div>
-            <label for="slot-date">Día</label>
+            <label>Día</label>
             <select class="slot-row-input slot-date">
                 ${dayOptions || '<option value="">No hay días</option>'}
             </select>
         </div>
         <div>
-            <label for="slot-time">Hora</label>
+            <label>Hora</label>
             <input type="time" class="slot-row-input slot-time" step="900" value="09:00">
         </div>
         <div>
-            <label for="slot-canchas">Canchas</label>
+            <label>Canchas</label>
             <input type="number" class="slot-row-input slot-canchas" value="6" min="1" max="10">
         </div>
         <div class="flex-grow-0 flex-shrink-0 flex items-center">
@@ -281,46 +470,29 @@ function addSlotRow(data = {}, insertAfterRow = null) {
             </button>
         </div>
     `;
-    
-    // Pre-rellenar valores si se pasaron datos (para duplicar)
     slotRow.querySelector('.slot-sede').value = data.sede || 'Funes';
     slotRow.querySelector('.slot-date').value = data.date || currentWeekDaysOptions[0]?.value || '';
-    slotRow.querySelector('.slot-time').value = data.time || '08:00';
+    slotRow.querySelector('.slot-time').value = data.time || '09:00';
     slotRow.querySelector('.slot-canchas').value = data.canchas || 6;
-
     if (insertAfterRow) {
         insertAfterRow.after(slotRow);
     } else {
         slotsListContainer.appendChild(slotRow);
     }
-    // --- FIN DE LA MODIFICACIÓN ---
 }
-
-/**
- * Manejador de clics para el contenedor de slots (eliminar y duplicar).
- */
 function handleSlotListClick(event) {
     const button = event.target.closest('button[data-action]');
     if (!button) return;
-
     const action = button.dataset.action;
     const row = button.closest('.slot-row');
     if (!row) return;
-
     if (action === 'remove-slot') {
         row.remove();
-        if (slotsListContainer.children.length === 0) {
-            addSlotRow();
-        }
+        if (slotsListContainer.children.length === 0) addSlotRow();
     } else if (action === 'duplicate-slot') {
         handleSlotDuplicate(row);
     }
 }
-
-/**
- * Duplica una fila de slot.
- * @param {HTMLElement} row - La fila a duplicar.
- */
 function handleSlotDuplicate(row) {
     const data = {
         sede: row.querySelector('.slot-sede').value,
@@ -328,37 +500,28 @@ function handleSlotDuplicate(row) {
         time: row.querySelector('.slot-time').value,
         canchas: row.querySelector('.slot-canchas').value
     };
-    addSlotRow(data, row); // Pasa la fila actual para insertar después
+    addSlotRow(data, row);
 }
-// --- FIN LÓGICA DE DUPLICAR ---
-
-
-/**
- * Recopila todos los slots definidos por el usuario desde el DOM.
- */
 function getDefinedSlots() {
     const slots = [];
     if (!slotsListContainer) return slots;
-
     document.querySelectorAll('#slots-list-container .slot-row').forEach(row => {
         const sede = row.querySelector('.slot-sede').value;
         const date = row.querySelector('.slot-date').value;
         const time = row.querySelector('.slot-time').value;
         const canchasDisponibles = parseInt(row.querySelector('.slot-canchas').value, 10);
-
         if (sede && date && time && canchasDisponibles > 0) {
             slots.push({
                 sede: sede.toLowerCase(),
-                date: date, // YYYY-MM-DD
-                time: time, // HH:MM
-                turno: getTurno(time), // 'mañana' or 'tarde'
+                date: date,
+                time: time,
+                turno: getTurno(time),
                 canchasDisponibles: canchasDisponibles
             });
         }
     });
     return slots;
 }
-
 function getSelectedTournaments() {
     if (!tournamentCheckboxList) return [];
     const checkedBoxes = tournamentCheckboxList.querySelectorAll('.tournament-checkbox:checked');
@@ -382,21 +545,71 @@ async function handleFindSuggestions() {
         const endStr = formatDateYYYYMMDD(weekDates[6]);
         const today = new Date(); today.setHours(0, 0, 0, 0);
         const todayStr = formatDateYYYYMMDD(today);
+        
+        // Req ⿧: Usar el Set global que se mantiene actualizado
+        const playersWantingTwoMatches = juegaDosSelectedPlayerIds;
 
+        // --- INICIO DE LA CORRECCIÓN DEL BUG ---
+        
+        // 1. Cargar 'inscriptionsData' PRIMERO
+        const { data: inscriptionsData, error: iError } = await supabase
+            .from('tournament_players')
+            .select('player_id, zone_name, tournament_id')
+            .in('tournament_id', selectedTournamentIds);
+        
+        if (iError) throw iError;
+        
+        // 2. Crear 'playerIds' AHORA
+        const playerIdsInSelectedTournaments = (inscriptionsData || []).map(i => i.player_id);
+        
+        // Si no hay jugadores inscritos, no tiene sentido seguir
+        if (playerIdsInSelectedTournaments.length === 0) {
+            showToast("No hay jugadores inscritos en los torneos seleccionados.", "info");
+            clearResults(false);
+            loadingSuggestionsDiv.classList.add('hidden');
+            return;
+        }
+
+        // 3. Cargar el resto de datos en un 'Promise.all'
         const [
-            { data: inscriptionsData, error: iError },
             { data: availabilityData, error: aError },
             { data: allSelectedTournamentMatches, error: tMatchesError },
-            { data: programmedOutsideData, error: mError }
+            { data: programmedOutsideData, error: mError },
+            { data: metadataData, error: metaError },
+            { data: allPlayersInTournaments, error: pError }
         ] = await Promise.all([
-            supabase.from('tournament_players').select('player_id, zone_name, tournament_id').in('tournament_id', selectedTournamentIds),
             supabase.from('player_availability').select('player_id, available_date, time_slot, zone').gte('available_date', startStr).lte('available_date', endStr),
-            supabase.from('matches').select('player1_id, player2_id, player3_id, player4_id, match_date, winner_id').in('tournament_id', selectedTournamentIds),
-            supabase.from('matches').select('match_date, match_time, location').gte('match_date', startStr).lte('match_date', endStr).is('winner_id', null).not('tournament_id', 'in', `(${selectedTournamentIds.join(',')})`)
+            supabase.from('matches').select('*').in('tournament_id', selectedTournamentIds),
+            supabase.from('matches').select('match_date, match_time, location').gte('match_date', startStr).lte('match_date', endStr).is('winner_id', null).not('tournament_id', 'in', `(${selectedTournamentIds.join(',')})`),
+            supabase.from('player_ranking_metadata').select('player_id, is_divider_after').in('tournament_id', selectedTournamentIds),
+            supabase.from('players').select('id, name, category_id').in('id', playerIdsInSelectedTournaments)
         ]);
-        if (iError) throw iError; if (aError) throw aError; if (tMatchesError) throw tMatchesError;
-        if (mError) throw mError;
+        // --- FIN DE LA CORRECCIÓN DEL BUG ---
 
+        if (aError || tMatchesError || mError || metaError || pError) {
+            throw new Error(aError?.message || tMatchesError?.message || mError?.message || metaError?.message || pError?.message);
+        }
+
+        // 4. Calcular Stats y Ranks (Req ⿥)
+        const playedMatches = (allSelectedTournamentMatches || []).filter(m => m.winner_id);
+        const stats = calculateCategoryStats(allPlayersInTournaments || [], playedMatches || []);
+        const playerRanks = new Map(stats.map((s, index) => [s.playerId, index + 1]));
+
+        // 5. Procesar Zonas (Req ⿢)
+        const playerZones = new Map();
+        const metadataMap = new Map(metadataData.map(m => [m.player_id, m]));
+        const sortedRankingForZones = stats.sort((a, b) => (playerRanks.get(a.playerId) || 999) - (playerRanks.get(b.playerId) || 999));
+        
+        let currentZone = 1;
+        sortedRankingForZones.forEach(player => {
+            playerZones.set(player.playerId, currentZone);
+            const meta = metadataMap.get(player.playerId);
+            if (meta?.is_divider_after) {
+                currentZone++;
+            }
+        });
+        
+        // 6. Procesar Partidos Jugados (Req ⿤)
         playerMatchCounts.clear();
         playerPendingCounts.clear();
         (allSelectedTournamentMatches || []).forEach(match => {
@@ -404,7 +617,7 @@ async function handleFindSuggestions() {
             const matchDateStr = match.match_date.split('T')[0];
             const isPast = matchDateStr < todayStr;
             const isPlayed = !!match.winner_id;
-            const playersInMatch = [match.player1_id, match.player2_id, match.player3_id, match.player4_id].filter(p => p !== null && p !== undefined);
+            const playersInMatch = [match.player1_id, match.player2_id, match.player3_id, match.player4_id].filter(p => p != null);
 
             playersInMatch.forEach(playerId => {
                 if (playerId) {
@@ -420,15 +633,20 @@ async function handleFindSuggestions() {
         const historyDataPlayedOnly = (allSelectedTournamentMatches || []).filter(m => m.winner_id);
         const selectedCategoryIds = [...new Set(allTournaments.filter(t => selectedTournamentIds.includes(t.id)).map(t => t.category_id))];
 
+        // 7. Preparar inputs para el motor de lógica
         const inputs = {
-            allPlayers, playerMatchCounts,
+            allPlayers, 
+            playerMatchCounts,
             inscriptions: inscriptionsData || [],
             availability: (availabilityData || []).map(item => ({ ...item, available_date: item.available_date.split('T')[0] })),
             history: historyDataPlayedOnly || [],
             programmedMatches: (programmedOutsideData || []).map(item => ({...item, match_date: item.match_date.split('T')[0]})),
             availableSlots: definedSlots,
             categories: allCategories.filter(c => selectedCategoryIds.includes(c.id)),
-            tournaments: allTournaments.filter(t => selectedTournamentIds.includes(t.id))
+            tournaments: allTournaments.filter(t => selectedTournamentIds.includes(t.id)),
+            playerRanks,
+            playerZones,
+            playersWantingTwoMatches
         };
 
         const { suggestionsBySlot, oddPlayers } = await generateMatchSuggestions(inputs);
@@ -445,28 +663,32 @@ async function handleFindSuggestions() {
     }
 }
 
+
 // --- RENDERIZADO DE RESULTADOS ---
-/**
- * APLANA EL OBJETO DE SUGERENCIAS Y BUSCA LOS COLORES CORRECTOS
- */
 function flattenSuggestions(suggestionsBySlot) {
-    let flatList = []; let matchCounter = 0;
+    let flatList = [];
+    let matchCounter = 0;
+    playerMatchCountInSuggestions.clear(); // Limpiar conteo para este renderizado
+
     for (const slotKey in suggestionsBySlot) {
         const [sede, date, time] = slotKey.split('|');
         const matches = suggestionsBySlot[slotKey];
-        matches.forEach((match) => { // 'match' here is { playerA_id, playerB_id, categoryName, isRevancha, ... }
+        matches.forEach((match) => {
             const playerA = getPlayerInfo(match.playerA_id);
             const playerB = getPlayerInfo(match.playerB_id);
             
-            // Buscar el torneo (y color) que coincida con el categoryName
             let tournament = allTournaments.find(t => t.categoryName === match.categoryName);
-            // Fallback: si no se encuentra (raro), buscar por el category_id del jugador A
             if (!tournament && playerA) {
                 tournament = allTournaments.find(t => t.category_id === playerA.category_id);
             }
 
             const categoryColor = tournament?.categoryColor || '#b45309';
             const tournamentId = tournament?.id || null;
+
+            const countA = (playerMatchCountInSuggestions.get(match.playerA_id) || 0) + 1;
+            playerMatchCountInSuggestions.set(match.playerA_id, countA);
+            const countB = (playerMatchCountInSuggestions.get(match.playerB_id) || 0) + 1;
+            playerMatchCountInSuggestions.set(match.playerB_id, countB);
 
             flatList.push({
                 _id: `match_${matchCounter++}`,
@@ -476,10 +698,13 @@ function flattenSuggestions(suggestionsBySlot) {
                 player2_id: match.playerB_id,
                 player1_info: playerA,
                 player2_info: playerB,
-                tournament_id: tournamentId, // Usar el ID encontrado
+                player1_match_count: countA,
+                player2_match_count: countB,
+                tournament_id: tournamentId,
                 categoryName: match.categoryName,
-                categoryColor: categoryColor, // Usar el color encontrado
-                isRevancha: match.isRevancha
+                categoryColor: categoryColor,
+                isRevancha: match.isRevancha,
+                reason: match.reason 
             });
         });
     } return flatList;
@@ -565,14 +790,17 @@ function renderResults(suggestionsList, oddPlayerInfo) {
     updateProgramButtonState();
 }
 
-/**
- * RENDERIZA UNA FILA <tr> DE SUGERENCIA
- */
 function renderSuggestionRow(match) {
     const player1 = match.player1_info;
     const player2 = match.player2_info;
-    const player1Name = player1?.name || 'N/A';
-    const player2Name = player2?.name || 'N/A';
+    
+    // Usar el Set global para chequear
+    const p1NameSuffix = juegaDosSelectedPlayerIds.has(match.player1_id) ? ` (${match.player1_match_count})` : '';
+    const p2NameSuffix = juegaDosSelectedPlayerIds.has(match.player2_id) ? ` (${match.player2_match_count})` : '';
+
+    const player1Name = (player1?.name || 'N/A') + p1NameSuffix;
+    const player2Name = (player2?.name || 'N/A') + p2NameSuffix;
+    
     const p1TeamColor = player1?.team?.color;
     const p2TeamColor = player2?.team?.color;
     const p1TeamImage = player1?.team?.image_url;
@@ -589,8 +817,16 @@ function renderSuggestionRow(match) {
     const team1PointsDisplay = p1TeamImage ? `<img src="${p1TeamImage}" alt="" style="height: 20px; object-fit: contain; margin: auto; display: block;">` : '';
     const team2PointsDisplay = p2TeamImage ? `<img src="${p2TeamImage}" alt="" style="height: 20px; object-fit: contain; margin: auto; display: block;">` : '';
     
-    const isRevancha = match.isRevancha;
-    const resultadoDisplay = isRevancha ? '<span style="color: #ef4444; font-weight: 900; font-size: 1.1rem;">R</span>' : '';
+    let resultadoDisplay = '';
+    if (match.reason === 'ZONA_INCOMPATIBLE') {
+        resultadoDisplay = '<span style="color: #f87171; font-weight: 900; font-size: 0.9rem;" title="Zonas no contiguas (Ej: 1 vs 3)">ZONA!</span>';
+    } else if (match.reason === 'REVANCHA_FORZADA') {
+        resultadoDisplay = '<span style="color: #ef4444; font-weight: 900; font-size: 1.1rem;" title="Revancha (forzada)">R!</span>';
+    } else if (match.isRevancha) {
+        resultadoDisplay = '<span style="color: #f59e0b; font-weight: 900; font-size: 1.1rem;" title="Revancha">R</span>';
+    } else if (match.reason === 'NUEVO') {
+        resultadoDisplay = '<span style="color: #22c55e; font-weight: 900; font-size: 0.9rem;" title="Nunca jugaron">N</span>';
+    }
 
     return `
         <tr class="data-row" data-match-id="${match._id}">
@@ -613,31 +849,24 @@ function renderSuggestionRow(match) {
         </tr>`;
 }
 
-function clearResults(hideSections = false) {
-    currentSuggestions = [];
-    playerMatchCounts.clear();
-    playerPendingCounts.clear();
-    if (suggestionsGridContainer) suggestionsGridContainer.innerHTML = '<p class="text-gray-500 italic px-4 py-6 text-center">Genera sugerencias para ver la grilla editable.</p>';
-    if (hideSections && suggestionsSection) {
-        suggestionsSection.classList.add('hidden');
-    }
-    updateProgramButtonState();
-}
-
 // --- LÓGICA DE EDICIÓN DE TABLA ---
 function getCellContent(match, field) {
     const player1 = match.player1_info;
     const player2 = match.player2_info;
+    
+    // Leer desde el Set global
+    const p1NameSuffix = juegaDosSelectedPlayerIds.has(match.player1_id) ? ` (${match.player1_match_count})` : '';
+    const p2NameSuffix = juegaDosSelectedPlayerIds.has(match.player2_id) ? ` (${match.player2_match_count})` : '';
+
     switch(field) {
         case 'canchaNum': return match.canchaNum || '?';
         case 'time': return match.time ? match.time.substring(0, 5) : 'HH:MM';
-        case 'player1_id': return player1?.name || 'N/A';
-        case 'player2_id': return player2?.name || 'N/A';
-        case 'tournament_id': return match.categoryName || 'N/A'; // Usamos categoryName para mostrar
+        case 'player1_id': return (player1?.name || 'N/A') + p1NameSuffix;
+        case 'player2_id': return (player2?.name || 'N/A') + p2NameSuffix;
+        case 'tournament_id': return match.categoryName || 'N/A';
         default: return match[field] ?? '---';
     }
 }
-
 function updateMatchData(matchId, field, value) {
     const matchIndex = currentSuggestions.findIndex(m => m._id === matchId);
     if (matchIndex === -1) return;
@@ -663,7 +892,6 @@ function updateMatchData(matchId, field, value) {
             const tournament = allTournaments.find(t => t.id === finalValue);
             match.categoryName = tournament?.categoryName || 'N/A';
             match.categoryColor = tournament?.categoryColor || '#b45309';
-            // Resetear jugadores
             match.player1_id = null; match.player1_info = null;
             match.player2_id = null; match.player2_info = null;
         }
@@ -676,36 +904,19 @@ function updateMatchData(matchId, field, value) {
         if (editedCell) {
             editedCell.innerHTML = getCellContent(match, field);
             if (field === 'tournament_id') {
-                // Actualizar celdas de jugador a N/A
-                const player1Cell = rowElement.querySelector(`td[data-field="player1_id"]`);
-                if (player1Cell) player1Cell.innerHTML = getCellContent(match, 'player1_id'); // Mostrará N/A
-
-                const player2Cell = rowElement.querySelector(`td[data-field="player2_id"]`);
-                if (player2Cell) player2Cell.innerHTML = getCellContent(match, 'player2_id'); // Mostrará N/A
-
-                // Actualizar color de la celda de categoría
-                const catCell = rowElement.querySelector(`td[data-field="tournament_id"]`);
-                if(catCell) catCell.style.color = match.categoryColor;
-
-                 // Resetear también los logos/fondos de las celdas Pts
+                rowElement.querySelector(`td[data-field="player1_id"]`).innerHTML = getCellContent(match, 'player1_id');
+                rowElement.querySelector(`td[data-field="player2_id"]`).innerHTML = getCellContent(match, 'player2_id');
+                rowElement.querySelector(`td[data-field="tournament_id"]`).style.color = match.categoryColor;
                  const pts1Cell = rowElement.querySelector('td.pts-col:nth-of-type(1)');
                  const pts2Cell = rowElement.querySelector('td.pts-col:nth-of-type(2)');
-                 if(pts1Cell) {
-                     pts1Cell.style.background = '#3a3838'; // Color por defecto
-                     pts1Cell.innerHTML = ''; // Limpiar logo
-                 }
-                 if(pts2Cell) {
-                    pts2Cell.style.background = '#3a3838'; // Color por defecto
-                    pts2Cell.innerHTML = ''; // Limpiar logo
-                 }
+                 if(pts1Cell) { pts1Cell.style.background = '#3a3838'; pts1Cell.innerHTML = ''; }
+                 if(pts2Cell) { pts2Cell.style.background = '#3a3838'; pts2Cell.innerHTML = ''; }
             }
              else if (field === 'player1_id' || field === 'player2_id') {
-                 // Actualizar colores/logos de equipo al cambiar jugador
                  const player1 = match.player1_info;
                  const player2 = match.player2_info;
                  const pts1Cell = rowElement.querySelector('td.pts-col:nth-of-type(1)');
                  const pts2Cell = rowElement.querySelector('td.pts-col:nth-of-type(2)');
-
                  if(pts1Cell && field === 'player1_id'){
                     const p1TeamColor = player1?.team?.color;
                     const p1TextColor = isColorLight(p1TeamColor) ? '#222' : '#fff';
@@ -730,29 +941,23 @@ function updateMatchData(matchId, field, value) {
     }
     updateProgramButtonState();
 }
-
 function handleCellDoubleClick(e) {
     const cell = e.target.closest('.editable-cell');
     if (!cell || cell === activeEditingCell) return;
     if (activeEditingCell) closeActiveEditor(false);
-
     activeEditingCell = cell;
     const matchId = cell.closest('tr')?.dataset.matchId;
     const match = currentSuggestions.find(m => m._id === matchId);
     if (!match) { activeEditingCell = null; return; }
-
     const field = cell.dataset.field;
     const type = cell.dataset.type;
     const currentValue = match[field];
     cell.dataset.originalContent = cell.innerHTML;
     cell.classList.add('is-editing');
-
     let inputElement;
-
     if (type === 'player' || type === 'tournament') {
         inputElement = document.createElement('select');
         let options = '<option value="">Seleccionar...</option>';
-
         if (type === 'player') {
             const tournamentId = match.tournament_id;
             if (!tournamentId) {
@@ -771,32 +976,28 @@ function handleCellDoubleClick(e) {
                     }
                 });
             }
-        } else { // type === 'tournament'
+        } else {
              allTournaments.forEach(t => {
                 options += `<option value="${t.id}" ${Number(t.id) === Number(currentValue) ? 'selected' : ''}>${t.name}</option>`;
              });
         }
         inputElement.innerHTML = options;
-
     } else if (type === 'time') {
         inputElement = document.createElement('input');
         inputElement.type = 'text';
         inputElement.value = currentValue || '';
-
-    } else { // type === 'number' (canchaNum)
+    } else {
         inputElement = document.createElement('input');
         inputElement.type = 'number';
         inputElement.value = currentValue || '';
         inputElement.min = "1";
         inputElement.max = "10";
     }
-
     inputElement.className = 'editing-input-cell';
     inputElement.dataset.field = field;
     inputElement.dataset.matchId = matchId;
     cell.innerHTML = '';
     cell.appendChild(inputElement);
-
     if (type === 'time') {
         flatpickr(inputElement, {
             enableTime: true, noCalendar: true, dateFormat: "H:i",
@@ -812,14 +1013,10 @@ function handleCellDoubleClick(e) {
         }
     }
 }
-
-
 function closeActiveEditor(save = false, newValue = null) {
     if (!activeEditingCell) return;
-
     const input = activeEditingCell.querySelector('.editing-input-cell');
     let needsUpdate = false;
-
     if (input) {
         if (input._flatpickr) {
             input._flatpickr.destroy();
@@ -830,12 +1027,9 @@ function closeActiveEditor(save = false, newValue = null) {
             needsUpdate = true;
         }
     }
-
     const field = activeEditingCell.dataset.field;
     const rowId = activeEditingCell.closest('tr')?.dataset.matchId;
-
     activeEditingCell.classList.remove('is-editing');
-
     if (needsUpdate && rowId && field) {
         updateMatchData(rowId, field, newValue);
     } else if (!save && rowId && field) {
@@ -853,14 +1047,12 @@ function closeActiveEditor(save = false, newValue = null) {
     }
     activeEditingCell = null;
 }
-
 function handleEditorChange(e) {
     const target = e.target;
     if (target.tagName === 'SELECT' && target.closest('.is-editing')) {
         closeActiveEditor(true);
     }
 }
-
 function handleEditorKeyDown(e) {
     const target = e.target;
     if ((target.classList.contains('editing-input-cell') || target.tagName === 'SELECT') && target.closest('.is-editing')) {
@@ -874,7 +1066,6 @@ function handleEditorKeyDown(e) {
         }
     }
 }
-
 function handleDocumentClick(e) {
     if (activeEditingCell && !activeEditingCell.contains(e.target) && !e.target.closest('.flatpickr-calendar')) {
         const input = activeEditingCell.querySelector('.editing-input-cell');
@@ -885,8 +1076,6 @@ function handleDocumentClick(e) {
         }
     }
 }
-
-// --- MANEJO DE ELIMINACIÓN DE SUGERENCIA ---
 function handleDeleteSuggestion(e) {
     const button = e.target.closest('button[data-action="delete-suggestion"]');
     if (!button) return;
@@ -898,13 +1087,10 @@ function handleDeleteSuggestion(e) {
     showToast("Sugerencia eliminada", "info");
     updateProgramButtonState();
 }
-
-// --- PROGRAMACIÓN FINAL ---
 async function handleProgramAll() {
     if (currentSuggestions.length === 0) { showToast("No hay partidos para programar.", "warning"); return; }
     btnProgramAll.disabled = true;
     btnProgramAll.innerHTML = '<div class="spinner inline-block mr-2"></div> Programando...';
-
     const matchesToInsert = []; let validationFailed = false; let invalidRowsInfo = [];
     currentSuggestions.forEach((match) => {
         let errors = [];
@@ -915,7 +1101,6 @@ async function handleProgramAll() {
         if (!match.time) errors.push("Hora");
         if (!match.sede) errors.push("Sede");
         if (!match.canchaNum || match.canchaNum < 1) errors.push("Cancha");
-         
          const tournament = allTournaments.find(t => t.id === match.tournament_id);
          const player1 = getPlayerInfo(match.player1_id);
          const player2 = getPlayerInfo(match.player2_id);
@@ -925,8 +1110,6 @@ async function handleProgramAll() {
          if (tournament && player2 && player2.category_id !== tournament.category_id) {
             errors.push(`Jugador 2 no pertenece a ${tournament.categoryName}`);
          }
-
-
         if (errors.length > 0) {
             validationFailed = true;
             const p1Name = player1?.name || '?';
@@ -943,14 +1126,12 @@ async function handleProgramAll() {
             });
         }
     });
-
     if (validationFailed) {
         showToast(`Error: ${invalidRowsInfo[0]}. Revísalo.`, "error");
         console.error("Partidos inválidos:", invalidRowsInfo);
         btnProgramAll.disabled = false; updateProgramButtonState();
         return;
     }
-
     try {
         console.log("Insertando partidos:", matchesToInsert);
         const { error } = await supabase.from('matches').insert(matchesToInsert); if (error) throw error;
@@ -962,36 +1143,10 @@ async function handleProgramAll() {
         btnProgramAll.disabled = false; updateProgramButtonState();
     }
 }
-
-function updateProgramButtonState() {
-    const count = currentSuggestions.length;
-    if (programCountSpan) programCountSpan.textContent = count;
-    if (btnProgramAll) {
-        btnProgramAll.disabled = count === 0;
-        if (!btnProgramAll.disabled && !btnProgramAll.innerHTML.includes('spinner')) {
-             btnProgramAll.innerHTML = `<span class="material-icons">schedule_send</span> Programar Partidos (<span id="program-count">${count}</span>)`;
-        } else if (count === 0) {
-             btnProgramAll.innerHTML = `<span class="material-icons">schedule_send</span> Programar Partidos (<span id="program-count">0</span>)`;
-        }
-    }
-}
-
-// --- Lógica de Pasos (Mostrar/Ocultar) ---
-function showStep(stepName) {
-    if (stepName === 'configuration') {
-        configurationStepDiv?.classList.remove('hidden');
-        resultsStepDiv?.classList.add('hidden');
-    } else if (stepName === 'results') {
-        configurationStepDiv?.classList.add('hidden');
-        resultsStepDiv?.classList.remove('hidden');
-    }
-}
-
 // --- EVENT LISTENERS GENERALES ---
 document.addEventListener('DOMContentLoaded', () => {
     if (header) { try { header.innerHTML = renderHeader(); } catch (e) { console.error("Error renderizando header:", e); } }
-    loadInitialData(); // Esto llamará a displayWeek, que a su vez llama a initSlotEditor
-
+    loadInitialData(); 
     if (btnSelectAllTournaments && tournamentCheckboxList) {
         btnSelectAllTournaments.addEventListener('click', () => {
             const checkboxes = tournamentCheckboxList.querySelectorAll('.tournament-checkbox');
@@ -1000,18 +1155,21 @@ document.addEventListener('DOMContentLoaded', () => {
             clearResults(true);
         });
     }
-
     if (btnPrevWeek) btnPrevWeek.addEventListener('click', goToPreviousWeek);
     if (btnNextWeek) btnNextWeek.addEventListener('click', goToNextWeek);
     if (btnCurrentWeek) btnCurrentWeek.addEventListener('click', goToCurrentWeek);
     if (btnFindSuggestions) btnFindSuggestions.addEventListener('click', handleFindSuggestions);
     if (btnBackToConfig) btnBackToConfig.addEventListener('click', () => showStep('configuration'));
-
-    // Listeners para el editor de slots dinámico
     if (btnAddSlotRow) btnAddSlotRow.addEventListener('click', () => addSlotRow());
     if (slotsListContainer) slotsListContainer.addEventListener('click', handleSlotListClick);
+    
+    // INICIO MODIFICACIÓN: Listeners para los nuevos filtros y lista de "Juega 2"
+    if (juegaDosCategoryFilter) juegaDosCategoryFilter.addEventListener('change', populateJuegaDosPlayerList);
+    if (juegaDosSearchInput) juegaDosSearchInput.addEventListener('input', populateJuegaDosPlayerList);
+    if (playersJuegaDosList) playersJuegaDosList.addEventListener('click', handleJuegaDosCheck);
+    if (btnClearJuegaDos) btnClearJuegaDos.addEventListener('click', handleClearJuegaDos);
+    // FIN MODIFICACIÓN
 
-    // Listeners para la tabla de resultados
     if (suggestionsGridContainer) {
         suggestionsGridContainer.addEventListener('dblclick', handleCellDoubleClick);
         suggestionsGridContainer.addEventListener('change', handleEditorChange);
@@ -1019,7 +1177,6 @@ document.addEventListener('DOMContentLoaded', () => {
         suggestionsGridContainer.addEventListener('click', handleDeleteSuggestion);
     }
     document.addEventListener('click', handleDocumentClick, true);
-
     if (btnProgramAll) btnProgramAll.addEventListener('click', handleProgramAll);
     updateProgramButtonState();
 });
