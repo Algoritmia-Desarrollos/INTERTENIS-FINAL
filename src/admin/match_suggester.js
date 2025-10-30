@@ -285,7 +285,7 @@ function addSlotRow(data = {}, insertAfterRow = null) {
     // Pre-rellenar valores si se pasaron datos (para duplicar)
     slotRow.querySelector('.slot-sede').value = data.sede || 'Funes';
     slotRow.querySelector('.slot-date').value = data.date || currentWeekDaysOptions[0]?.value || '';
-    slotRow.querySelector('.slot-time').value = data.time || '09:00';
+    slotRow.querySelector('.slot-time').value = data.time || '08:00';
     slotRow.querySelector('.slot-canchas').value = data.canchas || 6;
 
     if (insertAfterRow) {
