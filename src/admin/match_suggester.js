@@ -549,8 +549,6 @@ async function handleFindSuggestions() {
         // Req ⿧: Usar el Set global que se mantiene actualizado
         const playersWantingTwoMatches = juegaDosSelectedPlayerIds;
 
-        // --- INICIO DE LA CORRECCIÓN DEL BUG ---
-        
         // 1. Cargar 'inscriptionsData' PRIMERO
         const { data: inscriptionsData, error: iError } = await supabase
             .from('tournament_players')
@@ -581,33 +579,57 @@ async function handleFindSuggestions() {
             supabase.from('player_availability').select('player_id, available_date, time_slot, zone').gte('available_date', startStr).lte('available_date', endStr),
             supabase.from('matches').select('*').in('tournament_id', selectedTournamentIds),
             supabase.from('matches').select('match_date, match_time, location').gte('match_date', startStr).lte('match_date', endStr).is('winner_id', null).not('tournament_id', 'in', `(${selectedTournamentIds.join(',')})`),
-            supabase.from('player_ranking_metadata').select('player_id, is_divider_after').in('tournament_id', selectedTournamentIds),
+            supabase.from('player_ranking_metadata').select('tournament_id, player_id, is_divider_after').in('tournament_id', selectedTournamentIds),
             supabase.from('players').select('id, name, category_id').in('id', playerIdsInSelectedTournaments)
         ]);
-        // --- FIN DE LA CORRECCIÓN DEL BUG ---
 
         if (aError || tMatchesError || mError || metaError || pError) {
             throw new Error(aError?.message || tMatchesError?.message || mError?.message || metaError?.message || pError?.message);
         }
 
-        // 4. Calcular Stats y Ranks (Req ⿥)
-        const playedMatches = (allSelectedTournamentMatches || []).filter(m => m.winner_id);
-        const stats = calculateCategoryStats(allPlayersInTournaments || [], playedMatches || []);
-        const playerRanks = new Map(stats.map((s, index) => [s.playerId, index + 1]));
-
-        // 5. Procesar Zonas (Req ⿢)
-        const playerZones = new Map();
-        const metadataMap = new Map(metadataData.map(m => [m.player_id, m]));
-        const sortedRankingForZones = stats.sort((a, b) => (playerRanks.get(a.playerId) || 999) - (playerRanks.get(b.playerId) || 999));
+        // --- INICIO DE LA LÓGICA DE CÁLCULO POR TORNEO ---
         
-        let currentZone = 1;
-        sortedRankingForZones.forEach(player => {
-            playerZones.set(player.playerId, currentZone);
-            const meta = metadataMap.get(player.playerId);
-            if (meta?.is_divider_after) {
-                currentZone++;
+        // 4. Crear Maps para guardar datos por torneo
+        const playerRanksPerTournament = new Map(); // Map(tournamentId -> Map(playerId -> rank))
+        const playerZonesPerTournament = new Map(); // Map(tournamentId -> Map(playerId -> zone))
+        const hasDividersPerTournament = new Map(); // Map(tournamentId -> boolean)
+
+        // 5. Iterar por CADA torneo seleccionado para calcular sus datos
+        for (const tournamentId of selectedTournamentIds) {
+            // Filtrar datos solo para este torneo
+            const playerIdsForThisTournament = new Set(inscriptionsData.filter(i => i.tournament_id === tournamentId).map(i => i.player_id));
+            const playersForThisTournament = allPlayersInTournaments.filter(p => playerIdsForThisTournament.has(p.id));
+            const matchesForThisTournament = (allSelectedTournamentMatches || []).filter(m => m.tournament_id === tournamentId);
+            const metadataForThisTournament = (metadataData || []).filter(m => m.tournament_id === tournamentId);
+
+            // Calcular stats y ranks para *este* torneo
+            const playedMatches = matchesForThisTournament.filter(m => m.winner_id);
+            const stats = calculateCategoryStats(playersForThisTournament, playedMatches);
+            const playerRanks = new Map(stats.map((s, index) => [s.playerId, index + 1]));
+            playerRanksPerTournament.set(tournamentId, playerRanks);
+
+            // Calcular zonas SÓLO si hay divisores para *este* torneo
+            // **** ESTA ES LA CORRECCIÓN CLAVE ****
+            const hasDividers = metadataForThisTournament.some(m => m.is_divider_after === true);
+            hasDividersPerTournament.set(tournamentId, hasDividers);
+
+            const playerZones = new Map();
+            if (hasDividers) {
+                const metadataMap = new Map(metadataForThisTournament.map(m => [m.player_id, m]));
+                const sortedRankingForZones = stats.sort((a, b) => (playerRanks.get(a.playerId) || 999) - (playerRanks.get(b.playerId) || 999));
+                
+                let currentZone = 1;
+                sortedRankingForZones.forEach(player => {
+                    playerZones.set(player.playerId, currentZone);
+                    const meta = metadataMap.get(player.playerId);
+                    if (meta?.is_divider_after) {
+                        currentZone++;
+                    }
+                });
             }
-        });
+            playerZonesPerTournament.set(tournamentId, playerZones);
+        }
+        // --- FIN DE LA LÓGICA DE CÁLCULO POR TORNEO ---
         
         // 6. Procesar Partidos Jugados (Req ⿤)
         playerMatchCounts.clear();
@@ -644,9 +666,11 @@ async function handleFindSuggestions() {
             availableSlots: definedSlots,
             categories: allCategories.filter(c => selectedCategoryIds.includes(c.id)),
             tournaments: allTournaments.filter(t => selectedTournamentIds.includes(t.id)),
-            playerRanks,
-            playerZones,
-            playersWantingTwoMatches
+            playersWantingTwoMatches,
+            // Enviar los nuevos Maps
+            playerRanksPerTournament,
+            playerZonesPerTournament,
+            hasDividersPerTournament
         };
 
         const { suggestionsBySlot, oddPlayers } = await generateMatchSuggestions(inputs);

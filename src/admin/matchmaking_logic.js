@@ -19,14 +19,18 @@ export async function generateMatchSuggestions(inputs) {
         availableSlots,
         categories,
         tournaments,
-        playerRanks, // Map(playerId -> rank)
-        playerZones, // Map(playerId -> zone)
-        playersWantingTwoMatches // Set(playerId)
+        playersWantingTwoMatches, // Set(playerId)
+        // --- INICIO CAMBIO LÓGICA ZONAS ---
+        playerRanksPerTournament,
+        playerZonesPerTournament,
+        hasDividersPerTournament
+        // --- FIN CAMBIO LÓGICA ZONAS ---
     } = inputs;
 
     console.log("Iniciando generación con Prioridades Avanzadas...");
-    console.log("Zonas de jugadores:", playerZones);
+    console.log("Zonas de jugadores (por torneo):", playerZonesPerTournament);
     console.log("Jugadores para 2 partidos:", playersWantingTwoMatches);
+    console.log("Torneos con divisores:", hasDividersPerTournament);
 
     // 1. Preparar "Pool de Jugadores"
     const playerPool = preparePlayerPool(
@@ -36,8 +40,8 @@ export async function generateMatchSuggestions(inputs) {
         allPlayers, 
         tournaments, 
         playerMatchCounts,
-        playerRanks,
-        playerZones
+        playerRanksPerTournament, // Modificado
+        playerZonesPerTournament  // Modificado
     );
 
     // 2. Preparar "Cola de Slots"
@@ -76,7 +80,8 @@ export async function generateMatchSuggestions(inputs) {
             assignedPlayers, 
             suggestionsBySlot,
             playersWantingTwoMatches,
-            forceCompatibility // Pasar el flag
+            forceCompatibility, // Pasar el flag
+            hasDividersPerTournament // --- INICIO CAMBIO LÓGICA ZONAS ---
         );
         
         matchesMade = result.matchesMade > 0;
@@ -123,7 +128,7 @@ export async function generateMatchSuggestions(inputs) {
 /**
  * Prepara el pool de jugadores, añadiendo ranking, zona y conteo de disponibilidad.
  */
-function preparePlayerPool(inscriptions, availability, history, allPlayers, tournaments, playerMatchCounts, playerRanks, playerZones) {
+function preparePlayerPool(inscriptions, availability, history, allPlayers, tournaments, playerMatchCounts, playerRanksPerTournament, playerZonesPerTournament) {
     const playerPool = new Map();
     const historySet = new Set(); 
 
@@ -139,16 +144,23 @@ function preparePlayerPool(inscriptions, availability, history, allPlayers, tour
         const tournamentInfo = tournaments.find(t => t.id === ins.tournament_id);
         if (!playerInfo || !tournamentInfo) return;
 
+        // --- INICIO CAMBIO LÓGICA ZONAS ---
+        // Buscar rank y zona en los maps específicos del torneo
+        const ranksForThisTournament = playerRanksPerTournament.get(ins.tournament_id) || new Map();
+        const zonesForThisTournament = playerZonesPerTournament.get(ins.tournament_id) || new Map();
+        // --- FIN CAMBIO LÓGICA ZONAS ---
+
         if (!playerPool.has(ins.player_id)) {
             playerPool.set(ins.player_id, {
                 id: ins.player_id,
                 category_id: tournamentInfo.category_id,
                 categoryName: tournamentInfo.categoryName,
-                // zone_name: ins.zone_name || null, // Obsoleto
                 tournament_id: ins.tournament_id,
                 matchesPlayed: playerMatchCounts.get(ins.player_id) || 0,
-                rank: playerRanks.get(ins.player_id) || 999,
-                zone: playerZones.get(ins.player_id) || 1,
+                // --- INICIO CAMBIO LÓGICA ZONAS ---
+                rank: ranksForThisTournament.get(ins.player_id) || 999, // Usar rank por torneo
+                zone: zonesForThisTournament.get(ins.player_id) || 1, // Usar zona por torneo
+                // --- FIN CAMBIO LÓGICA ZONAS ---
                 playedOpponents: new Set(),
                 availability: new Map(),
                 availabilityCount: 0,
@@ -224,15 +236,16 @@ function prepareSlotQueue(availableSlots, programmedMatches) {
  */
 function areZonesCompatible(zoneA, zoneB, force = false) {
     if (force) return true; // Si forzamos, siempre es compatible
-    if (!zoneA || !zoneB) return true;
+    if (!zoneA || !zoneB) return true; // Si alguno no tiene zona (ej. torneo sin divisores), es compatible
     return Math.abs(zoneA - zoneB) <= 1; // No pueden jugar 1 vs 3
 }
 
 /**
  * Itera sobre los slots y los jugadores para llenarlos.
  * @param {boolean} forceCompatibility - Si es true, ignora reglas de revancha y zona.
+ * @param {Map} hasDividersPerTournament - Map(tournamentId -> boolean)
  */
-function fillSlots(slotQueue, sortedPlayerPool, assignedPlayers, suggestionsBySlot, playersWantingTwoMatches, forceCompatibility = false) {
+function fillSlots(slotQueue, sortedPlayerPool, assignedPlayers, suggestionsBySlot, playersWantingTwoMatches, forceCompatibility = false, hasDividersPerTournament = new Map()) {
     let matchesMade = 0;
 
     for (const slot of slotQueue) {
@@ -257,12 +270,24 @@ function fillSlots(slotQueue, sortedPlayerPool, assignedPlayers, suggestionsBySl
                     if (diffInHours < MIN_HOURS_BETWEEN_MATCHES) {
                         continue; 
                     }
+                    // --- INICIO: NO JUGAR 2 VECES MISMO DÍA ---
+                    const lastMatchDate = lastMatchDateTime.toISOString().split('T')[0];
+                    if (lastMatchDate === slot.date) {
+                        continue; // Ya jugó hoy
+                    }
+                    // --- FIN ---
                 }
                 playerA = p;
                 break;
             }
         }
         if (!playerA) continue;
+
+        // --- INICIO CAMBIO LÓGICA ZONAS ---
+        // Obtener el flag de divisores para el torneo específico de PlayerA
+        const tournamentId = playerA.tournament_id;
+        const tournamentHasDividers = hasDividersPerTournament.get(tournamentId) || false;
+        // --- FIN CAMBIO LÓGICA ZONAS ---
         
         // 2. Encontrar Jugador B
         const possibleOpponents = sortedPlayerPool.filter(p => {
@@ -270,20 +295,30 @@ function fillSlots(slotQueue, sortedPlayerPool, assignedPlayers, suggestionsBySl
             const maxMatches = playersWantingTwoMatches.has(p.id) ? 2 : 1;
             if (p.matchesAssignedThisWeek >= maxMatches || assignedPlayers.has(p.id)) return false; 
             if (!p.availability.has(availabilityKey) || !(p.availability.get(availabilityKey).has(slot.sede) || p.availability.get(availabilityKey).has('ambas'))) return false; 
-            if (p.category_id !== playerA.category_id) return false;
             
-            // Regla de Zona: Comprobar compatibilidad
-            if (!areZonesCompatible(playerA.zone, p.zone, forceCompatibility)) {
+            // --- INICIO CAMBIO LÓGICA ZONAS ---
+            // Asegurarse que el oponente es de la misma categoría Y torneo
+            if (p.category_id !== playerA.category_id || p.tournament_id !== playerA.tournament_id) return false;
+            
+            // Regla de Zona: Comprobar compatibilidad SÓLO si ESE TORNEO tiene divisores
+            if (tournamentHasDividers && !areZonesCompatible(playerA.zone, p.zone, forceCompatibility)) {
                 return false;
             }
+            // --- FIN CAMBIO LÓGICA ZONAS ---
             
-            // Regla de 4 horas
+            // Regla de 4 horas y Mismo Día
             if (p.matchesAssignedThisWeek > 0 && p.lastMatchTime) {
                 const lastMatchDateTime = new Date(p.lastMatchTime);
                 const diffInHours = Math.abs(currentSlotDateTime - lastMatchDateTime) / (1000 * 60 * 60);
                 if (diffInHours < MIN_HOURS_BETWEEN_MATCHES) {
                     return false; 
                 }
+                // --- INICIO: NO JUGAR 2 VECES MISMO DÍA ---
+                const lastMatchDate = lastMatchDateTime.toISOString().split('T')[0];
+                if (lastMatchDate === slot.date) {
+                    return false; // Ya jugó hoy
+                }
+                // --- FIN ---
             }
             
             return true;
@@ -328,17 +363,29 @@ function fillSlots(slotQueue, sortedPlayerPool, assignedPlayers, suggestionsBySl
             const isRevancha = playerA.playedOpponents.has(playerB.id);
             const zoneDiff = Math.abs(playerA.zone - playerB.zone);
 
+            // --- INICIO CAMBIO LÓGICA ZONAS ---
             // Asignar razón del cruce
             let reason = "NUEVO"; // Razón por defecto (Nunca jugaron)
-            if (zoneDiff > 1) {
-                reason = "ZONA_INCOMPATIBLE"; // Ej: 1 vs 3
-            } else if (isRevancha && forceCompatibility) {
-                reason = "REVANCHA_FORZADA"; // Revancha forzada
-            } else if (isRevancha) {
-                reason = "REVANCHA"; // Revancha normal
-            } else if (zoneDiff === 1) {
-                reason = "PARTIDO_CLAVE"; // Zonas contiguas
+            
+            // Usar el flag específico del torneo
+            if (tournamentHasDividers) { 
+                if (zoneDiff > 1) {
+                    reason = "ZONA_INCOMPATIBLE"; // Ej: 1 vs 3
+                } else if (isRevancha && forceCompatibility) {
+                    reason = "REVANCHA_FORZADA"; // Revancha forzada
+                } else if (isRevancha) {
+                    reason = "REVANCHA"; // Revancha normal
+                } else if (zoneDiff === 1) {
+                    reason = "PARTIDO_CLAVE"; // Zonas contiguas
+                }
+            } else { // Si NO hay divisores, solo chequear revancha
+                if (isRevancha && forceCompatibility) {
+                    reason = "REVANCHA_FORZADA";
+                } else if (isRevancha) {
+                    reason = "REVANCHA";
+                }
             }
+            // --- FIN CAMBIO LÓGICA ZONAS ---
             
             suggestionsBySlot[slotKey].push({
                 canchaNum: slot.canchaNum,
