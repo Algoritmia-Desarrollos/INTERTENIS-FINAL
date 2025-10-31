@@ -136,7 +136,8 @@ async function renderCategoryRankings(playerToHighlight = null) {
     ] = await Promise.all([
         supabase.from('players').select('*, teams(name, image_url), categories(id, name)').in('id', playerIds),
         supabase.from('matches').select('*, status, sets, winner_id, bonus_loser, player1_id, player2_id, player3_id, player4_id').eq('tournament_id', tournamentId).not('winner_id', 'is', null),
-        supabase.from('player_ranking_metadata').select('*').eq('tournament_id', tournamentId) // Cargar metadata
+        // *** CORRECCIÓN: Pedir solo los campos públicos necesarios ***
+        supabase.from('player_ranking_metadata').select('player_id, is_divider_after, special_tag, tag_color').eq('tournament_id', tournamentId) // Cargar metadata
     ]);
 
     if (pError || mError) {
@@ -265,8 +266,10 @@ function calculateCategoryStats(players, matches) {
  */
 function generateCategoryRankingsHTML(category, stats, playerToHighlight = null, metadataMap) {
     
+    // --- INICIO: CORRECCIÓN LÓGICA PÚBLICA ---
     // Función helper para la etiqueta (para no repetir código)
     const renderTag = (meta) => {
+        // La página pública SOLO lee 'special_tag' y 'tag_color'
         if (meta && meta.special_tag) {
             const tagColor = meta.tag_color || '#374151';
             const textColor = isColorLight(tagColor) ? '#000' : '#fff';
@@ -286,6 +289,7 @@ function generateCategoryRankingsHTML(category, stats, playerToHighlight = null,
         const luminance = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
         return luminance > 0.5;
     };
+    // --- FIN: CORRECCIÓN LÓGICA PÚBLICA ---
     
     let tableHTML = `
         <table class="rankings-table min-w-full font-bold text-sm text-gray-200" style="border-spacing: 0; border-collapse: separate;">
@@ -323,7 +327,11 @@ function generateCategoryRankingsHTML(category, stats, playerToHighlight = null,
 
             // Obtener metadata para este jugador
             const meta = metadataMap.get(s.playerId) || { is_divider_after: false, special_tag: null, tag_color: null };
+            
+            // --- INICIO: CORRECCIÓN LÓGICA PÚBLICA ---
+            // Simplemente llamar a renderTag
             const tagHTML = renderTag(meta);
+            // --- FIN: CORRECCIÓN LÓGICA PÚBLICA ---
 
             tableHTML += `
                 <tr class="${highlightClass}">

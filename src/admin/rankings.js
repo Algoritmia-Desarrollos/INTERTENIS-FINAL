@@ -20,12 +20,10 @@ const saveRankingChangesBtn = document.getElementById('save-ranking-changes-btn'
 let allTournaments = [];
 let currentView = 'category';
 let currentRankingData = []; // Guardará los stats calculados
-// *** CORRECCIÓN ***
-// El Map ahora guarda 'tag_type' (lógica interna) pero la DB usa 'special_tag' y 'tag_color'
 let currentRankingMetadata = new Map(); // Map(playerId -> { player_id, tournament_id, is_divider_after, tag_type })
 let rankingDirty = false; // Flag para cambios pendientes
 
-// --- NUEVO: PRESETS DE ETIQUETAS (Tipos de Tag) ---
+// --- PRESETS DE ETIQUETAS (Tipos de Tag) ---
 const TAG_PRESETS = {
     'ASCENSO_SEGURO': { prefix: 'A', color: '#22c55e', textColor: '#ffffff', title: 'Ascenso Seguro' }, // green-500
     'PROMO_ASCENSO': { prefix: 'PA', color: '#a3e635', textColor: '#000000', title: 'Promo Ascenso' }, // lime-400
@@ -107,42 +105,7 @@ function setupViewSwitcher() {
         </style>
     `;
 
-    const btnCategory = document.getElementById('btn-view-category');
-    const btnTeams = document.getElementById('btn-view-teams');
-
-    btnCategory.addEventListener('click', () => {
-        if (currentView === 'category') return;
-        currentView = 'category';
-        if(pageTitle) pageTitle.textContent = "Categorías";
-        btnCategory.classList.add('active');
-        btnTeams.classList.remove('active');
-        populateTournamentFilter();
-        rankingsContainer.innerHTML = '';
-        setRankingDirty(false); // Ocultar botón de guardar
-        closeTagPopups(); // Cerrar popups si están abiertos
-    });
-
-    btnTeams.addEventListener('click', async () => {
-        if (currentView === 'teams') return;
-        currentView = 'teams';
-        if(pageTitle) pageTitle.textContent = "SuperLiga";
-        btnTeams.classList.add('active');
-        btnCategory.classList.remove('active');
-        setRankingDirty(false); // Ocultar botón de guardar
-        closeTagPopups(); // Cerrar popups si están abiertos
-        
-        await populateTournamentFilter();
-        
-        const teamTournaments = allTournaments.filter(t => t.category && t.category.name === 'Equipos');
-        if (teamTournaments.length > 0) {
-            teamTournaments.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-            const latestTournament = teamTournaments[0];
-            tournamentFilter.value = latestTournament.id;
-            renderTeamRankings();
-        } else {
-            rankingsContainer.innerHTML = '';
-        }
-    });
+    // --- CORRECCIÓN: Se mueven los listeners a `handleDocumentClick` y `loadInitialData` ---
 }
 
 async function populateTournamentFilter() {
@@ -180,7 +143,11 @@ function renderTeamRankings() {
 
 
 // --- RANKING POR CATEGORÍA (Modificado) ---
-async function renderCategoryRankings(playerToHighlight = null) {
+
+/**
+ * Función 1: Obtiene los datos del torneo y los guarda en el estado global
+ */
+async function fetchAndRenderRankings(playerToHighlight = null) {
     const tournamentId = tournamentFilter.value;
     rankingsContainer.innerHTML = '<p class="text-center p-8 text-gray-400">Calculando POSICIONES...</p>';
     setRankingDirty(false); // Ocultar botón guardar al cargar
@@ -209,8 +176,6 @@ async function renderCategoryRankings(playerToHighlight = null) {
     const playerIds = tournamentPlayersLinks.map(link => link.player_id);
 
     // 3. Cargar el resto de datos en un 'Promise.all'
-    // *** ESTA ES LA LÍNEA CORREGIDA ***
-    // Volvemos a pedir 'special_tag' y 'tag_color'
     const [
         { data: playersInTournament, error: pError },
         { data: matchesInTournament, error: mError },
@@ -220,7 +185,6 @@ async function renderCategoryRankings(playerToHighlight = null) {
         supabase.from('matches').select('*, status, sets, winner_id, bonus_loser, player1_id, player2_id, player3_id, player4_id').eq('tournament_id', tournamentId).not('winner_id', 'is', null),
         supabase.from('player_ranking_metadata').select('player_id, is_divider_after, special_tag, tag_color').eq('tournament_id', tournamentId) // Cargar metadata
     ]);
-    // *** FIN DE LA CORRECCIÓN ***
 
     if (pError || mError) {
         rankingsContainer.innerHTML = '<div class="bg-[#222222] p-8 rounded-xl"><p class="text-center text-red-500">Error al cargar datos del torneo.</p></div>';
@@ -231,12 +195,10 @@ async function renderCategoryRankings(playerToHighlight = null) {
         showToast("Error al cargar la metadata del ranking", "error");
     }
 
-    // Guardar metadata en el estado global
+    // 4. Guardar metadata en el estado global
     currentRankingMetadata.clear();
-    // *** INICIO CORRECCIÓN LÓGICA DE CARGA ***
     (metadataData || []).forEach(meta => {
         let tag_type = null;
-        // Inferir el tipo a partir del tag guardado
         if (meta.special_tag) {
             if (meta.special_tag.startsWith(TAG_PRESETS.ASCENSO_SEGURO.prefix)) tag_type = 'ASCENSO_SEGURO';
             else if (meta.special_tag.startsWith(TAG_PRESETS.PROMO_ASCENSO.prefix)) tag_type = 'PROMO_ASCENSO';
@@ -245,40 +207,62 @@ async function renderCategoryRankings(playerToHighlight = null) {
         }
         currentRankingMetadata.set(meta.player_id, {
             player_id: meta.player_id,
-            tournament_id: Number(tournamentId), // Asegurarse de que esté
+            tournament_id: Number(tournamentId), 
             is_divider_after: meta.is_divider_after,
-            tag_type: tag_type // Guardar el TIPO inferido en el estado
+            tag_type: tag_type 
         });
     });
-    // *** FIN CORRECCIÓN LÓGICA DE CARGA ***
 
 
-    // 4. Calcular estadísticas
+    // 5. Calcular estadísticas y guardarlas en estado global
     const stats = calculateCategoryStats(playersInTournament || [], matchesInTournament || []);
     currentRankingData = stats; // Guardar datos calculados en el estado
     
-    const categoriesInTournament = [...new Map(playersInTournament.map(p => p && [p.category_id, p.categories]).filter(Boolean)).values()];
+    // 6. Llamar a la función que dibuja la tabla
+    drawRankingTables(playerToHighlight);
+}
 
+/**
+ * Función 2: Dibuja las tablas en el DOM usando los datos del estado global
+ */
+function drawRankingTables(playerToHighlight = null) {
+    // Busca las categorías únicas directamente desde los stats calculados
+    const categoriesInTournament = [...new Map(currentRankingData.map(s => {
+        // Encontrar la info del torneo (que tiene la info de la categoría)
+        const tour = allTournaments.find(t => t.category_id === s.categoryId);
+        // Devolver un objeto {id, name} de la categoría
+        return [s.categoryId, { id: s.categoryId, name: tour?.category?.name || 'Categoría Desconocida' }];
+    })).values()];
+    
     rankingsContainer.innerHTML = '';
-    if (categoriesInTournament.length === 0) {
+    if (currentRankingData.length === 0 || categoriesInTournament.length === 0) {
         rankingsContainer.innerHTML = '<div class="bg-[#222222] p-8 rounded-xl"><p class="text-center text-gray-400">No hay jugadores con categoría en este torneo.</p></div>';
         return;
     }
 
-    // 5. Renderizar cada categoría
+    // Renderizar cada categoría
     categoriesInTournament.forEach(category => {
-        let categoryStats = stats.filter(s => s.categoryId === category.id);
+        if (!category || !category.id) return; // Saltear si no se encontró info de la categoría
+        let categoryStats = currentRankingData.filter(s => s.categoryId === category.id);
         
         const tableContainer = document.createElement('div');
         tableContainer.className = 'bg-[#222222] p-4 rounded-xl shadow-lg overflow-x-auto mb-8';
-        // Pasar la metadata al generador HTML
+        
+        // Pasar la metadata DEL ESTADO al generador HTML
         tableContainer.innerHTML = generateCategoryRankingsHTML(category, categoryStats, playerToHighlight, currentRankingMetadata);
         rankingsContainer.appendChild(tableContainer);
     });
 }
 
+
 function calculateCategoryStats(players, matches) {
-    const stats = players.map(player => ({
+    
+    // *** INICIO DE LA CORRECCIÓN ***
+    // Filtrar jugadores que no tienen ID o no existen (jugadores fantasma)
+    const validPlayers = players.filter(p => p && p.id);
+    
+    const stats = validPlayers.map(player => ({
+    // *** FIN DE LA CORRECCIÓN ***
         playerId: player.id, name: player.name, categoryId: player.category_id, 
         teamName: player.teams ? player.teams.name : 'N/A',
         teamImageUrl: player.teams ? player.teams.image_url : null,
@@ -422,6 +406,14 @@ function generateCategoryRankingsHTML(category, stats, playerToHighlight = null,
         tableHTML += `<tr><td colspan="17" class="text-center font-bold p-8 text-gray-400">No hay jugadores en esta categoría para mostrar.</td></tr>`;
     } else {
         stats.forEach((s, index) => {
+            // *** INICIO DE LA CORRECCIÓN ***
+            // Si el jugador no tiene ID (es un fantasma), no dibujamos la fila
+            if (!s.playerId) {
+                console.warn("Se omitió un jugador 'fantasma' (ID nulo) en el ranking.");
+                return; 
+            }
+            // *** FIN DE LA CORRECCIÓN ***
+
             const hasPlayed = s.pj > 0;
             const difPClass = 'text-[#e8b83a]';
             const difSClass = 'text-[#e8b83a]';
@@ -531,6 +523,8 @@ function closeTagPopups() {
 function handleToggleDivider(btn) {
     closeTagPopups(); // Cerrar otros popups
     const playerId = Number(btn.dataset.playerId);
+    if (!playerId) return; // Evitar si el ID es nulo o NaN
+    
     const tournamentId = Number(tournamentFilter.value);
     
     // Obtener o crear la metadata para este jugador
@@ -544,22 +538,10 @@ function handleToggleDivider(btn) {
     // Alternar el estado
     meta.is_divider_after = !meta.is_divider_after;
     currentRankingMetadata.set(playerId, meta);
-
-    // Actualizar UI
-    btn.classList.toggle('active', meta.is_divider_after);
-    const dividerRow = rankingsContainer.querySelector(`tr[data-divider-for-player-id="${playerId}"]`);
-    if (meta.is_divider_after && !dividerRow) {
-        // Añadir fila divisoria
-        const playerRow = rankingsContainer.querySelector(`tr[data-player-id="${playerId}"]`);
-        if (playerRow) { // Comprobación para evitar el error
-            playerRow.insertAdjacentHTML('afterend', `<tr class="ranking-divider-row" data-divider-for-player-id="${playerId}"><td colspan="17"></td></tr>`);
-        } else {
-            console.error("No se encontró la fila del jugador para insertar el divisor");
-        }
-    } else if (!meta.is_divider_after && dividerRow) {
-        // Quitar fila divisoria
-        dividerRow.remove();
-    }
+    
+    // Llamar a la función que redibuja la tabla desde el estado
+    const playerToHighlight = document.querySelector('.bg-yellow-900\\/50')?.dataset.playerId || null;
+    drawRankingTables(playerToHighlight);
     
     setRankingDirty(true);
 }
@@ -572,6 +554,8 @@ function handleEditTag(btn) {
     closeTagPopups(); // Cerrar cualquier otro popup abierto
     
     const playerId = Number(btn.dataset.playerId);
+    if (!playerId) return; // Evitar si el ID es nulo o NaN
+    
     const cell = btn.closest('.admin-actions');
     const rect = btn.getBoundingClientRect(); // Posición del botón
 
@@ -614,7 +598,12 @@ function handleEditTag(btn) {
  * @param {HTMLElement} btn - El botón de tipo de tag que fue clickeado
  */
 function handleSetTag(btn) {
-    const playerId = Number(btn.closest('.tag-editor-popup').dataset.playerId);
+    const popup = btn.closest('.tag-editor-popup');
+    if (!popup) return;
+    
+    const playerId = Number(popup.dataset.playerId);
+    if (!playerId) return; // Evitar si el ID es nulo o NaN
+
     let tagType = btn.dataset.tagType;
     if (tagType === 'null') {
         tagType = null;
@@ -634,9 +623,9 @@ function handleSetTag(btn) {
     setRankingDirty(true);
     closeTagPopups();
     
-    // Re-renderizar toda la tabla para actualizar los números (A1, A2, etc.)
+    // Llamar a la función que redibuja la tabla desde el estado
     const playerToHighlight = document.querySelector('.bg-yellow-900\\/50')?.dataset.playerId || null;
-    renderCategoryRankings(playerToHighlight);
+    drawRankingTables(playerToHighlight);
 }
 
 
@@ -673,6 +662,14 @@ async function handleSaveRankingChanges() {
 
     // 1. Encontrar todos los jugadores que tienen metadata (divisor o tag)
     currentRankingMetadata.forEach((meta, playerId) => {
+        // *** INICIO DE LA CORRECCIÓN ***
+        // Asegurarnos de que el playerID es válido antes de procesar
+        if (!playerId || isNaN(playerId) || playerId === 0) {
+            console.warn("Se omitió metadata con player_id inválido:", playerId, meta);
+            return; // Saltar este ciclo
+        }
+        // *** FIN DE LA CORRECCIÓN ***
+
         const metaTournamentId = meta.tournament_id || tournamentId; // Asignar ID de torneo si falta
         
         if (metaTournamentId === tournamentId) {
@@ -696,24 +693,20 @@ async function handleSaveRankingChanges() {
                     }
                 }
 
-                // *** INICIO CORRECCIÓN GUARDADO ***
-                // Guardar el tag calculado y el color en las columnas correctas
                 metadataToUpsert.push({
                     tournament_id: tournamentId,
-                    player_id: playerId,
+                    player_id: playerId, // El 'playerId' aquí es la clave del Map, que ya filtramos
                     is_divider_after: meta.is_divider_after || false,
-                    special_tag: special_tag, // GUARDAR ESTO
-                    tag_color: tag_color      // GUARDAR ESTO
-                    // Ya no guardamos tag_type, se infiere al cargar
+                    special_tag: special_tag, 
+                    tag_color: tag_color      
                 });
-                // *** FIN CORRECCIÓN GUARDADO ***
                 playerIdsWithMetadata.add(playerId);
             }
         }
     });
     
     // 2. Encontrar todos los jugadores que NO tienen metadata (y están en el ranking actual)
-    const playerIdsToClear = playerIdsInCurrentRanking.filter(id => !playerIdsWithMetadata.has(id));
+    const playerIdsToClear = playerIdsInCurrentRanking.filter(id => id && !playerIdsWithMetadata.has(id));
 
     try {
         // 3. Borrar la metadata de los que ya no la necesitan
@@ -729,8 +722,6 @@ async function handleSaveRankingChanges() {
         
         // 4. Insertar/Actualizar los que SÍ la necesitan
         if (metadataToUpsert.length > 0) {
-            // *** CORRECCIÓN GUARDADO ***
-            // Quitar 'tag_type' del onConflict
             const { error: upsertError } = await supabase
                 .from('player_ranking_metadata')
                 .upsert(metadataToUpsert, { onConflict: 'tournament_id, player_id' });
@@ -751,7 +742,13 @@ async function handleSaveRankingChanges() {
 }
 
 // --- INICIALIZACIÓN Y EVENTOS ---
-document.addEventListener('DOMContentLoaded', async () => {
+
+// --- INICIO: CORRECCIÓN DE EVENTOS ---
+
+/**
+ * Función que carga los datos iniciales y prepara los listeners principales.
+ */
+async function loadInitialData() {
     header.innerHTML = renderHeader();
     if(pageTitle) pageTitle.textContent = "Categorías";
     setupViewSwitcher();
@@ -767,73 +764,111 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (selectedTournament?.category?.name === 'Equipos') {
             document.getElementById('btn-view-teams').click();
         }
-        await (currentView === 'category' ? renderCategoryRankings(playerToHighlight) : renderTeamRankings());
+        await (currentView === 'category' ? fetchAndRenderRankings(playerToHighlight) : renderTeamRankings());
     } else {
         rankingsContainer.innerHTML = '<div class="bg-[#222222] p-8 rounded-xl"><p class="text-center text-gray-400">Seleccione un torneo para ver las posiciones.</p></div>';
     }
-});
+}
 
-tournamentFilter.addEventListener('change', () => {
+/**
+ * Maneja el cambio en el filtro de torneo.
+ */
+function handleFilterChange() {
     if (currentView === 'category') {
-        renderCategoryRankings(null);
+        fetchAndRenderRankings(null);
     } else {
         renderTeamRankings();
     }
-});
+}
 
-// Event listener delegado para los botones de admin
-rankingsContainer.addEventListener('click', (e) => {
-    // Si se hace clic en un botón de etiqueta, no cerrar el popup
-    if (e.target.closest('.tag-selection-btn')) {
-        return;
-    }
-    
-    // Si se hace clic en cualquier otro lugar, cerrar todos los popups
-    if (!e.target.closest('.edit-tag-btn')) {
+/**
+ * Maneja los clics en los botones de cambio de vista (Singles / SuperLiga).
+ * @param {HTMLElement} btn - El botón clickeado.
+ */
+function handleViewChange(btn) {
+    if (btn.id === 'btn-view-category' && currentView !== 'category') {
+        currentView = 'category';
+        if(pageTitle) pageTitle.textContent = "Categorías";
+        btn.classList.add('active');
+        document.getElementById('btn-view-teams').classList.remove('active');
+        populateTournamentFilter();
+        rankingsContainer.innerHTML = '';
+        setRankingDirty(false);
         closeTagPopups();
-    }
-
-    const toggleBtn = e.target.closest('.toggle-divider-btn');
-    if (toggleBtn) {
-        handleToggleDivider(toggleBtn);
-        return;
-    }
-    
-    const editBtn = e.target.closest('.edit-tag-btn');
-    if (editBtn) {
-        handleEditTag(editBtn);
-        return;
-    }
-});
-
-// Listener global para cerrar popups y manejar clics en el popup
-document.addEventListener('click', (e) => {
-    // Si el clic es DENTRO del ranking container, el listener de arriba se encarga
-    if (e.target.closest('#rankings-container')) {
-        return;
-    }
-    
-    // Si el clic es en el botón de guardar, no cerrar
-    if (e.target.closest('#save-ranking-changes-btn')) {
-        return;
-    }
-
-    // Si el clic es FUERA del ranking container, y no es en un popup, cerrar popups
-    if (!e.target.closest('.tag-editor-popup')) {
+    } else if (btn.id === 'btn-view-teams' && currentView !== 'teams') {
+        currentView = 'teams';
+        if(pageTitle) pageTitle.textContent = "SuperLiga";
+        btn.classList.add('active');
+        document.getElementById('btn-view-category').classList.remove('active');
+        setRankingDirty(false);
         closeTagPopups();
+        
+        populateTournamentFilter().then(() => {
+            const teamTournaments = allTournaments.filter(t => t.category && t.category.name === 'Equipos');
+            if (teamTournaments.length > 0) {
+                teamTournaments.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+                const latestTournament = teamTournaments[0];
+                tournamentFilter.value = latestTournament.id;
+                renderTeamRankings();
+            } else {
+                rankingsContainer.innerHTML = '';
+            }
+        });
     }
-    
-    const btn = e.target.closest('button');
-    if (!btn) return;
-    
-    const action = btn.dataset.action;
-    
-    if (action === 'set-tag') {
-        handleSetTag(btn);
-        return;
+}
+
+/**
+ * Listener de clic global para manejar todas las interacciones.
+ */
+function handleDocumentClick(e) {
+    const target = e.target;
+
+    // 1. Clic en un botón para SETEAR la etiqueta (la acción más importante)
+    const setTagBtn = target.closest('button[data-action="set-tag"]');
+    if (setTagBtn) {
+        handleSetTag(setTagBtn);
+        return; // Acción completada
     }
-});
 
+    // 2. Clic en un botón para ABRIR el popup de etiqueta
+    const openPopupBtn = target.closest('button[data-action="edit-tag"]');
+    if (openPopupBtn) {
+        // Si se hace clic en el mismo botón, se cierra. Si es en otro, se cierra el viejo y se abre el nuevo.
+        const isAlreadyOpen = openPopupBtn.parentElement.querySelector('.tag-editor-popup');
+        closeTagPopups(); // Siempre cerrar popups existentes
+        if (!isAlreadyOpen) {
+            handleEditTag(openPopupBtn); // Abrir el nuevo
+        }
+        return; // Acción completada
+    }
 
-// Listener para el botón principal de Guardar
+    // 3. Clic en un botón para CAMBIAR EL DIVISOR
+    const toggleDividerBtn = target.closest('button[data-action="toggle-divider"]');
+    if (toggleDividerBtn) {
+        handleToggleDivider(toggleDividerBtn);
+        return; // Acción completada
+    }
+
+    // 4. Clic en un botón para CAMBIAR DE VISTA
+    const viewBtn = target.closest('.btn-view');
+    if (viewBtn) {
+        handleViewChange(viewBtn);
+        return; // Acción completada
+    }
+
+    // 5. Si no fue ninguna de las acciones de admin, verificar si fue un clic "afuera"
+    const isInsidePopup = target.closest('.tag-editor-popup');
+    const isAdminActionButton = target.closest('.admin-btn'); // Cualquier botón de admin
+    
+    // Si el clic NO fue en un popup Y NO fue en un botón de admin (para reabrirlo)
+    if (!isInsidePopup && !isAdminActionButton) {
+        closeTagPopups(); // Cerrar todos los popups abiertos
+    }
+}
+
+// --- INICIALIZACIÓN ---
+document.addEventListener('DOMContentLoaded', loadInitialData);
+tournamentFilter.addEventListener('change', handleFilterChange);
 saveRankingChangesBtn.addEventListener('click', handleSaveRankingChanges);
+document.addEventListener('click', handleDocumentClick);
+// *** FIN: CORRECCIÓN DE EVENTOS ***
