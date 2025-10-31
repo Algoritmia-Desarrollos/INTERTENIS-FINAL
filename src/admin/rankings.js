@@ -13,16 +13,37 @@ const rankingsContainer = document.getElementById('rankings-container');
 const viewSwitcherContainer = document.getElementById('view-switcher-container');
 const filterLabel = document.getElementById('filter-label');
 const pageTitle = document.querySelector('h1');
-// Nuevos elementos para guardar metadata
 const saveChangesContainer = document.getElementById('save-changes-container');
 const saveRankingChangesBtn = document.getElementById('save-ranking-changes-btn');
 
-// --- Estado Global ---
+// --- ESTADO GLOBAL ---
 let allTournaments = [];
 let currentView = 'category';
 let currentRankingData = []; // Guardará los stats calculados
-let currentRankingMetadata = new Map(); // Map(playerId -> { id, tournament_id, player_id, is_divider_after, special_tag, tag_color })
+let currentRankingMetadata = new Map(); // Map(playerId -> { id, tournament_id, player_id, is_divider_after, tag_type })
 let rankingDirty = false; // Flag para cambios pendientes
+
+// --- NUEVO: PRESETS DE ETIQUETAS (Tipos de Tag) ---
+const TAG_PRESETS = {
+    'ASCENSO_SEGURO': { prefix: 'A', color: '#22c55e', textColor: '#ffffff', title: 'Ascenso Seguro' }, // green-500
+    'PROMO_ASCENSO': { prefix: 'PA', color: '#a3e635', textColor: '#000000', title: 'Promo Ascenso' }, // lime-400
+    'PROMO_DESCENSO': { prefix: 'PD', color: '#f97316', textColor: '#ffffff', title: 'Promo Descenso' }, // orange-500
+    'DESCENSO_SEGURO': { prefix: 'D', color: '#ef4444', textColor: '#ffffff', title: 'Descenso Seguro' }  // red-500
+};
+const TAG_TYPES = Object.keys(TAG_PRESETS);
+
+// --- Helper de Color ---
+function isColorLight(hex) {
+    if (!hex || typeof hex !== 'string') return false;
+    let c = hex.startsWith('#') ? hex.slice(1) : hex;
+    if (c.length === 3) c = c.split('').map(char => char + char).join('');
+    if (c.length !== 6) return false; // Fallback
+    const r = parseInt(c.substring(0, 2), 16);
+    const g = parseInt(c.substring(2, 4), 16);
+    const b = parseInt(c.substring(4, 6), 16);
+    const luminance = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+    return luminance > 0.6; // Aumentado umbral para seguridad
+};
 
 // --- Lógica de Vistas y Filtros ---
 
@@ -35,6 +56,52 @@ function setupViewSwitcher() {
         <style>
             .btn-view { padding: 8px 16px; border-bottom: 2px solid transparent; color: #9ca3af; font-weight: 600; cursor: pointer; }
             .btn-view.active { color: #facc15; border-bottom-color: #facc15; }
+            
+            /* --- INICIO: NUEVOS ESTILOS PARA POPUP DE ETIQUETAS --- */
+            .admin-actions {
+                position: relative; /* Contenedor para el popup */
+            }
+            .tag-editor-popup {
+                position: absolute;
+                left: 100%;
+                top: 0;
+                background-color: #374151; /* gray-700 */
+                border: 1px solid #6b7280; /* gray-500 */
+                border-radius: 6px;
+                padding: 4px;
+                display: flex;
+                flex-direction: column;
+                gap: 4px;
+                z-index: 50;
+                width: 150px; /* Ancho fijo para el menú */
+                box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+            }
+            .tag-selection-btn { 
+                display: flex; 
+                align-items: center; 
+                gap: 8px; 
+                background-color: #4b5563; /* gray-600 */
+                color: white; 
+                border: none; 
+                padding: 5px 8px; 
+                border-radius: 4px; 
+                cursor: pointer; 
+                text-align: left; 
+                font-size: 11px; 
+                font-weight: 600; 
+                transition: background-color 0.15s;
+            }
+            .tag-selection-btn:hover { background-color: #6b7280; } /* gray-500 */
+            .tag-selection-btn .tag-preview { 
+                width: 16px; 
+                height: 16px; 
+                border-radius: 3px; 
+                border: 1px solid #374151; /* gray-700 */
+                flex-shrink: 0;
+            }
+            .tag-selection-btn.cancel { background-color: #374151; } /* gray-700 */
+            .tag-selection-btn.cancel:hover { background-color: #4b5563; } /* gray-600 */
+            /* --- FIN: NUEVOS ESTILOS --- */
         </style>
     `;
 
@@ -50,6 +117,7 @@ function setupViewSwitcher() {
         populateTournamentFilter();
         rankingsContainer.innerHTML = '';
         setRankingDirty(false); // Ocultar botón de guardar
+        closeTagPopups(); // Cerrar popups si están abiertos
     });
 
     btnTeams.addEventListener('click', async () => {
@@ -59,6 +127,7 @@ function setupViewSwitcher() {
         btnTeams.classList.add('active');
         btnCategory.classList.remove('active');
         setRankingDirty(false); // Ocultar botón de guardar
+        closeTagPopups(); // Cerrar popups si están abiertos
         
         await populateTournamentFilter();
         
@@ -138,6 +207,8 @@ async function renderCategoryRankings(playerToHighlight = null) {
     const playerIds = tournamentPlayersLinks.map(link => link.player_id);
 
     // 3. Cargar el resto de datos en un 'Promise.all'
+    // *** ESTA ES LA LÍNEA CORREGIDA ***
+    // Volvemos a pedir 'special_tag' y 'tag_color'
     const [
         { data: playersInTournament, error: pError },
         { data: matchesInTournament, error: mError },
@@ -145,22 +216,40 @@ async function renderCategoryRankings(playerToHighlight = null) {
     ] = await Promise.all([
         supabase.from('players').select('*, teams(name, image_url), categories(id, name)').in('id', playerIds),
         supabase.from('matches').select('*, status, sets, winner_id, bonus_loser, player1_id, player2_id, player3_id, player4_id').eq('tournament_id', tournamentId).not('winner_id', 'is', null),
-        supabase.from('player_ranking_metadata').select('*').eq('tournament_id', tournamentId) // Cargar metadata
+        supabase.from('player_ranking_metadata').select('player_id, is_divider_after, special_tag, tag_color').eq('tournament_id', tournamentId) // Cargar metadata
     ]);
+    // *** FIN DE LA CORRECCIÓN ***
 
     if (pError || mError) {
         rankingsContainer.innerHTML = '<div class="bg-[#222222] p-8 rounded-xl"><p class="text-center text-red-500">Error al cargar datos del torneo.</p></div>';
         return;
     }
     if (metaError) {
+        console.error("Error al cargar la metadata del ranking", metaError); // Loguear el error real
         showToast("Error al cargar la metadata del ranking", "error");
     }
 
     // Guardar metadata en el estado global
     currentRankingMetadata.clear();
+    // *** INICIO CORRECCIÓN LÓGICA DE CARGA ***
     (metadataData || []).forEach(meta => {
-        currentRankingMetadata.set(meta.player_id, meta);
+        let tag_type = null;
+        // Inferir el tipo a partir del tag guardado
+        if (meta.special_tag) {
+            if (meta.special_tag.startsWith(TAG_PRESETS.ASCENSO_SEGURO.prefix)) tag_type = 'ASCENSO_SEGURO';
+            else if (meta.special_tag.startsWith(TAG_PRESETS.PROMO_ASCENSO.prefix)) tag_type = 'PROMO_ASCENSO';
+            else if (meta.special_tag.startsWith(TAG_PRESETS.PROMO_DESCENSO.prefix)) tag_type = 'PROMO_DESCENSO';
+            else if (meta.special_tag.startsWith(TAG_PRESETS.DESCENSO_SEGURO.prefix)) tag_type = 'DESCENSO_SEGURO';
+        }
+        currentRankingMetadata.set(meta.player_id, {
+            player_id: meta.player_id,
+            tournament_id: Number(tournamentId), // Asegurarse de que esté
+            is_divider_after: meta.is_divider_after,
+            tag_type: tag_type // Guardar el TIPO inferido en el estado
+        });
     });
+    // *** FIN CORRECCIÓN LÓGICA DE CARGA ***
+
 
     // 4. Calcular estadísticas
     const stats = calculateCategoryStats(playersInTournament || [], matchesInTournament || []);
@@ -276,27 +365,31 @@ function calculateCategoryStats(players, matches) {
  */
 function generateCategoryRankingsHTML(category, stats, playerToHighlight = null, metadataMap) {
     
-    // Función helper para la etiqueta (para no repetir código)
-    const renderTag = (meta) => {
-        if (meta && meta.special_tag) {
-            const tagColor = meta.tag_color || '#374151';
-            const textColor = isColorLight(tagColor) ? '#000' : '#fff';
-            return `<span class="special-tag" style="background-color: ${tagColor}; color: ${textColor};">${meta.special_tag}</span>`;
-        }
-        return '';
-    };
+    // --- INICIO: LÓGICA DE NÚMEROS DE ETIQUETA ---
+    // 1. Filtrar solo jugadores que jugaron
+    const playersWhoPlayed = stats.filter(s => s.pj > 0);
+    
+    // 2. Crear listas para cada tipo de tag, YA ORDENADAS POR RANKING
+    const getTagType = (id) => metadataMap.get(id)?.tag_type;
 
-    // Función helper para el color de texto de la etiqueta
-    const isColorLight = (hex) => {
-        if (!hex || typeof hex !== 'string') return false;
-        let c = hex.startsWith('#') ? hex.slice(1) : hex;
-        if (c.length === 3) c = c.split('').map(char => char + char).join('');
-        const r = parseInt(c.substring(0, 2), 16);
-        const g = parseInt(c.substring(2, 4), 16);
-        const b = parseInt(c.substring(4, 6), 16);
-        const luminance = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
-        return luminance > 0.5;
-    };
+    const ascensoSeguroPlayers = playersWhoPlayed
+        .filter(p => getTagType(p.playerId) === 'ASCENSO_SEGURO');
+        
+    const promoAscensoPlayers = playersWhoPlayed
+        .filter(p => getTagType(p.playerId) === 'PROMO_ASCENSO');
+    
+    // 3. Para descensos, crear las listas y LUEGO INVERTIRLAS
+    const promoDescensoPlayers = playersWhoPlayed
+        .filter(p => getTagType(p.playerId) === 'PROMO_DESCENSO')
+        .slice() // Crear copia
+        .reverse(); // Invertir (el último ahora es 0)
+        
+    const descensoSeguroPlayers = playersWhoPlayed
+        .filter(p => getTagType(p.playerId) === 'DESCENSO_SEGURO')
+        .slice() // Crear copia
+        .reverse(); // Invertir (el último ahora es 0)
+    // --- FIN: LÓGICA DE NÚMEROS DE ETIQUETA ---
+
     
     let tableHTML = `
         <table class="rankings-table min-w-full font-bold text-sm text-gray-200" style="border-spacing: 0; border-collapse: separate;">
@@ -334,12 +427,27 @@ function generateCategoryRankingsHTML(category, stats, playerToHighlight = null,
             const highlightClass = s.playerId == playerToHighlight ? 'bg-yellow-900/50' : '';
 
             // Obtener metadata para este jugador
-            const meta = metadataMap.get(s.playerId) || { is_divider_after: false, special_tag: null, tag_color: null };
+            const meta = metadataMap.get(s.playerId) || { is_divider_after: false, tag_type: null };
             const isDividerActive = meta.is_divider_after;
-            const isTagActive = meta.special_tag && meta.special_tag !== '';
+            const activeTagType = meta.tag_type;
             
-            // Renderizar la etiqueta especial si existe
-            const tagHTML = renderTag(meta);
+            // --- INICIO: LÓGICA DE ETIQUETAS AUTOMÁTICAS ---
+            let tagHTML = '';
+            if (hasPlayed && activeTagType) {
+                const preset = TAG_PRESETS[activeTagType];
+                let rank = -1;
+
+                if (activeTagType === 'ASCENSO_SEGURO') rank = ascensoSeguroPlayers.findIndex(p => p.playerId === s.playerId);
+                else if (activeTagType === 'PROMO_ASCENSO') rank = promoAscensoPlayers.findIndex(p => p.playerId === s.playerId);
+                else if (activeTagType === 'PROMO_DESCENSO') rank = promoDescensoPlayers.findIndex(p => p.playerId === s.playerId);
+                else if (activeTagType === 'DESCENSO_SEGURO') rank = descensoSeguroPlayers.findIndex(p => p.playerId === s.playerId);
+                
+                if (rank !== -1 && preset) {
+                    const tagText = `${preset.prefix}${rank + 1}`;
+                    tagHTML = `<span class="special-tag" style="background-color: ${preset.color}; color: ${preset.textColor};">${tagText}</span>`;
+                }
+            }
+            // --- FIN: LÓGICA DE ETIQUETAS AUTOMÁTICAS ---
 
             // Renderizar la fila del jugador
             tableHTML += `
@@ -348,7 +456,7 @@ function generateCategoryRankingsHTML(category, stats, playerToHighlight = null,
                         <button class="admin-btn toggle-divider-btn ${isDividerActive ? 'active' : ''}" data-action="toggle-divider" data-player-id="${s.playerId}" title="Poner/Quitar línea divisoria">
                             <span class="material-icons">horizontal_rule</span>
                         </button>
-                        <button class="admin-btn edit-tag-btn ${isTagActive ? 'active' : ''}" data-action="edit-tag" data-player-id="${s.playerId}" title="Editar etiqueta">
+                        <button class="admin-btn edit-tag-btn ${activeTagType ? 'active' : ''}" data-action="edit-tag" data-player-id="${s.playerId}" title="Editar etiqueta">
                             <span class="material-icons">sell</span>
                         </button>
                     </td>
@@ -393,7 +501,7 @@ function generateCategoryRankingsHTML(category, stats, playerToHighlight = null,
     return tableHTML;
 }
 
-// --- Lógica de Edición de Metadata (NUEVA) ---
+// --- Lógica de Edición de Metadata (Híbrida) ---
 
 /**
  * Activa/Desactiva el flag de "guardar cambios"
@@ -408,10 +516,18 @@ function setRankingDirty(isDirty) {
 }
 
 /**
+ * Cierra todos los popups de etiquetas abiertos
+ */
+function closeTagPopups() {
+    document.querySelectorAll('.tag-editor-popup').forEach(el => el.remove());
+}
+
+/**
  * Maneja el clic en el botón de la línea divisoria
  * @param {HTMLElement} btn - El botón que fue clickeado
  */
 function handleToggleDivider(btn) {
+    closeTagPopups(); // Cerrar otros popups
     const playerId = Number(btn.dataset.playerId);
     const tournamentId = Number(tournamentFilter.value);
     
@@ -420,8 +536,7 @@ function handleToggleDivider(btn) {
         player_id: playerId,
         tournament_id: tournamentId,
         is_divider_after: false,
-        special_tag: null,
-        tag_color: null
+        tag_type: null
     };
 
     // Alternar el estado
@@ -448,106 +563,83 @@ function handleToggleDivider(btn) {
 }
 
 /**
- * Maneja el clic en el botón de editar etiqueta
+ * Muestra el menú de selección de etiquetas
  * @param {HTMLElement} btn - El botón que fue clickeado
  */
 function handleEditTag(btn) {
+    closeTagPopups(); // Cerrar cualquier otro popup abierto
+    
     const playerId = Number(btn.dataset.playerId);
-    // INICIO MODIFICACIÓN: El contenedor de la etiqueta ahora está en la última celda
-    const playerRow = rankingsContainer.querySelector(`tr[data-player-id="${playerId}"]`);
-    const tagContainer = playerRow.querySelector(`.tag-container[data-player-id="${playerId}"]`);
-    // FIN MODIFICACIÓN
+    const cell = btn.closest('.admin-actions');
+    const rect = btn.getBoundingClientRect(); // Posición del botón
 
-    if (!tagContainer) return;
-
-    // Si ya está en modo edición, no hacer nada
-    if (tagContainer.querySelector('.tag-editor-inline')) return;
+    let menuHTML = `<div class="tag-selection-menu" data-player-id="${playerId}">`;
     
-    const meta = currentRankingMetadata.get(playerId) || { special_tag: '', tag_color: '#facc15' };
+    // Añadir los 4 botones de tipo de tag
+    TAG_TYPES.forEach(tagType => {
+        const preset = TAG_PRESETS[tagType];
+        menuHTML += `
+            <button class="tag-selection-btn" data-action="set-tag" data-tag-type="${tagType}">
+                <span class="tag-preview" style="background-color: ${preset.color}"></span>
+                <span>${preset.title}</span>
+            </button>`;
+    });
 
-    // Guardar HTML original para cancelar
-    tagContainer.dataset.originalHtml = tagContainer.innerHTML;
+    menuHTML += `<hr style="border-color: #6b7280; margin: 2px 0;">`;
+    // Botón para "Quitar Etiqueta"
+    menuHTML += `
+        <button class="tag-selection-btn" data-action="set-tag" data-tag-type="null">
+            <span class="material-icons !text-base" style="color: #9ca3af">block</span>
+            <span>Quitar Etiqueta</span>
+        </button>`;
     
-    // Inyectar el editor inline
-    tagContainer.innerHTML = `
-        <span class="tag-editor-inline">
-            <input type="text" class="tag-text-input" placeholder="Tag (ej: A1)" value="${meta.special_tag || ''}">
-            <input type="color" class="tag-color-input" value="${meta.tag_color || '#facc15'}">
-            <span class="material-icons action-icon icon-save" data-action="save-tag" data-player-id="${playerId}">check_circle</span>
-            <span class="material-icons action-icon icon-cancel" data-action="cancel-tag" data-player-id="${playerId}">cancel</span>
-        </span>
-    `;
+    menuHTML += '</div>';
+
+    // Crear el popup como un elemento flotante
+    const menuPopup = document.createElement('div');
+    menuPopup.className = 'tag-editor-popup no-print';
+    menuPopup.style.position = 'fixed'; // Usar fixed para flotar sobre todo
+    menuPopup.style.top = `${rect.top}px`;
+    menuPopup.style.left = `${rect.right + 5}px`;
+    menuPopup.style.zIndex = '100';
+    menuPopup.innerHTML = menuHTML;
+    
+    document.body.appendChild(menuPopup); // Añadir al body para que flote
 }
 
 /**
- * Maneja clics dentro del contenedor de ranking para guardar/cancelar etiquetas
- * @param {Event} e
+ * Asigna el tipo de tag al jugador y re-renderiza la tabla
+ * @param {HTMLElement} btn - El botón de tipo de tag que fue clickeado
  */
-function handleRankingContainerClick(e) {
-    const target = e.target;
-    const action = target.dataset.action;
-    
-    // Si el clic fue en los botones principales de la columna Admin, no hacer nada aquí.
-    if (target.closest('.admin-btn')) {
-        return;
+function handleSetTag(btn) {
+    const playerId = Number(btn.closest('.tag-editor-popup').dataset.playerId);
+    let tagType = btn.dataset.tagType;
+    if (tagType === 'null') {
+        tagType = null;
     }
 
-    // Lógica para guardar o cancelar
-    const playerId = Number(target.closest('[data-player-id]')?.dataset.playerId);
-    if (!action || !playerId) return;
-    
-    // INICIO MODIFICACIÓN: El contenedor de la etiqueta ahora está en la última celda
-    const playerRow = rankingsContainer.querySelector(`tr[data-player-id="${playerId}"]`);
-    const tagContainer = playerRow.querySelector(`.tag-container[data-player-id="${playerId}"]`);
-    // FIN MODIFICACIÓN
-    
-    if (!tagContainer) return;
-    
-    if (action === 'save-tag') {
-        const textInput = tagContainer.querySelector('.tag-text-input');
-        const colorInput = tagContainer.querySelector('.tag-color-input');
-        const newTag = textInput.value.trim() || null;
-        const newColor = colorInput.value;
+    const tournamentId = Number(tournamentFilter.value);
 
-        // Actualizar el estado global
-        let meta = currentRankingMetadata.get(playerId) || {
-            player_id: playerId,
-            tournament_id: Number(tournamentFilter.value),
-            is_divider_after: false
-        };
-        meta.special_tag = newTag;
-        meta.tag_color = newColor;
-        currentRankingMetadata.set(playerId, meta);
-        
-        // Renderizar solo la etiqueta (modo display)
-        if (newTag) {
-            const isLight = (hex) => { // Helper local
-                if (!hex) return false;
-                let c = hex.startsWith('#') ? hex.slice(1) : hex;
-                if (c.length === 3) c = c.split('').map(char => char + char).join('');
-                const r = parseInt(c.substring(0, 2), 16), g = parseInt(c.substring(2, 4), 16), b = parseInt(c.substring(4, 6), 16);
-                return ((0.299 * r + 0.587 * g + 0.114 * b) > 150);
-            };
-            const textColor = isLight(newColor) ? '#000' : '#fff';
-            tagContainer.innerHTML = `<span class="special-tag" style="background-color: ${newColor}; color: ${textColor};">${newTag}</span>`;
-        } else {
-            tagContainer.innerHTML = ''; // Limpiar si no hay tag
-        }
-        
-        // Marcar el botón de "Editar Etiqueta" como activo/inactivo
-        const editBtn = rankingsContainer.querySelector(`.edit-tag-btn[data-player-id="${playerId}"]`);
-        if(editBtn) editBtn.classList.toggle('active', !!newTag);
-        
-        setRankingDirty(true);
-
-    } else if (action === 'cancel-tag') {
-        // Restaurar HTML original
-        tagContainer.innerHTML = tagContainer.dataset.originalHtml || '';
-    }
+    // Actualizar el estado global
+    let meta = currentRankingMetadata.get(playerId) || {
+        player_id: playerId,
+        tournament_id: tournamentId,
+        is_divider_after: false,
+    };
+    meta.tag_type = tagType;
+    currentRankingMetadata.set(playerId, meta);
+    
+    setRankingDirty(true);
+    closeTagPopups();
+    
+    // Re-renderizar toda la tabla para actualizar los números (A1, A2, etc.)
+    const playerToHighlight = document.querySelector('.bg-yellow-900\\/50')?.dataset.playerId || null;
+    renderCategoryRankings(playerToHighlight);
 }
 
+
 /**
- * Guarda todos los cambios de metadata (divisores y etiquetas) en Supabase
+ * Guarda todos los cambios de metadata (divisores Y etiquetas) en Supabase
  */
 async function handleSaveRankingChanges() {
     const tournamentId = Number(tournamentFilter.value);
@@ -564,46 +656,75 @@ async function handleSaveRankingChanges() {
     saveRankingChangesBtn.disabled = true;
     saveRankingChangesBtn.innerHTML = '<div class="spinner inline-block mr-2"></div> Guardando...';
 
-    const metadataToUpsert = [];
-    
-    // Obtener todos los playerIds del ranking actual
-    const playerIdsInCurrentRanking = currentRankingData.map(s => s.playerId);
-    // Crear un set de IDs que tienen metadata activa
-    const playerIdsWithMetadata = new Set();
+    // --- LÓGICA DE NÚMEROS DE ETIQUETA ---
+    const playersWhoPlayed = currentRankingData.filter(s => s.pj > 0);
+    const getTagType = (id) => currentRankingMetadata.get(id)?.tag_type;
+    const ascensoSeguroPlayers = playersWhoPlayed.filter(p => getTagType(p.playerId) === 'ASCENSO_SEGURO');
+    const promoAscensoPlayers = playersWhoPlayed.filter(p => getTagType(p.playerId) === 'PROMO_ASCENSO');
+    const promoDescensoPlayers = playersWhoPlayed.filter(p => getTagType(p.playerId) === 'PROMO_DESCENSO').slice().reverse();
+    const descensoSeguroPlayers = playersWhoPlayed.filter(p => getTagType(p.playerId) === 'DESCENSO_SEGURO').slice().reverse();
+    // --- FIN LÓGICA ---
 
+    const metadataToUpsert = [];
+    const playerIdsWithMetadata = new Set();
+    const playerIdsInCurrentRanking = currentRankingData.map(s => s.playerId);
+
+    // 1. Encontrar todos los jugadores que tienen metadata (divisor o tag)
     currentRankingMetadata.forEach((meta, playerId) => {
-        // Solo procesar metadata del torneo actual
-        if (meta.tournament_id === tournamentId) {
-            if (meta.is_divider_after || meta.special_tag) {
-                // Si tiene datos, va al upsert
+        const metaTournamentId = meta.tournament_id || tournamentId; // Asignar ID de torneo si falta
+        
+        if (metaTournamentId === tournamentId) {
+            if (meta.is_divider_after || meta.tag_type) {
+                
+                let special_tag = null;
+                let tag_color = null;
+
+                // Calcular el tag (A1, D1, etc.) si hay un tipo
+                if (meta.tag_type) {
+                    const preset = TAG_PRESETS[meta.tag_type];
+                    let rank = -1;
+                    if (meta.tag_type === 'ASCENSO_SEGURO') rank = ascensoSeguroPlayers.findIndex(p => p.playerId === playerId);
+                    else if (meta.tag_type === 'PROMO_ASCENSO') rank = promoAscensoPlayers.findIndex(p => p.playerId === playerId);
+                    else if (meta.tag_type === 'PROMO_DESCENSO') rank = promoDescensoPlayers.findIndex(p => p.playerId === playerId);
+                    else if (meta.tag_type === 'DESCENSO_SEGURO') rank = descensoSeguroPlayers.findIndex(p => p.playerId === playerId);
+
+                    if (rank !== -1 && preset) {
+                        special_tag = `${preset.prefix}${rank + 1}`;
+                        tag_color = preset.color;
+                    }
+                }
+
+                // *** INICIO CORRECCIÓN GUARDADO ***
                 metadataToUpsert.push({
-                    tournament_id: meta.tournament_id,
-                    player_id: meta.player_id,
+                    tournament_id: tournamentId,
+                    player_id: playerId,
                     is_divider_after: meta.is_divider_after || false,
-                    special_tag: meta.special_tag || null,
-                    tag_color: meta.tag_color || null
+                    special_tag: special_tag, // GUARDAR ESTO
+                    tag_color: tag_color,     // GUARDAR ESTO
+                    tag_type: meta.tag_type   // GUARDAR EL TIPO
                 });
+                // *** FIN CORRECCIÓN GUARDADO ***
                 playerIdsWithMetadata.add(playerId);
             }
         }
     });
     
-    // Lista final de IDs a borrar: todos los del ranking actual que NO están en la lista de upsert.
-    const finalPlayerIdsToClear = playerIdsInCurrentRanking.filter(id => !playerIdsWithMetadata.has(id));
+    // 2. Encontrar todos los jugadores que NO tienen metadata (y están en el ranking actual)
+    const playerIdsToClear = playerIdsInCurrentRanking.filter(id => !playerIdsWithMetadata.has(id));
 
     try {
-        // Borrar metadata que ya no es necesaria
-        if (finalPlayerIdsToClear.length > 0) {
+        // 3. Borrar la metadata de los que ya no la necesitan
+        if (playerIdsToClear.length > 0) {
             const { error: deleteError } = await supabase
                 .from('player_ranking_metadata')
                 .delete()
                 .eq('tournament_id', tournamentId)
-                .in('player_id', finalPlayerIdsToClear);
+                .in('player_id', playerIdsToClear);
             
             if (deleteError) throw deleteError;
         }
         
-        // Insertar o actualizar la metadata
+        // 4. Insertar/Actualizar los que SÍ la necesitan
         if (metadataToUpsert.length > 0) {
             const { error: upsertError } = await supabase
                 .from('player_ranking_metadata')
@@ -657,21 +778,57 @@ tournamentFilter.addEventListener('change', () => {
 
 // Event listener delegado para los botones de admin
 rankingsContainer.addEventListener('click', (e) => {
+    // Si se hace clic en un botón de etiqueta, no cerrar el popup
+    if (e.target.closest('.tag-selection-btn')) {
+        return;
+    }
+    
+    // Si se hace clic en cualquier otro lugar, cerrar todos los popups
+    if (!e.target.closest('.edit-tag-btn')) {
+        closeTagPopups();
+    }
+
     const toggleBtn = e.target.closest('.toggle-divider-btn');
     if (toggleBtn) {
-        handleToggleDivider(toggleBtn); // <-- FIX: Pasar el BOTÓN
+        handleToggleDivider(toggleBtn);
         return;
     }
     
     const editBtn = e.target.closest('.edit-tag-btn');
     if (editBtn) {
-        handleEditTag(editBtn); // <-- FIX: Pasar el BOTÓN
+        handleEditTag(editBtn);
+        return;
+    }
+});
+
+// Listener global para cerrar popups y manejar clics en el popup
+document.addEventListener('click', (e) => {
+    // Si el clic es DENTRO del ranking container, el listener de arriba se encarga
+    if (e.target.closest('#rankings-container')) {
         return;
     }
     
-    // Listener para guardar o cancelar el editor inline
-    handleRankingContainerClick(e);
+    // Si el clic es en el botón de guardar, no cerrar
+    if (e.target.closest('#save-ranking-changes-btn')) {
+        return;
+    }
+
+    // Si el clic es FUERA del ranking container, y no es en un popup, cerrar popups
+    if (!e.target.closest('.tag-editor-popup')) {
+        closeTagPopups();
+    }
+    
+    const btn = e.target.closest('button');
+    if (!btn) return;
+    
+    const action = btn.dataset.action;
+    
+    if (action === 'set-tag') {
+        handleSetTag(btn);
+        return;
+    }
 });
+
 
 // Listener para el botón principal de Guardar
 saveRankingChangesBtn.addEventListener('click', handleSaveRankingChanges);
