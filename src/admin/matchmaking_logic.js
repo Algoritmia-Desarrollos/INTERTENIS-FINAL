@@ -69,7 +69,7 @@ export async function generateMatchSuggestions(inputs) {
             const bAssigned = b.matchesAssignedThisWeek > 0;
             if (aAssigned !== bAssigned) return aAssigned ? 1 : -1;
             if (a.matchesPlayed !== b.matchesPlayed) return a.matchesPlayed - b.matchesPlayed; // ⿤
-            if (a.availabilityCount !== b.availabilityCount) return b.availabilityCount - a.availabilityCount; // ⿦
+            if (a.availabilityCount !== b.availabilityCount) return b.availabilityCount - b.availabilityCount; // ⿦
             return a.rank - b.rank; // ⿥
         });
 
