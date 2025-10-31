@@ -20,7 +20,9 @@ const saveRankingChangesBtn = document.getElementById('save-ranking-changes-btn'
 let allTournaments = [];
 let currentView = 'category';
 let currentRankingData = []; // Guardará los stats calculados
-let currentRankingMetadata = new Map(); // Map(playerId -> { id, tournament_id, player_id, is_divider_after, tag_type })
+// *** CORRECCIÓN ***
+// El Map ahora guarda 'tag_type' (lógica interna) pero la DB usa 'special_tag' y 'tag_color'
+let currentRankingMetadata = new Map(); // Map(playerId -> { player_id, tournament_id, is_divider_after, tag_type })
 let rankingDirty = false; // Flag para cambios pendientes
 
 // --- NUEVO: PRESETS DE ETIQUETAS (Tipos de Tag) ---
@@ -626,7 +628,7 @@ function handleSetTag(btn) {
         tournament_id: tournamentId,
         is_divider_after: false,
     };
-    meta.tag_type = tagType;
+    meta.tag_type = tagType; // Guardar el TIPO de tag
     currentRankingMetadata.set(playerId, meta);
     
     setRankingDirty(true);
@@ -695,13 +697,14 @@ async function handleSaveRankingChanges() {
                 }
 
                 // *** INICIO CORRECCIÓN GUARDADO ***
+                // Guardar el tag calculado y el color en las columnas correctas
                 metadataToUpsert.push({
                     tournament_id: tournamentId,
                     player_id: playerId,
                     is_divider_after: meta.is_divider_after || false,
                     special_tag: special_tag, // GUARDAR ESTO
-                    tag_color: tag_color,     // GUARDAR ESTO
-                    tag_type: meta.tag_type   // GUARDAR EL TIPO
+                    tag_color: tag_color      // GUARDAR ESTO
+                    // Ya no guardamos tag_type, se infiere al cargar
                 });
                 // *** FIN CORRECCIÓN GUARDADO ***
                 playerIdsWithMetadata.add(playerId);
@@ -726,6 +729,8 @@ async function handleSaveRankingChanges() {
         
         // 4. Insertar/Actualizar los que SÍ la necesitan
         if (metadataToUpsert.length > 0) {
+            // *** CORRECCIÓN GUARDADO ***
+            // Quitar 'tag_type' del onConflict
             const { error: upsertError } = await supabase
                 .from('player_ranking_metadata')
                 .upsert(metadataToUpsert, { onConflict: 'tournament_id, player_id' });
