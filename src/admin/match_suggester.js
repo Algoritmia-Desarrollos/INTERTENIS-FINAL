@@ -704,7 +704,9 @@ function flattenSuggestions(suggestionsBySlot) {
                 categoryName: match.categoryName,
                 categoryColor: categoryColor,
                 isRevancha: match.isRevancha,
+                // INICIO MODIFICACIÓN: Añadir razón
                 reason: match.reason 
+                // FIN MODIFICACIÓN
             });
         });
     } return flatList;
@@ -817,6 +819,7 @@ function renderSuggestionRow(match) {
     const team1PointsDisplay = p1TeamImage ? `<img src="${p1TeamImage}" alt="" style="height: 20px; object-fit: contain; margin: auto; display: block;">` : '';
     const team2PointsDisplay = p2TeamImage ? `<img src="${p2TeamImage}" alt="" style="height: 20px; object-fit: contain; margin: auto; display: block;">` : '';
     
+    // INICIO MODIFICACIÓN: Mostrar Razón del cruce
     let resultadoDisplay = '';
     if (match.reason === 'ZONA_INCOMPATIBLE') {
         resultadoDisplay = '<span style="color: #f87171; font-weight: 900; font-size: 0.9rem;" title="Zonas no contiguas (Ej: 1 vs 3)">ZONA!</span>';
@@ -824,9 +827,12 @@ function renderSuggestionRow(match) {
         resultadoDisplay = '<span style="color: #ef4444; font-weight: 900; font-size: 1.1rem;" title="Revancha (forzada)">R!</span>';
     } else if (match.isRevancha) {
         resultadoDisplay = '<span style="color: #f59e0b; font-weight: 900; font-size: 1.1rem;" title="Revancha">R</span>';
+    } else if (match.reason === 'PARTIDO_CLAVE') {
+        resultadoDisplay = '<span style="color: #facc15; font-weight: 900; font-size: 0.9rem;" title="Partido Clave (Zonas Contiguas)">ZONA</span>';
     } else if (match.reason === 'NUEVO') {
         resultadoDisplay = '<span style="color: #22c55e; font-weight: 900; font-size: 0.9rem;" title="Nunca jugaron">N</span>';
     }
+    // FIN MODIFICACIÓN
 
     return `
         <tr class="data-row" data-match-id="${match._id}">

@@ -291,31 +291,32 @@ function fillSlots(slotQueue, sortedPlayerPool, assignedPlayers, suggestionsBySl
 
         if (possibleOpponents.length === 0) continue;
 
-        // Ordenar oponentes por Prioridad
+        // INICIO MODIFICACIÓN: Nuevo orden de prioridades
         possibleOpponents.sort((b1, b2) => {
             const b1_hasPlayed = playerA.playedOpponents.has(b1.id);
             const b2_hasPlayed = playerA.playedOpponents.has(b2.id);
 
-            // ⿣ Prioridad: Evitar revanchas (a menos que se fuerce)
+            // Prioridad ⿣: Evitar revanchas (a menos que se fuerce)
             if (!forceCompatibility && b1_hasPlayed !== b2_hasPlayed) {
-                return b1_hasPlayed ? 1 : -1;
+                return b1_hasPlayed ? 1 : -1; // No jugados (false) van primero
             }
             
-            // ⿥ Prioridad: Cercanía en ranking
+            // Prioridad ⿤: Menos partidos jugados (del oponente)
+            if (b1.matchesPlayed !== b2.matchesPlayed) {
+                return b1.matchesPlayed - b2.matchesPlayed; // Menos PJ va primero
+            }
+
+            // Prioridad ⿦: Más disponibilidad (del oponente)
+            if (b1.availabilityCount !== b2.availabilityCount) {
+                return b2.availabilityCount - b1.availabilityCount; // Mayor disponibilidad va primero
+            }
+            
+            // Prioridad ⿥: Cercanía en ranking
             const b1_rankDiff = Math.abs(playerA.rank - b1.rank);
             const b2_rankDiff = Math.abs(playerA.rank - b2.rank);
-            if (b1_rankDiff !== b2_rankDiff) {
-                return b1_rankDiff - b2_rankDiff;
-            }
-
-            // ⿦ Prioridad: Más disponibilidad (del oponente)
-            if (b1.availabilityCount !== b2.availabilityCount) {
-                return b2.availabilityCount - b1.availabilityCount;
-            }
-
-            // ⿤ Prioridad: Menos partidos jugados (del oponente)
-            return b1.matchesPlayed - b2.matchesPlayed;
+            return b1_rankDiff - b2_rankDiff; // Menor diferencia va primero
         });
+        // FIN MODIFICACIÓN
 
         const playerB = possibleOpponents[0];
         
@@ -325,18 +326,20 @@ function fillSlots(slotQueue, sortedPlayerPool, assignedPlayers, suggestionsBySl
             if (!suggestionsBySlot[slotKey]) suggestionsBySlot[slotKey] = [];
 
             const isRevancha = playerA.playedOpponents.has(playerB.id);
-            const isIncompatibleZone = !areZonesCompatible(playerA.zone, playerB.zone, false); // Comprobar sin forzar
+            const zoneDiff = Math.abs(playerA.zone - playerB.zone);
 
             // Asignar razón del cruce
             let reason = "NUEVO"; // Razón por defecto (Nunca jugaron)
-            if (isIncompatibleZone) {
-                reason = "ZONA_INCOMPATIBLE";
+            if (zoneDiff > 1) {
+                reason = "ZONA_INCOMPATIBLE"; // Ej: 1 vs 3
             } else if (isRevancha && forceCompatibility) {
-                reason = "REVANCHA_FORZADA";
+                reason = "REVANCHA_FORZADA"; // Revancha forzada
             } else if (isRevancha) {
-                reason = "REVANCHA"; // Revancha normal (ej. para 2da rueda)
+                reason = "REVANCHA"; // Revancha normal
+            } else if (zoneDiff === 1) {
+                reason = "PARTIDO_CLAVE"; // Zonas contiguas
             }
-
+            
             suggestionsBySlot[slotKey].push({
                 canchaNum: slot.canchaNum,
                 playerA_id: playerA.id,
