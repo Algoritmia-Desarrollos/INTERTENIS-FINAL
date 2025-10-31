@@ -432,6 +432,7 @@ function initSlotEditor() {
     addSlotRow();
 }
 
+// --- INICIO: CAMBIO INPUT HORA (PUNTO 3) ---
 function addSlotRow(data = {}, insertAfterRow = null) {
     if (!slotsListContainer) return;
     const slotRow = document.createElement('div');
@@ -439,6 +440,18 @@ function addSlotRow(data = {}, insertAfterRow = null) {
     const dayOptions = currentWeekDaysOptions
         .map(opt => `<option value="${opt.value}">${opt.text}</option>`)
         .join('');
+
+    // Crear opciones de hora
+    let timeOptions = '';
+    for (let h = 8; h <= 22; h++) {
+        for (let m of ['00', '15', '30', '45']) {
+            const timeValue = `${String(h).padStart(2, '0')}:${m}`;
+            timeOptions += `<option value="${timeValue}">${timeValue}</option>`;
+        }
+    }
+    // Añadir 23:00 por si acaso
+    timeOptions += `<option value="23:00">23:00</option>`;
+
     slotRow.innerHTML = `
         <div>
             <label>Sede</label>
@@ -455,7 +468,9 @@ function addSlotRow(data = {}, insertAfterRow = null) {
         </div>
         <div>
             <label>Hora</label>
-            <input type="time" class="slot-row-input slot-time" step="900" value="09:00">
+            <select class="slot-row-input slot-time">
+                ${timeOptions}
+            </select>
         </div>
         <div>
             <label>Canchas</label>
@@ -480,6 +495,8 @@ function addSlotRow(data = {}, insertAfterRow = null) {
         slotsListContainer.appendChild(slotRow);
     }
 }
+// --- FIN: CAMBIO INPUT HORA (PUNTO 3) ---
+
 function handleSlotListClick(event) {
     const button = event.target.closest('button[data-action]');
     if (!button) return;
@@ -579,6 +596,7 @@ async function handleFindSuggestions() {
             supabase.from('player_availability').select('player_id, available_date, time_slot, zone').gte('available_date', startStr).lte('available_date', endStr),
             supabase.from('matches').select('*').in('tournament_id', selectedTournamentIds),
             supabase.from('matches').select('match_date, match_time, location').gte('match_date', startStr).lte('match_date', endStr).is('winner_id', null).not('tournament_id', 'in', `(${selectedTournamentIds.join(',')})`),
+            // *** ESTA ES LA LÍNEA MODIFICADA ***
             supabase.from('player_ranking_metadata').select('tournament_id, player_id, is_divider_after').in('tournament_id', selectedTournamentIds),
             supabase.from('players').select('id, name, category_id').in('id', playerIdsInSelectedTournaments)
         ]);
@@ -629,6 +647,9 @@ async function handleFindSuggestions() {
             }
             playerZonesPerTournament.set(tournamentId, playerZones);
         }
+        
+        // *** NUEVO ***: Log para debug
+        console.log("Datos de Zonas por Torneo:", hasDividersPerTournament);
         // --- FIN DE LA LÓGICA DE CÁLCULO POR TORNEO ---
         
         // 6. Procesar Partidos Jugados (Req ⿤)
@@ -689,52 +710,56 @@ async function handleFindSuggestions() {
 
 
 // --- RENDERIZADO DE RESULTADOS ---
+
+// --- INICIO: FIX DEL ERROR `forEach is not a function` (PUNTO 0) ---
 function flattenSuggestions(suggestionsBySlot) {
     let flatList = [];
     let matchCounter = 0;
     playerMatchCountInSuggestions.clear(); // Limpiar conteo para este renderizado
 
+    // suggestionsBySlot es { "sede|date|time|cancha-N": { matchObject } }
     for (const slotKey in suggestionsBySlot) {
-        const [sede, date, time] = slotKey.split('|');
-        const matches = suggestionsBySlot[slotKey];
-        matches.forEach((match) => {
-            const playerA = getPlayerInfo(match.playerA_id);
-            const playerB = getPlayerInfo(match.playerB_id);
-            
-            let tournament = allTournaments.find(t => t.categoryName === match.categoryName);
-            if (!tournament && playerA) {
-                tournament = allTournaments.find(t => t.category_id === playerA.category_id);
-            }
+        // slotKey es "sede|date|time|cancha-N"
+        const [sede, date, time] = slotKey.split('|'); // Parse key
+        const match = suggestionsBySlot[slotKey]; // This is the single match OBJECT
+        if (!match) continue; // Skip if slot wasn't filled (debería ser raro)
 
-            const categoryColor = tournament?.categoryColor || '#b45309';
-            const tournamentId = tournament?.id || null;
+        const playerA = getPlayerInfo(match.playerA_id);
+        const playerB = getPlayerInfo(match.playerB_id);
+        
+        let tournament = allTournaments.find(t => t.categoryName === match.categoryName);
+        if (!tournament && playerA) {
+            tournament = allTournaments.find(t => t.category_id === playerA.category_id);
+        }
 
-            const countA = (playerMatchCountInSuggestions.get(match.playerA_id) || 0) + 1;
-            playerMatchCountInSuggestions.set(match.playerA_id, countA);
-            const countB = (playerMatchCountInSuggestions.get(match.playerB_id) || 0) + 1;
-            playerMatchCountInSuggestions.set(match.playerB_id, countB);
+        const categoryColor = tournament?.categoryColor || '#b45309';
+        const tournamentId = tournament?.id || null;
 
-            flatList.push({
-                _id: `match_${matchCounter++}`,
-                sede, date, time,
-                canchaNum: match.canchaNum,
-                player1_id: match.playerA_id,
-                player2_id: match.playerB_id,
-                player1_info: playerA,
-                player2_info: playerB,
-                player1_match_count: countA,
-                player2_match_count: countB,
-                tournament_id: tournamentId,
-                categoryName: match.categoryName,
-                categoryColor: categoryColor,
-                isRevancha: match.isRevancha,
-                // INICIO MODIFICACIÓN: Añadir razón
-                reason: match.reason 
-                // FIN MODIFICACIÓN
-            });
+        const countA = (playerMatchCountInSuggestions.get(match.playerA_id) || 0) + 1;
+        playerMatchCountInSuggestions.set(match.playerA_id, countA);
+        const countB = (playerMatchCountInSuggestions.get(match.playerB_id) || 0) + 1;
+        playerMatchCountInSuggestions.set(match.playerB_id, countB);
+
+        flatList.push({
+            _id: `match_${matchCounter++}`,
+            sede, date, time, // <-- Get from parsed key
+            canchaNum: match.canchaNum,
+            player1_id: match.playerA_id,
+            player2_id: match.playerB_id,
+            player1_info: playerA,
+            player2_info: playerB,
+            player1_match_count: countA,
+            player2_match_count: countB,
+            tournament_id: tournamentId,
+            categoryName: match.categoryName,
+            categoryColor: categoryColor,
+            isRevancha: match.isRevancha,
+            reason: match.reason 
         });
-    } return flatList;
+    }
+    return flatList;
 }
+// --- FIN: FIX DEL ERROR `forEach is not a function` (PUNTO 0) ---
 
 function renderResults(suggestionsList, oddPlayerInfo) {
     if (!suggestionsGridContainer) return;
@@ -760,7 +785,9 @@ function renderResults(suggestionsList, oddPlayerInfo) {
 
             for (const sede in sedesInDate) {
                 const matchesInSede = sedesInDate[sede];
-                matchesInSede.sort((a, b) => a.canchaNum - b.canchaNum || a.time.localeCompare(b.time));
+                // --- INICIO: CAMBIO ORDEN (PUNTO 2) ---
+                matchesInSede.sort((a, b) => a.time.localeCompare(b.time) || a.canchaNum - b.canchaNum);
+                // --- FIN: CAMBIO ORDEN (PUNTO 2) ---
 
                 const dateObj = new Date(date + 'T00:00:00Z');
                 const weekday = dateObj.toLocaleDateString('es-AR', { weekday: 'long', timeZone: 'UTC' });
@@ -1013,9 +1040,18 @@ function handleCellDoubleClick(e) {
         }
         inputElement.innerHTML = options;
     } else if (type === 'time') {
-        inputElement = document.createElement('input');
-        inputElement.type = 'text';
-        inputElement.value = currentValue || '';
+        // --- INICIO: CAMBIO INPUT HORA (PUNTO 3) ---
+        inputElement = document.createElement('select');
+        let timeOptions = '';
+        for (let h = 8; h <= 22; h++) {
+            for (let m of ['00', '15', '30', '45']) {
+                const timeValue = `${String(h).padStart(2, '0')}:${m}`;
+                timeOptions += `<option value="${timeValue}" ${timeValue === currentValue ? 'selected' : ''}>${timeValue}</option>`;
+            }
+        }
+        timeOptions += `<option value="23:00" ${"23:00" === currentValue ? 'selected' : ''}>23:00</option>`;
+        inputElement.innerHTML = timeOptions;
+        // --- FIN: CAMBIO INPUT HORA (PUNTO 3) ---
     } else {
         inputElement = document.createElement('input');
         inputElement.type = 'number';
@@ -1028,30 +1064,28 @@ function handleCellDoubleClick(e) {
     inputElement.dataset.matchId = matchId;
     cell.innerHTML = '';
     cell.appendChild(inputElement);
-    if (type === 'time') {
-        flatpickr(inputElement, {
-            enableTime: true, noCalendar: true, dateFormat: "H:i",
-            time_24hr: true, defaultDate: currentValue,
-            onClose: (selectedDates, dateStr, instance) => {
-                closeActiveEditor(true, dateStr);
-            }
-        }).open();
-    } else {
-        inputElement.focus();
-        if (inputElement.tagName === 'SELECT' && typeof inputElement.showPicker === 'function') {
-            try { inputElement.showPicker(); } catch(e) {}
-        }
+    
+    // --- INICIO: CAMBIO INPUT HORA (PUNTO 3) ---
+    // Quitar lógica de flatpickr
+    // if (type === 'time') { ... }
+    
+    inputElement.focus();
+    if (inputElement.tagName === 'SELECT' && typeof inputElement.showPicker === 'function') {
+        try { inputElement.showPicker(); } catch(e) {}
     }
+    // --- FIN: CAMBIO INPUT HORA (PUNTO 3) ---
 }
 function closeActiveEditor(save = false, newValue = null) {
     if (!activeEditingCell) return;
     const input = activeEditingCell.querySelector('.editing-input-cell');
     let needsUpdate = false;
     if (input) {
+        // --- INICIO: CAMBIO INPUT HORA (PUNTO 3) ---
+        // Quitar lógica de flatpickr
         if (input._flatpickr) {
             input._flatpickr.destroy();
              needsUpdate = save && newValue !== null;
-        }
+        } // --- FIN: CAMBIO INPUT HORA (PUNTO 3) ---
         else if (save) {
             newValue = input.value;
             needsUpdate = true;

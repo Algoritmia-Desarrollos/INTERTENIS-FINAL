@@ -150,12 +150,17 @@ function preparePlayerPool(inscriptions, availability, history, allPlayers, tour
         const zonesForThisTournament = playerZonesPerTournament.get(ins.tournament_id) || new Map();
         // --- FIN CAMBIO LÓGICA ZONAS ---
 
+        // --- INICIO: LÓGICA 1RA CATEGORÍA (PUNTO 1) ---
+        const isFirstCategory = tournamentInfo.categoryName.includes('1°') || tournamentInfo.categoryName.toLowerCase().includes('primera');
+        // --- FIN: LÓGICA 1RA CATEGORÍA (PUNTO 1) ---
+
         if (!playerPool.has(ins.player_id)) {
             playerPool.set(ins.player_id, {
                 id: ins.player_id,
                 category_id: tournamentInfo.category_id,
                 categoryName: tournamentInfo.categoryName,
                 tournament_id: ins.tournament_id,
+                isFirstCategory: isFirstCategory, // --- AÑADIDO (PUNTO 1) ---
                 matchesPlayed: playerMatchCounts.get(ins.player_id) || 0,
                 // --- INICIO CAMBIO LÓGICA ZONAS ---
                 rank: ranksForThisTournament.get(ins.player_id) || 999, // Usar rank por torneo
@@ -214,19 +219,38 @@ function prepareSlotQueue(availableSlots, programmedMatches) {
 
     availableSlots.forEach(slot => {
         const key = `${slot.sede}|${slot.date}|${slot.time}`;
-        const programmedCount = programmedCounts[key] || 0;
-        const canchasLibres = slot.canchasDisponibles - programmedCount;
-        for (let i = 1; i <= canchasLibres; i++) {
-            slotQueue.push({
-                key: key, sede: slot.sede, date: slot.date, time: slot.time,
-                turno: slot.turno,
-                canchaNum: programmedCount + i,
-                filledBy: null
-            });
+        const programmedInThisSlot = programmedCounts[key] || 0;
+        const totalCanchas = slot.canchasDisponibles;
+        
+        for (let i = 1; i <= totalCanchas; i++) {
+            // i es el N° de cancha (1, 2, 3...)
+            
+            // --- INICIO: LÓGICA 1RA CATEGORÍA (PUNTO 1) ---
+            // Revisar si este slot (cancha 1, 2, 3...) ya está programado
+            const isSlotProgrammed = programmedInThisSlot >= i;
+            // --- FIN: LÓGICA 1RA CATEGORÍA (PUNTO 1) ---
+            
+            if (!isSlotProgrammed) {
+                slotQueue.push({
+                    key: `${slot.sede}|${slot.date}|${slot.time}|cancha-${i}`, // Key única por slot
+                    sede: slot.sede,
+                    date: slot.date,
+                    time: slot.time,
+                    turno: slot.turno,
+                    canchaNum: i, // Usar el número de cancha real (1, 2, 3...)
+                    filledBy: null
+                });
+            }
         }
     });
 
-    slotQueue.sort((a, b) => a.key.localeCompare(b.key));
+    // Ordenar slots por fecha, hora, y LUEGO por cancha
+    slotQueue.sort((a, b) => {
+        if (a.date !== b.date) return a.date.localeCompare(b.date);
+        if (a.time !== b.time) return a.time.localeCompare(b.time);
+        return a.canchaNum - b.canchaNum;
+    });
+
     return slotQueue;
 }
 
@@ -240,6 +264,72 @@ function areZonesCompatible(zoneA, zoneB, force = false) {
     return Math.abs(zoneA - zoneB) <= 1; // No pueden jugar 1 vs 3
 }
 
+
+// --- INICIO: LÓGICA 1RA CATEGORÍA (PUNTO 1) ---
+/**
+ * Función helper para buscar un PlayerA en un pool específico.
+ */
+function findAvailablePlayerA(playerPool, availabilityKey, slot, playersWantingTwoMatches, assignedPlayers) {
+    for (const p of playerPool) {
+        const maxMatches = playersWantingTwoMatches.has(p.id) ? 2 : 1;
+        if (
+            p.matchesAssignedThisWeek < maxMatches && 
+            !assignedPlayers.has(p.id) && 
+            p.availability.has(availabilityKey) && 
+            (p.availability.get(availabilityKey).has(slot.sede) || p.availability.get(availabilityKey).has('ambas'))
+        ) {
+            if (p.matchesAssignedThisWeek > 0 && p.lastMatchTime) {
+                const lastMatchDateTime = new Date(p.lastMatchTime);
+                const currentSlotDateTime = new Date(`${slot.date}T${slot.time}`);
+                const diffInHours = Math.abs(currentSlotDateTime - lastMatchDateTime) / (1000 * 60 * 60);
+                if (diffInHours < MIN_HOURS_BETWEEN_MATCHES) {
+                    continue; 
+                }
+                const lastMatchDate = lastMatchDateTime.toISOString().split('T')[0];
+                if (lastMatchDate === slot.date) {
+                    continue; // Ya jugó hoy
+                }
+            }
+            return p; // Encontrado
+        }
+    }
+    return null; // No encontrado
+}
+
+/**
+ * Función helper para buscar oponentes (PlayerB)
+ */
+function findPossibleOpponents(opponentPool, playerA, availabilityKey, slot, playersWantingTwoMatches, assignedPlayers, forceCompatibility, tournamentHasDividers) {
+    return opponentPool.filter(p => {
+        if (p.id === playerA.id) return false;
+        const maxMatches = playersWantingTwoMatches.has(p.id) ? 2 : 1;
+        if (p.matchesAssignedThisWeek >= maxMatches || assignedPlayers.has(p.id)) return false; 
+        if (!p.availability.has(availabilityKey) || !(p.availability.get(availabilityKey).has(slot.sede) || p.availability.get(availabilityKey).has('ambas'))) return false; 
+        
+        if (p.category_id !== playerA.category_id || p.tournament_id !== playerA.tournament_id) return false;
+        
+        if (tournamentHasDividers && !areZonesCompatible(playerA.zone, p.zone, forceCompatibility)) {
+            return false;
+        }
+        
+        if (p.matchesAssignedThisWeek > 0 && p.lastMatchTime) {
+            const lastMatchDateTime = new Date(p.lastMatchTime);
+            const currentSlotDateTime = new Date(`${slot.date}T${slot.time}`);
+            const diffInHours = Math.abs(currentSlotDateTime - lastMatchDateTime) / (1000 * 60 * 60);
+            if (diffInHours < MIN_HOURS_BETWEEN_MATCHES) {
+                return false; 
+            }
+            const lastMatchDate = lastMatchDateTime.toISOString().split('T')[0];
+            if (lastMatchDate === slot.date) {
+                return false; // Ya jugó hoy
+            }
+        }
+        
+        return true;
+    });
+}
+// --- FIN: LÓGICA 1RA CATEGORÍA (PUNTO 1) ---
+
 /**
  * Itera sobre los slots y los jugadores para llenarlos.
  * @param {boolean} forceCompatibility - Si es true, ignora reglas de revancha y zona.
@@ -248,155 +338,116 @@ function areZonesCompatible(zoneA, zoneB, force = false) {
 function fillSlots(slotQueue, sortedPlayerPool, assignedPlayers, suggestionsBySlot, playersWantingTwoMatches, forceCompatibility = false, hasDividersPerTournament = new Map()) {
     let matchesMade = 0;
 
+    // --- INICIO: LÓGICA 1RA CATEGORÍA (PUNTO 1) ---
+    // Separar jugadores por categoría
+    const firstCatPlayers = sortedPlayerPool.filter(p => p.isFirstCategory);
+    const otherPlayers = sortedPlayerPool.filter(p => !p.isFirstCategory);
+    // --- FIN: LÓGICA 1RA CATEGORÍA (PUNTO 1) ---
+
     for (const slot of slotQueue) {
         if (slot.filledBy) continue;
 
         const availabilityKey = `${slot.date}|${slot.turno}`;
-        const currentSlotDateTime = new Date(`${slot.date}T${slot.time}`);
-
-        // 1. Encontrar Jugador A
-        let playerA = null;
-        for (const p of sortedPlayerPool) {
-            const maxMatches = playersWantingTwoMatches.has(p.id) ? 2 : 1;
-            if (
-                p.matchesAssignedThisWeek < maxMatches && 
-                !assignedPlayers.has(p.id) && 
-                p.availability.has(availabilityKey) && 
-                (p.availability.get(availabilityKey).has(slot.sede) || p.availability.get(availabilityKey).has('ambas'))
-            ) {
-                if (p.matchesAssignedThisWeek > 0 && p.lastMatchTime) {
-                    const lastMatchDateTime = new Date(p.lastMatchTime);
-                    const diffInHours = Math.abs(currentSlotDateTime - lastMatchDateTime) / (1000 * 60 * 60);
-                    if (diffInHours < MIN_HOURS_BETWEEN_MATCHES) {
-                        continue; 
-                    }
-                    // --- INICIO: NO JUGAR 2 VECES MISMO DÍA ---
-                    const lastMatchDate = lastMatchDateTime.toISOString().split('T')[0];
-                    if (lastMatchDate === slot.date) {
-                        continue; // Ya jugó hoy
-                    }
-                    // --- FIN ---
-                }
-                playerA = p;
-                break;
-            }
+        
+        // --- INICIO: LÓGICA 1RA CATEGORÍA (PUNTO 1) ---
+        // Decidir qué pool de jugadores intentar primero
+        let poolsToTry = [];
+        if (slot.canchaNum === 1 || slot.canchaNum === 2) {
+            // Canchas 1 y 2: Priorizar 1ra, luego el resto
+            poolsToTry = [firstCatPlayers, otherPlayers];
+        } else {
+            // Otras canchas: Priorizar el resto, luego 1ra
+            poolsToTry = [otherPlayers, firstCatPlayers];
         }
-        if (!playerA) continue;
 
-        // --- INICIO CAMBIO LÓGICA ZONAS ---
+        let playerA = null;
+        for (const pool of poolsToTry) {
+            playerA = findAvailablePlayerA(pool, availabilityKey, slot, playersWantingTwoMatches, assignedPlayers);
+            if (playerA) break; // Encontrado
+        }
+        // --- FIN: LÓGICA 1RA CATEGORÍA (PUNTO 1) ---
+        
+        if (!playerA) continue; // No se encontró PlayerA para este slot
+
         // Obtener el flag de divisores para el torneo específico de PlayerA
         const tournamentId = playerA.tournament_id;
         const tournamentHasDividers = hasDividersPerTournament.get(tournamentId) || false;
-        // --- FIN CAMBIO LÓGICA ZONAS ---
         
-        // 2. Encontrar Jugador B
-        const possibleOpponents = sortedPlayerPool.filter(p => {
-            if (p.id === playerA.id) return false;
-            const maxMatches = playersWantingTwoMatches.has(p.id) ? 2 : 1;
-            if (p.matchesAssignedThisWeek >= maxMatches || assignedPlayers.has(p.id)) return false; 
-            if (!p.availability.has(availabilityKey) || !(p.availability.get(availabilityKey).has(slot.sede) || p.availability.get(availabilityKey).has('ambas'))) return false; 
-            
-            // --- INICIO CAMBIO LÓGICA ZONAS ---
-            // Asegurarse que el oponente es de la misma categoría Y torneo
-            if (p.category_id !== playerA.category_id || p.tournament_id !== playerA.tournament_id) return false;
-            
-            // Regla de Zona: Comprobar compatibilidad SÓLO si ESE TORNEO tiene divisores
-            if (tournamentHasDividers && !areZonesCompatible(playerA.zone, p.zone, forceCompatibility)) {
-                return false;
-            }
-            // --- FIN CAMBIO LÓGICA ZONAS ---
-            
-            // Regla de 4 horas y Mismo Día
-            if (p.matchesAssignedThisWeek > 0 && p.lastMatchTime) {
-                const lastMatchDateTime = new Date(p.lastMatchTime);
-                const diffInHours = Math.abs(currentSlotDateTime - lastMatchDateTime) / (1000 * 60 * 60);
-                if (diffInHours < MIN_HOURS_BETWEEN_MATCHES) {
-                    return false; 
-                }
-                // --- INICIO: NO JUGAR 2 VECES MISMO DÍA ---
-                const lastMatchDate = lastMatchDateTime.toISOString().split('T')[0];
-                if (lastMatchDate === slot.date) {
-                    return false; // Ya jugó hoy
-                }
-                // --- FIN ---
-            }
-            
-            return true;
-        });
+        // --- INICIO: LÓGICA 1RA CATEGORÍA (PUNTO 1) ---
+        // 2. Encontrar Jugador B (del mismo pool que PlayerA)
+        const opponentPool = playerA.isFirstCategory ? firstCatPlayers : otherPlayers;
+        const possibleOpponents = findPossibleOpponents(opponentPool, playerA, availabilityKey, slot, playersWantingTwoMatches, assignedPlayers, forceCompatibility, tournamentHasDividers);
+        // --- FIN: LÓGICA 1RA CATEGORÍA (PUNTO 1) ---
 
         if (possibleOpponents.length === 0) continue;
 
-        // INICIO MODIFICACIÓN: Nuevo orden de prioridades
+        // Ordenar oponentes (Lógica de prioridad)
         possibleOpponents.sort((b1, b2) => {
             const b1_hasPlayed = playerA.playedOpponents.has(b1.id);
             const b2_hasPlayed = playerA.playedOpponents.has(b2.id);
 
-            // Prioridad ⿣: Evitar revanchas (a menos que se fuerce)
             if (!forceCompatibility && b1_hasPlayed !== b2_hasPlayed) {
-                return b1_hasPlayed ? 1 : -1; // No jugados (false) van primero
+                return b1_hasPlayed ? 1 : -1; 
             }
-            
-            // Prioridad ⿤: Menos partidos jugados (del oponente)
             if (b1.matchesPlayed !== b2.matchesPlayed) {
-                return b1.matchesPlayed - b2.matchesPlayed; // Menos PJ va primero
+                return b1.matchesPlayed - b2.matchesPlayed; 
             }
-
-            // Prioridad ⿦: Más disponibilidad (del oponente)
             if (b1.availabilityCount !== b2.availabilityCount) {
-                return b2.availabilityCount - b1.availabilityCount; // Mayor disponibilidad va primero
+                return b2.availabilityCount - b1.availabilityCount; 
             }
-            
-            // Prioridad ⿥: Cercanía en ranking
             const b1_rankDiff = Math.abs(playerA.rank - b1.rank);
             const b2_rankDiff = Math.abs(playerA.rank - b2.rank);
-            return b1_rankDiff - b2_rankDiff; // Menor diferencia va primero
+            return b1_rankDiff - b2_rankDiff; 
         });
-        // FIN MODIFICACIÓN
 
         const playerB = possibleOpponents[0];
         
         // 3. Asignar si se encontró pareja
         if (playerB) {
-            const slotKey = `${slot.sede}|${slot.date}|${slot.time}`;
-            if (!suggestionsBySlot[slotKey]) suggestionsBySlot[slotKey] = [];
+            // --- INICIO: LÓGICA 1RA CATEGORÍA (PUNTO 1) ---
+            // Usar la key única del slot (que incluye la cancha)
+            const slotKey = slot.key; 
+            // --- FIN: LÓGICA 1RA CATEGORÍA (PUNTO 1) ---
+            
+            // Ya no es un array, es un solo objeto por slot
+            // if (!suggestionsBySlot[slotKey]) suggestionsBySlot[slotKey] = []; 
 
             const isRevancha = playerA.playedOpponents.has(playerB.id);
             const zoneDiff = Math.abs(playerA.zone - playerB.zone);
 
-            // --- INICIO CAMBIO LÓGICA ZONAS ---
             // Asignar razón del cruce
-            let reason = "NUEVO"; // Razón por defecto (Nunca jugaron)
-            
-            // Usar el flag específico del torneo
+            let reason = "NUEVO"; 
             if (tournamentHasDividers) { 
                 if (zoneDiff > 1) {
-                    reason = "ZONA_INCOMPATIBLE"; // Ej: 1 vs 3
+                    reason = "ZONA_INCOMPATIBLE"; 
                 } else if (isRevancha && forceCompatibility) {
-                    reason = "REVANCHA_FORZADA"; // Revancha forzada
+                    reason = "REVANCHA_FORZADA"; 
                 } else if (isRevancha) {
-                    reason = "REVANCHA"; // Revancha normal
+                    reason = "REVANCHA"; 
                 } else if (zoneDiff === 1) {
-                    reason = "PARTIDO_CLAVE"; // Zonas contiguas
+                    reason = "PARTIDO_CLAVE"; 
                 }
-            } else { // Si NO hay divisores, solo chequear revancha
+            } else { 
                 if (isRevancha && forceCompatibility) {
                     reason = "REVANCHA_FORZADA";
                 } else if (isRevancha) {
                     reason = "REVANCHA";
                 }
             }
-            // --- FIN CAMBIO LÓGICA ZONAS ---
             
-            suggestionsBySlot[slotKey].push({
+            // --- INICIO: LÓGICA 1RA CATEGORÍA (PUNTO 1) ---
+            // Guardar el partido en el slotKey
+            suggestionsBySlot[slotKey] = {
                 canchaNum: slot.canchaNum,
                 playerA_id: playerA.id,
                 playerB_id: playerB.id,
                 categoryName: playerA.categoryName,
                 isRevancha: isRevancha,
-                reason: reason // Añadir la razón
-            });
+                reason: reason
+            };
+            // --- FIN: LÓGICA 1RA CATEGORÍA (PUNTO 1) ---
 
-            const matchDateTimeISO = currentSlotDateTime.toISOString();
+            const matchDateTimeISO = new Date(`${slot.date}T${slot.time}`).toISOString();
             playerA.lastMatchTime = matchDateTimeISO;
             playerB.lastMatchTime = matchDateTimeISO;
 
