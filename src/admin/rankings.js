@@ -50,62 +50,151 @@ function isColorLight(hex) {
 function setupViewSwitcher() {
     viewSwitcherContainer.innerHTML = `
         <div class="flex border-b border-gray-700 mb-4">
-            <button id="btn-view-category" class="btn-view active">Singles</button>
-            <button id="btn-view-teams" class="btn-view">SuperLiga</button>
+            <button id="btn-view-category" class="btn-view active" data-action="view-change">Singles</button>
+            <button id="btn-view-teams" class="btn-view" data-action="view-change">SuperLiga</button>
         </div>
         <style>
             .btn-view { padding: 8px 16px; border-bottom: 2px solid transparent; color: #9ca3af; font-weight: 600; cursor: pointer; }
             .btn-view.active { color: #facc15; border-bottom-color: #facc15; }
             
-            /* --- INICIO: NUEVOS ESTILOS PARA POPUP DE ETIQUETAS --- */
-            .admin-actions {
-                position: relative; /* Contenedor para el popup */
+            /* --- INICIO: NUEVOS ESTILOS PARA DIVISIONES Y ETIQUETAS --- */
+            
+            /* Estilo para la fila que actúa como línea divisoria */
+            .ranking-divider-row td {
+              height: 1px !important;
+              padding: 0 !important;
+              background-color: #facc15 !important; /* Amarillo */
+              border-bottom: 1px solid #757170 !important;
+              border-top: 1px solid #757170 !important;
+              overflow: hidden;
             }
-            .tag-editor-popup {
-                position: absolute;
-                left: 100%;
-                top: 0;
-                background-color: #374151; /* gray-700 */
-                border: 1px solid #6b7280; /* gray-500 */
-                border-radius: 6px;
-                padding: 4px;
+            .ranking-divider-row .admin-actions {
+              visibility: hidden;
+            }
+      
+            /* Estilo para la etiqueta de color (Ascenso/Descenso) */
+            .special-tag {
+              display: inline-block;
+              padding: 2px 6px;
+              font-size: 0.7rem;
+              font-weight: 900;
+              border-radius: 4px;
+              line-height: 1;
+              vertical-align: middle;
+              text-shadow: 0 0 2px rgba(0,0,0,0.5);
+            }
+      
+            /* Contenedor para los botones de admin */
+            .admin-actions {
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              gap: 4px;
+              min-width: 50px; 
+            }
+            .admin-actions .admin-btn {
+              background: none;
+              border: none;
+              cursor: pointer;
+              padding: 4px;
+              border-radius: 99px; /* Círculo */
+              display: inline-flex;
+              align-items: center;
+              justify-content: center;
+            }
+            .admin-actions .admin-btn .material-icons {
+              font-size: 18px;
+              color: #9ca3af; /* gray-400 */
+              transition: all 0.2s;
+            }
+            .admin-actions .admin-btn:hover .material-icons {
+              color: #fff;
+            }
+            .admin-actions .admin-btn.toggle-divider-btn:hover .material-icons {
+              color: #facc15; /* Amarillo */
+            }
+            .admin-actions .admin-btn.toggle-divider-btn.active .material-icons {
+              color: #facc15; /* Amarillo */
+              font-weight: bold;
+            }
+            .admin-actions .admin-btn.edit-tag-btn:hover .material-icons {
+              color: #60a5fa; /* blue-400 */
+            }
+            .admin-actions .admin-btn.edit-tag-btn.active .material-icons {
+              color: #60a5fa; /* blue-400 */
+            }
+
+            /* --- INICIO: NUEVOS ESTILOS PARA EDITOR INLINE --- */
+            .col-tag {
+                position: relative;
+                min-width: 100px;
+            }
+            .col-tag.is-editing .tag-view-mode {
+                display: none; /* Ocultar vista normal */
+            }
+            .col-tag:not(.is-editing) .tag-edit-mode {
+                display: none; /* Ocultar edición */
+            }
+            .tag-view-mode {
+                display: flex;
+                flex-direction: row; /* MODIFICADO: Horizontal */
+                align-items: center;
+                justify-content: center;
+                gap: 8px; /* Espacio entre tag y botón */
+                min-height: 40px;
+            }
+            .tag-edit-mode {
                 display: flex;
                 flex-direction: column;
-                gap: 4px;
-                z-index: 50;
-                width: 150px; /* Ancho fijo para el menú */
-                box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+                gap: 2px; /* Más junto */
+                padding: 2px 0;
             }
-            .tag-selection-btn { 
-                display: flex; 
-                align-items: center; 
-                gap: 8px; 
+            .tag-inline-btn {
+                display: flex;
+                align-items: center;
+                gap: 6px;
                 background-color: #4b5563; /* gray-600 */
-                color: white; 
-                border: none; 
-                padding: 5px 8px; 
-                border-radius: 4px; 
-                cursor: pointer; 
-                text-align: left; 
-                font-size: 11px; 
-                font-weight: 600; 
+                color: white;
+                border: none;
+                padding: 3px 6px;
+                border-radius: 4px;
+                cursor: pointer;
+                text-align: left;
+                font-size: 9px; /* Más chico para que entre */
+                font-weight: 600;
                 transition: background-color 0.15s;
+                width: 100%;
             }
-            .tag-selection-btn:hover { background-color: #6b7280; } /* gray-500 */
-            .tag-selection-btn .tag-preview { 
-                width: 16px; 
-                height: 16px; 
-                border-radius: 3px; 
+            .tag-inline-btn:hover { background-color: #6b7280; } /* gray-500 */
+            .tag-inline-btn .tag-preview {
+                width: 12px;
+                height: 12px;
+                border-radius: 3px;
                 border: 1px solid #374151; /* gray-700 */
                 flex-shrink: 0;
             }
-            .tag-selection-btn.cancel { background-color: #374151; } /* gray-700 */
-            .tag-selection-btn.cancel:hover { background-color: #4b5563; } /* gray-600 */
+            .tag-inline-btn.cancel {
+                background-color: #374151; /* gray-700 */
+                color: #9ca3af; /* gray-400 */
+                justify-content: center;
+                margin-top: 2px;
+            }
+            .tag-inline-btn.cancel:hover { background-color: #4b5563; } /* gray-600 */
+            
+            .tag-inline-btn.remove { /* Botón para Quitar Etiqueta */
+                color: #fca5a5; /* red-300 */
+                justify-content: flex-start;
+                background-color: #4b5563; /* gray-600 */
+            }
+            .tag-inline-btn.remove:hover {
+                background-color: #b91c1c; /* red-700 */
+                color: white;
+            }
             /* --- FIN: NUEVOS ESTILOS --- */
         </style>
     `;
 
-    // --- CORRECCIÓN: Se mueven los listeners a `handleDocumentClick` y `loadInitialData` ---
+    // Los listeners de los botones de vista se añaden en `handleDocumentClick`
 }
 
 async function populateTournamentFilter() {
@@ -381,7 +470,7 @@ function generateCategoryRankingsHTML(category, stats, playerToHighlight = null,
         <table class="rankings-table min-w-full font-bold text-sm text-gray-200" style="border-spacing: 0; border-collapse: separate;">
             <thead class="bg-black]">
                 <tr>
-                    <th style="width: 80px;">Admin</th> 
+                    <th style="width: 50px;">Admin</th> 
                     <th colspan="2" class="category-header py-2 px-4 text-3xl font-bold text-white text-center" style=" border-width: 1px 0 3px 1px; background: #757170; border-color: black;">${category.name}</th>
                     <th class="col-p-plus px-3 py-3 text-center text-[18px] font-bold text-white tracking-wider" style="border-width: 1px 0 3px 2px; background: #757170; border-color: black;">P+</th>
                     <th class="col-p-minus px-3 py-3 text-center text-[18px] font-bold text-white tracking-wider" style="border-width: 1px 0 3px 0px; background: #757170; border-color: black;">P-</th>
@@ -396,7 +485,7 @@ function generateCategoryRankingsHTML(category, stats, playerToHighlight = null,
                     <th class="col-points px-3 py-3 text-center text-[18px] font-bold text-white tracking-wider" style="border-width: 1px 2px 3px 1px; background: #757170; border-color: black;">Pts.</th>
                     <th class="col-partial px-1 py-3 text-center text-[18px] font-bold text-white tracking-wider" style="border-width: 1px 2px 3px 1px; background: #757170; border-color: black;">Parcial</th>
                     <th class="col-prom px-3 py-3 text-center text-[18px] font-bold text-white tracking-wider" style="border-width: 1px 2px 3px 1px; background: #757170; border-color: black;">Prom. %</th>
-                    <th class="col-tag px-0 py-3 text-center text-[18px] font-bold text-white tracking-wider" style="border-width: 1px 1px 3px 1px; background: black; border-color: black; width: 50px;"></th>
+                    <th class="col-tag px-0 py-3 text-center text-[18px] font-bold text-white tracking-wider" style="border-width: 1px 1px 3px 1px; background: black; border-color: black; width: 100px;">Acción</th>
                     </tr>
             </thead>
             <tbody>`;
@@ -442,20 +531,44 @@ function generateCategoryRankingsHTML(category, stats, playerToHighlight = null,
                 }
             }
             // --- FIN: LÓGICA DE ETIQUETAS AUTOMÁTICAS ---
+            
+            // --- INICIO: LÓGICA DE EDITOR INLINE ---
+            // Generar el HTML para el modo editor (que estará oculto)
+            let editorHTML = `<div class="tag-edit-mode">`; // Oculto por defecto
+            TAG_TYPES.forEach(tagType => {
+                const preset = TAG_PRESETS[tagType];
+                editorHTML += `
+                    <button class="tag-inline-btn" data-action="set-tag" data-player-id="${s.playerId}" data-tag-type="${tagType}">
+                        <span class="tag-preview" style="background-color: ${preset.color}"></span>
+                        <span>${preset.title}</span>
+                    </button>`;
+            });
+            // *** INICIO CORRECCIÓN BOTÓN QUITAR ***
+            editorHTML += `
+                <button class="tag-inline-btn remove" data-action="set-tag" data-player-id="${s.playerId}" data-tag-type="null">
+                    <span class="material-icons !text-sm">block</span>
+                    <span>Quitar Etiqueta</span>
+                </button>`;
+            editorHTML += `
+                <button class="tag-inline-btn cancel" data-action="cancel-tag-edit" data-player-id="${s.playerId}" title="Cancelar">
+                    <span class="material-icons !text-sm">close</span>
+                    <span>Cancelar</span>
+                </button>
+            </div>`;
+            // *** FIN CORRECCIÓN BOTÓN QUITAR ***
+            // --- FIN: LÓGICA DE EDITOR INLINE ---
+
 
             // Renderizar la fila del jugador
             tableHTML += `
                 <tr class="${highlightClass}" data-player-id="${s.playerId}">
-                    <td class="admin-actions" style="border-width: 0 0 2px 1px; border-color: #4b556352;">
+                    <td class="admin-actions" style="border-width: 0 0 2px 1px; border-color: #4b556352; vertical-align: middle; padding: 0.5rem 0.25rem;">
                         <button class="admin-btn toggle-divider-btn ${isDividerActive ? 'active' : ''}" data-action="toggle-divider" data-player-id="${s.playerId}" title="Poner/Quitar línea divisoria">
                             <span class="material-icons">horizontal_rule</span>
                         </button>
-                        <button class="admin-btn edit-tag-btn ${activeTagType ? 'active' : ''}" data-action="edit-tag" data-player-id="${s.playerId}" title="Editar etiqueta">
-                            <span class="material-icons">sell</span>
-                        </button>
                     </td>
-                    <td class="col-rank px-2 py-0 text-xl font-bold text-white text-center" style="border-width: 0 0 3px 1px; background-color: #757170; border-color: black;">${index + 1}°</td>
-                    <td class="col-player bg-black px-0 text-xl py-0 whitespace-nowrap" style="border-width: 0 0 2px 1px; border-color: #4b556352;">
+                    <td class="col-rank px-2 py-2 text-xl font-bold text-white text-center" style="border-width: 0 0 3px 1px; background-color: #757170; border-color: black; vertical-align: middle;">${index + 1}°</td>
+                    <td class="col-player bg-black px-0 py-2 whitespace-nowrap" style="border-width: 0 0 2px 1px; border-color: #4b556352; vertical-align: middle;">
                         <div class="flex items-center bg-black font-light player-cell-content">
                             <span class="flex-grow bg-black font-bold text-gray-100 player-name-container text-center">
                                 ${s.name}
@@ -463,30 +576,37 @@ function generateCategoryRankingsHTML(category, stats, playerToHighlight = null,
                             <img src="${s.teamImageUrl || 'https://via.placeholder.com/40'}" alt="${s.teamName}" class="h-10 w-10 object-cover bg-black team-logo ml-4">
                         </div>
                     </td>
-                    <td class="col-p-plus px-2 py-0 text-center text-2xl font-bold bg-black" style="border-width: 0px 0 2px 1px;  border-color: #4b556352;">${hasPlayed ? s.pg : ''}</td>
-                    <td class="col-p-minus px-2 py-0 text-center text-2xl font-bold bg-black" style="border-width: 0 0 2px 1px; border-color: #4b556352;">${hasPlayed ? s.pp : ''}</td>
-                    <td class="col-p-diff px-2 py-0 text-center bg-black font-bold ${difPClass}" style="border-width: 0 1px 2px 1px; border-color: #4b556352;">${hasPlayed ? s.difP : ''}</td>
-                    <td class="col-s-plus px-2 py-0 text-center text-2xl font-bold bg-black" style="border-width: 0 0 2px 1px; border-color: #4b556352;">${hasPlayed ? s.sg : ''}</td>
-                    <td class="col-s-minus px-2 py-0 text-center text-2xl bg-black font-bold" style="border-width: 0 0 2px 1px; border-color: #4b556352;">${hasPlayed ? s.sp : ''}</td>
-                    <td class="col-s-diff px-2 py-0 text-center bg-black font-bold ${difSClass}" style="border-width: 0 1px 2px 1px; border-color: #4b556352;">${hasPlayed ? s.difS : ''}</td>
-                    <td class="col-g-plus px-2 py-0 text-center text-2xl bg-black font-bold" style="border-width: 0 0 2px 1px; border-color: #4b556352;">${hasPlayed ? s.gg : ''}</td>
-                    <td class="col-g-minus px-2 py-0 text-center text-2xl bg-black font-bold" style="border-width: 0 0 2px 1px; border-color: #4b556352;">${hasPlayed ? s.gp : ''}</td>
-                    <td class="col-g-diff px-2 py-0 text-center bg-black font-bold ${difGClass}" style="border-width: 0 1px 2px 1px; border-color: #4b556352;">${hasPlayed ? s.difG : ''}</td>
-                    <td class="col-bonus px-1 py-0 text-center bg-black font-bold text-red-500" style="border-width: 0 1px 2px 1px; border-color: #4b556352;">${hasPlayed ? s.bonus : ''}</td>
-                    <td class="col-points px-2 py-0 text-center text-2xl bg-black font-bold text-lg text-[#e8b83a]" style="border-width: 0 1px 2px 1px; border-color: #4b556352;">${hasPlayed ? s.puntos : '0'}</td>
-                    <td class="col-partial px-1 py-0 text-center bg-black font-bold" style="border-width: 0 1px 2px 1px; border-color: #4b556352;">${hasPlayed ? s.parcial.toFixed(2) : ''}</td>
-                    <td class="col-prom px-2 py-0 text-center text-2xl bg-black font-bold text-[yellow]" style="border-width: 0 1px 1px 1px; border-color: #4b556352;">
+                    <td class="col-p-plus px-2 py-2 text-center text-2xl font-bold bg-black" style="border-width: 0px 0 2px 1px;  border-color: #4b556352; vertical-align: middle;">${hasPlayed ? s.pg : ''}</td>
+                    <td class="col-p-minus px-2 py-2 text-center text-2xl font-bold bg-black" style="border-width: 0 0 2px 1px; border-color: #4b556352; vertical-align: middle;">${hasPlayed ? s.pp : ''}</td>
+                    <td class="col-p-diff px-2 py-2 text-center bg-black font-bold ${difPClass}" style="border-width: 0 1px 2px 1px; border-color: #4b556352; vertical-align: middle;">${hasPlayed ? s.difP : ''}</td>
+                    <td class="col-s-plus px-2 py-2 text-center text-2xl font-bold bg-black" style="border-width: 0 0 2px 1px; border-color: #4b556352; vertical-align: middle;">${hasPlayed ? s.sg : ''}</td>
+                    <td class="col-s-minus px-2 py-2 text-center text-2xl bg-black font-bold" style="border-width: 0 0 2px 1px; border-color: #4b556352; vertical-align: middle;">${hasPlayed ? s.sp : ''}</td>
+                    <td class="col-s-diff px-2 py-2 text-center bg-black font-bold ${difSClass}" style="border-width: 0 1px 2px 1px; border-color: #4b556352; vertical-align: middle;">${hasPlayed ? s.difS : ''}</td>
+                    <td class="col-g-plus px-2 py-2 text-center text-2xl bg-black font-bold" style="border-width: 0 0 2px 1px; border-color: #4b556352; vertical-align: middle;">${hasPlayed ? s.gg : ''}</td>
+                    <td class="col-g-minus px-2 py-2 text-center text-2xl bg-black font-bold" style="border-width: 0 0 2px 1px; border-color: #4b556352; vertical-align: middle;">${hasPlayed ? s.gp : ''}</td>
+                    <td class="col-g-diff px-2 py-2 text-center bg-black font-bold ${difGClass}" style="border-width: 0 1px 2px 1px; border-color: #4b556352; vertical-align: middle;">${hasPlayed ? s.difG : ''}</td>
+                    <td class="col-bonus px-1 py-2 text-center bg-black font-bold text-red-500" style="border-width: 0 1px 2px 1px; border-color: #4b556352; vertical-align: middle;">${hasPlayed ? s.bonus : ''}</td>
+                    <td class="col-points px-2 py-2 text-center text-2xl bg-black font-bold text-lg text-[#e8b83a]" style="border-width: 0 1px 2px 1px; border-color: #4b556352; vertical-align: middle;">${hasPlayed ? s.puntos : '0'}</td>
+                    <td class="col-partial px-1 py-2 text-center bg-black font-bold" style="border-width: 0 1px 2px 1px; border-color: #4b556352; vertical-align: middle;">${hasPlayed ? s.parcial.toFixed(2) : ''}</td>
+                    <td class="col-prom px-2 py-2 text-center text-2xl bg-black font-bold text-[yellow]" style="border-width: 0 1px 1px 1px; border-color: #4b556352; vertical-align: middle;">
                         ${s.promedio.toFixed(2)}
                         <span class="text-xs text-gray-500">/${s.partidosParaPromediar}</span>
                     </td>
-                    <td class="col-tag bg-black px-1 py-0 text-center" style="border-width: 0 1px 1px 1px; border-color: #4b556352;">
-                        <span class="tag-container" data-player-id="${s.playerId}">${tagHTML}</span>
+                    
+                    <td class="col-tag bg-black px-1 py-2 text-center" style="border-width: 0 1px 1px 1px; border-color: #4b556352; vertical-align: middle; position: relative;">
+                        <div class="tag-view-mode admin-actions" style="flex-direction: row; min-height: 40px; justify-content: center; gap: 8px;">
+                            <span class="tag-container" data-player-id="${s.playerId}">${tagHTML}</span>
+                            <button class="admin-btn edit-tag-btn ${activeTagType ? 'active' : ''}" data-action="edit-tag" data-player-id="${s.playerId}" title="Editar etiqueta">
+                                <span class="material-icons">sell</span>
+                            </button>
+                        </div>
+                        ${editorHTML}
                     </td>
                     </tr>`;
             
             // Renderizar la fila divisoria si está activada
             if (isDividerActive) {
-                // Colspan aumentado a 17
+                // Colspan AHORA ES 17
                 tableHTML += `<tr class="ranking-divider-row" data-divider-for-player-id="${s.playerId}"><td colspan="17"></td></tr>`;
             }
         });
@@ -510,10 +630,22 @@ function setRankingDirty(isDirty) {
 }
 
 /**
- * Cierra todos los popups de etiquetas abiertos
+ * Cierra todos los editores de etiquetas inline.
  */
-function closeTagPopups() {
-    document.querySelectorAll('.tag-editor-popup').forEach(el => el.remove());
+function closeAllTagEditors() {
+    document.querySelectorAll('.col-tag.is-editing').forEach(cell => {
+        cell.classList.remove('is-editing');
+    });
+}
+
+/**
+ * Vuelve a dibujar la fila a su estado normal (no-edición)
+ */
+function cancelTagEdit(btn) {
+    const cell = btn.closest('.col-tag');
+    if (cell) {
+        cell.classList.remove('is-editing');
+    }
 }
 
 /**
@@ -521,7 +653,6 @@ function closeTagPopups() {
  * @param {HTMLElement} btn - El botón que fue clickeado
  */
 function handleToggleDivider(btn) {
-    closeTagPopups(); // Cerrar otros popups
     const playerId = Number(btn.dataset.playerId);
     if (!playerId) return; // Evitar si el ID es nulo o NaN
     
@@ -547,50 +678,17 @@ function handleToggleDivider(btn) {
 }
 
 /**
- * Muestra el menú de selección de etiquetas
+ * Muestra el editor INLINE de etiquetas
  * @param {HTMLElement} btn - El botón que fue clickeado
  */
 function handleEditTag(btn) {
-    closeTagPopups(); // Cerrar cualquier otro popup abierto
-    
-    const playerId = Number(btn.dataset.playerId);
-    if (!playerId) return; // Evitar si el ID es nulo o NaN
-    
-    const cell = btn.closest('.admin-actions');
-    const rect = btn.getBoundingClientRect(); // Posición del botón
-
-    let menuHTML = `<div class="tag-selection-menu" data-player-id="${playerId}">`;
-    
-    // Añadir los 4 botones de tipo de tag
-    TAG_TYPES.forEach(tagType => {
-        const preset = TAG_PRESETS[tagType];
-        menuHTML += `
-            <button class="tag-selection-btn" data-action="set-tag" data-tag-type="${tagType}">
-                <span class="tag-preview" style="background-color: ${preset.color}"></span>
-                <span>${preset.title}</span>
-            </button>`;
-    });
-
-    menuHTML += `<hr style="border-color: #6b7280; margin: 2px 0;">`;
-    // Botón para "Quitar Etiqueta"
-    menuHTML += `
-        <button class="tag-selection-btn" data-action="set-tag" data-tag-type="null">
-            <span class="material-icons !text-base" style="color: #9ca3af">block</span>
-            <span>Quitar Etiqueta</span>
-        </button>`;
-    
-    menuHTML += '</div>';
-
-    // Crear el popup como un elemento flotante
-    const menuPopup = document.createElement('div');
-    menuPopup.className = 'tag-editor-popup no-print';
-    menuPopup.style.position = 'fixed'; // Usar fixed para flotar sobre todo
-    menuPopup.style.top = `${rect.top}px`;
-    menuPopup.style.left = `${rect.right + 5}px`;
-    menuPopup.style.zIndex = '100';
-    menuPopup.innerHTML = menuHTML;
-    
-    document.body.appendChild(menuPopup); // Añadir al body para que flote
+    const cell = btn.closest('.col-tag');
+    if (cell) {
+        // Ocultar todos los otros editores
+        document.querySelectorAll('.col-tag.is-editing').forEach(c => c.classList.remove('is-editing'));
+        // Mostrar este editor
+        cell.classList.add('is-editing');
+    }
 }
 
 /**
@@ -598,10 +696,7 @@ function handleEditTag(btn) {
  * @param {HTMLElement} btn - El botón de tipo de tag que fue clickeado
  */
 function handleSetTag(btn) {
-    const popup = btn.closest('.tag-editor-popup');
-    if (!popup) return;
-    
-    const playerId = Number(popup.dataset.playerId);
+    const playerId = Number(btn.dataset.playerId);
     if (!playerId) return; // Evitar si el ID es nulo o NaN
 
     let tagType = btn.dataset.tagType;
@@ -621,11 +716,11 @@ function handleSetTag(btn) {
     currentRankingMetadata.set(playerId, meta);
     
     setRankingDirty(true);
-    closeTagPopups();
     
     // Llamar a la función que redibuja la tabla desde el estado
     const playerToHighlight = document.querySelector('.bg-yellow-900\\/50')?.dataset.playerId || null;
     drawRankingTables(playerToHighlight);
+    // Ya no es necesario cerrar popups
 }
 
 
@@ -743,7 +838,7 @@ async function handleSaveRankingChanges() {
 
 // --- INICIALIZACIÓN Y EVENTOS ---
 
-// --- INICIO: CORRECCIÓN DE EVENTOS ---
+// *** INICIO: CORRECCIÓN DE EVENTOS ***
 
 /**
  * Función que carga los datos iniciales y prepara los listeners principales.
@@ -768,107 +863,75 @@ async function loadInitialData() {
     } else {
         rankingsContainer.innerHTML = '<div class="bg-[#222222] p-8 rounded-xl"><p class="text-center text-gray-400">Seleccione un torneo para ver las posiciones.</p></div>';
     }
-}
 
-/**
- * Maneja el cambio en el filtro de torneo.
- */
-function handleFilterChange() {
-    if (currentView === 'category') {
-        fetchAndRenderRankings(null);
-    } else {
-        renderTeamRankings();
-    }
-}
-
-/**
- * Maneja los clics en los botones de cambio de vista (Singles / SuperLiga).
- * @param {HTMLElement} btn - El botón clickeado.
- */
-function handleViewChange(btn) {
-    if (btn.id === 'btn-view-category' && currentView !== 'category') {
-        currentView = 'category';
-        if(pageTitle) pageTitle.textContent = "Categorías";
-        btn.classList.add('active');
-        document.getElementById('btn-view-teams').classList.remove('active');
-        populateTournamentFilter();
-        rankingsContainer.innerHTML = '';
-        setRankingDirty(false);
-        closeTagPopups();
-    } else if (btn.id === 'btn-view-teams' && currentView !== 'teams') {
-        currentView = 'teams';
-        if(pageTitle) pageTitle.textContent = "SuperLiga";
-        btn.classList.add('active');
-        document.getElementById('btn-view-category').classList.remove('active');
-        setRankingDirty(false);
-        closeTagPopups();
+    // --- Listener de clic global para manejar todas las interacciones ---
+    document.addEventListener('click', (e) => {
+        const target = e.target;
         
-        populateTournamentFilter().then(() => {
-            const teamTournaments = allTournaments.filter(t => t.category && t.category.name === 'Equipos');
-            if (teamTournaments.length > 0) {
-                teamTournaments.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-                const latestTournament = teamTournaments[0];
-                tournamentFilter.value = latestTournament.id;
-                renderTeamRankings();
-            } else {
-                rankingsContainer.innerHTML = '';
-            }
-        });
-    }
-}
-
-/**
- * Listener de clic global para manejar todas las interacciones.
- */
-function handleDocumentClick(e) {
-    const target = e.target;
-
-    // 1. Clic en un botón para SETEAR la etiqueta (la acción más importante)
-    const setTagBtn = target.closest('button[data-action="set-tag"]');
-    if (setTagBtn) {
-        handleSetTag(setTagBtn);
-        return; // Acción completada
-    }
-
-    // 2. Clic en un botón para ABRIR el popup de etiqueta
-    const openPopupBtn = target.closest('button[data-action="edit-tag"]');
-    if (openPopupBtn) {
-        // Si se hace clic en el mismo botón, se cierra. Si es en otro, se cierra el viejo y se abre el nuevo.
-        const isAlreadyOpen = openPopupBtn.parentElement.querySelector('.tag-editor-popup');
-        closeTagPopups(); // Siempre cerrar popups existentes
-        if (!isAlreadyOpen) {
-            handleEditTag(openPopupBtn); // Abrir el nuevo
+        // 1. Clic en un botón para ABRIR el editor inline
+        const openPopupBtn = target.closest('button[data-action="edit-tag"]');
+        if (openPopupBtn) {
+            e.stopPropagation();
+            handleEditTag(openPopupBtn);
+            return;
         }
-        return; // Acción completada
-    }
 
-    // 3. Clic en un botón para CAMBIAR EL DIVISOR
-    const toggleDividerBtn = target.closest('button[data-action="toggle-divider"]');
-    if (toggleDividerBtn) {
-        handleToggleDivider(toggleDividerBtn);
-        return; // Acción completada
-    }
+        // 2. Clic en un botón para CAMBIAR EL DIVISOR
+        const toggleDividerBtn = target.closest('button[data-action="toggle-divider"]');
+        if (toggleDividerBtn) {
+            e.stopPropagation(); // Detener el clic
+            handleToggleDivider(toggleDividerBtn);
+            return; // Acción completada
+        }
 
-    // 4. Clic en un botón para CAMBIAR DE VISTA
-    const viewBtn = target.closest('.btn-view');
-    if (viewBtn) {
-        handleViewChange(viewBtn);
-        return; // Acción completada
-    }
+        // 3. Clic en un botón para CAMBIAR DE VISTA
+        const viewBtn = target.closest('button[data-action="view-change"]');
+        if (viewBtn) {
+            e.stopPropagation();
+            handleViewChange(viewBtn);
+            return; // Acción completada
+        }
+        
+        // 4. Clic en el botón GUARDAR CAMBIOS
+        if (target.closest('#save-ranking-changes-btn')) {
+            e.stopPropagation();
+            handleSaveRankingChanges();
+            return;
+        }
+        
+        // 5. Clic en un botón para SETEAR la etiqueta
+        const setTagBtn = target.closest('button[data-action="set-tag"]');
+        if (setTagBtn) {
+            e.stopPropagation(); 
+            handleSetTag(setTagBtn);
+            return; // Acción completada
+        }
+        
+        // 6. Clic en un botón para CANCELAR la edición de etiqueta
+        const cancelTagBtn = target.closest('button[data-action="cancel-tag-edit"]');
+        if (cancelTagBtn) {
+            e.stopPropagation();
+            cancelTagEdit(cancelTagBtn);
+            return;
+        }
+        
+        // 7. Si no fue ninguna acción, cerrar todos los editores inline
+        // Si el clic NO fue dentro de una celda de tag que ya esté en modo edición
+        if (!target.closest('.col-tag.is-editing')) {
+            closeAllTagEditors();
+        }
+    });
 
-    // 5. Si no fue ninguna de las acciones de admin, verificar si fue un clic "afuera"
-    const isInsidePopup = target.closest('.tag-editor-popup');
-    const isAdminActionButton = target.closest('.admin-btn'); // Cualquier botón de admin
-    
-    // Si el clic NO fue en un popup Y NO fue en un botón de admin (para reabrirlo)
-    if (!isInsidePopup && !isAdminActionButton) {
-        closeTagPopups(); // Cerrar todos los popups abiertos
-    }
+    // Listener para el <select> de torneo
+    tournamentFilter.addEventListener('change', () => {
+        if (currentView === 'category') {
+            fetchAndRenderRankings(null);
+        } else {
+            renderTeamRankings();
+        }
+    });
 }
 
-// --- INICIALIZACIÓN ---
+// Cargar los datos iniciales
 document.addEventListener('DOMContentLoaded', loadInitialData);
-tournamentFilter.addEventListener('change', handleFilterChange);
-saveRankingChangesBtn.addEventListener('click', handleSaveRankingChanges);
-document.addEventListener('click', handleDocumentClick);
 // *** FIN: CORRECCIÓN DE EVENTOS ***

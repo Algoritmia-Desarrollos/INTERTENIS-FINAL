@@ -177,7 +177,10 @@ async function renderCategoryRankings(playerToHighlight = null) {
 }
 
 function calculateCategoryStats(players, matches) {
-    const stats = players.map(player => ({
+    // *** CORRECCIÓN: Filtrar jugadores fantasma (null o sin id) ***
+    const validPlayers = players.filter(p => p && p.id);
+    
+    const stats = validPlayers.map(player => ({
         playerId: player.id, name: player.name, categoryId: player.category_id, 
         teamName: player.teams ? player.teams.name : 'N/A',
         teamImageUrl: player.teams ? player.teams.image_url : null,
@@ -315,10 +318,15 @@ function generateCategoryRankingsHTML(category, stats, playerToHighlight = null,
             <tbody>`;
     
     if (stats.length === 0) {
-        // Colspan aumentado a 16
+        // Colspan AHORA ES 16
         tableHTML += '<tr><td colspan="16" class="text-center font-bold p-8 text-gray-400">No hay jugadores en esta categoría para mostrar.</td></tr>';
     } else {
         stats.forEach((s, index) => {
+            // *** CORRECCIÓN: Filtrar jugadores fantasma (null o sin id) ***
+            if (!s.playerId) {
+                return; 
+            }
+            
             const hasPlayed = s.pj > 0;
             const difPClass = 'text-[#e8b83a]';
             const difSClass = 'text-[#e8b83a]';
@@ -335,8 +343,8 @@ function generateCategoryRankingsHTML(category, stats, playerToHighlight = null,
 
             tableHTML += `
                 <tr class="${highlightClass}">
-                    <td class="col-rank px-2 py-0 text-xl font-bold text-white text-center" style="border-width: 0 0 3px 1px; background-color: #757170; border-color: black;">${index + 1}°</td>
-                    <td class="col-player bg-black px-0 text-xl py-0 whitespace-nowrap" style="border-width: 0 0 2px 1px; border-color: #4b556352;">
+                    <td class="col-rank px-2 py-2 text-xl font-bold text-white text-center" style="border-width: 0 0 3px 1px; background-color: #757170; border-color: black; vertical-align: middle;">${index + 1}°</td>
+                    <td class="col-player bg-black px-0 py-2 whitespace-nowrap" style="border-width: 0 0 2px 1px; border-color: #4b556352; vertical-align: middle;">
                         <div class="flex items-center bg-black font-light player-cell-content">
                             <span class="flex-grow bg-black font-bold text-gray-100 player-name-container text-center">
                                 ${s.name}
@@ -344,30 +352,30 @@ function generateCategoryRankingsHTML(category, stats, playerToHighlight = null,
                             <img src="${s.teamImageUrl || 'https://via.placeholder.com/40'}" alt="${s.teamName}" class="h-10 w-10 object-cover bg-black team-logo ml-4">
                         </div>
                     </td>
-                    <td class="col-p-plus px-2 py-0 text-center text-2xl font-bold bg-black" style="border-width: 0px 0 2px 1px;  border-color: #4b556352;">${hasPlayed ? s.pg : ''}</td>
-                    <td class="col-p-minus px-2 py-0 text-center text-2xl font-bold bg-black" style="border-width: 0 0 2px 1px; border-color: #4b556352;">${hasPlayed ? s.pp : ''}</td>
-                    <td class="col-p-diff px-2 py-0 text-center bg-black font-bold ${difPClass}" style="border-width: 0 1px 2px 1px; border-color: #4b556352;">${hasPlayed ? s.difP : ''}</td>
-                    <td class="col-s-plus px-2 py-0 text-center text-2xl font-bold bg-black" style="border-width: 0 0 2px 1px; border-color: #4b556352;">${hasPlayed ? s.sg : ''}</td>
-                    <td class="col-s-minus px-2 py-0 text-center text-2xl bg-black font-bold" style="border-width: 0 0 2px 1px; border-color: #4b556352;">${hasPlayed ? s.sp : ''}</td>
-                    <td class="col-s-diff px-2 py-0 text-center bg-black font-bold ${difSClass}" style="border-width: 0 1px 2px 1px; border-color: #4b556352;">${hasPlayed ? s.difS : ''}</td>
-                    <td class="col-g-plus px-2 py-0 text-center text-2xl bg-black font-bold" style="border-width: 0 0 2px 1px; border-color: #4b556352;">${hasPlayed ? s.gg : ''}</td>
-                    <td class="col-g-minus px-2 py-0 text-center text-2xl bg-black font-bold" style="border-width: 0 0 2px 1px; border-color: #4b556352;">${hasPlayed ? s.gp : ''}</td>
-                    <td class="col-g-diff px-2 py-0 text-center bg-black font-bold ${difGClass}" style="border-width: 0 1px 2px 1px; border-color: #4b556352;">${hasPlayed ? s.difG : ''}</td>
-                    <td class="col-bonus px-1 py-0 text-center bg-black font-bold text-red-500" style="border-width: 0 1px 2px 1px; border-color: #4b556352;">${hasPlayed ? s.bonus : ''}</td>
-                    <td class="col-points px-2 py-0 text-center text-2xl bg-black font-bold text-lg text-[#e8b83a]" style="border-width: 0 1px 2px 1px; border-color: #4b556352;">${hasPlayed ? s.puntos : '0'}</td>
-                    <td class="col-partial px-1 py-0 text-center bg-black font-bold" style="border-width: 0 1px 2px 1px; border-color: #4b556352;">${hasPlayed ? s.parcial.toFixed(2) : ''}</td>
-                    <td class="col-prom px-2 py-0 text-center text-2xl bg-black font-bold text-[yellow]" style="border-width: 0 1px 1px 1px; border-color: #4b556352;">
+                    <td class="col-p-plus px-2 py-2 text-center text-2xl font-bold bg-black" style="border-width: 0px 0 2px 1px;  border-color: #4b556352; vertical-align: middle;">${hasPlayed ? s.pg : ''}</td>
+                    <td class="col-p-minus px-2 py-2 text-center text-2xl font-bold bg-black" style="border-width: 0 0 2px 1px; border-color: #4b556352; vertical-align: middle;">${hasPlayed ? s.pp : ''}</td>
+                    <td class="col-p-diff px-2 py-2 text-center bg-black font-bold ${difPClass}" style="border-width: 0 1px 2px 1px; border-color: #4b556352; vertical-align: middle;">${hasPlayed ? s.difP : ''}</td>
+                    <td class="col-s-plus px-2 py-2 text-center text-2xl font-bold bg-black" style="border-width: 0 0 2px 1px; border-color: #4b556352; vertical-align: middle;">${hasPlayed ? s.sg : ''}</td>
+                    <td class="col-s-minus px-2 py-2 text-center text-2xl bg-black font-bold" style="border-width: 0 0 2px 1px; border-color: #4b556352; vertical-align: middle;">${hasPlayed ? s.sp : ''}</td>
+                    <td class="col-s-diff px-2 py-2 text-center bg-black font-bold ${difSClass}" style="border-width: 0 1px 2px 1px; border-color: #4b556352; vertical-align: middle;">${hasPlayed ? s.difS : ''}</td>
+                    <td class="col-g-plus px-2 py-2 text-center text-2xl bg-black font-bold" style="border-width: 0 0 2px 1px; border-color: #4b556352; vertical-align: middle;">${hasPlayed ? s.gg : ''}</td>
+                    <td class="col-g-minus px-2 py-2 text-center text-2xl bg-black font-bold" style="border-width: 0 0 2px 1px; border-color: #4b556352; vertical-align: middle;">${hasPlayed ? s.gp : ''}</td>
+                    <td class="col-g-diff px-2 py-2 text-center bg-black font-bold ${difGClass}" style="border-width: 0 1px 2px 1px; border-color: #4b556352; vertical-align: middle;">${hasPlayed ? s.difG : ''}</td>
+                    <td class="col-bonus px-1 py-2 text-center bg-black font-bold text-red-500" style="border-width: 0 1px 2px 1px; border-color: #4b556352; vertical-align: middle;">${hasPlayed ? s.bonus : ''}</td>
+                    <td class="col-points px-2 py-2 text-center text-2xl bg-black font-bold text-lg text-[#e8b83a]" style="border-width: 0 1px 2px 1px; border-color: #4b556352; vertical-align: middle;">${hasPlayed ? s.puntos : '0'}</td>
+                    <td class="col-partial px-1 py-2 text-center bg-black font-bold" style="border-width: 0 1px 2px 1px; border-color: #4b556352; vertical-align: middle;">${hasPlayed ? s.parcial.toFixed(2) : ''}</td>
+                    <td class="col-prom px-2 py-2 text-center text-2xl bg-black font-bold text-[yellow]" style="border-width: 0 1px 1px 1px; border-color: #4b556352; vertical-align: middle;">
                         ${s.promedio.toFixed(2)}
                         <span class="text-xs text-gray-500">/${s.partidosParaPromediar}</span>
                     </td>
-                    <td class="col-tag bg-black px-1 py-0 text-center" style="border-width: 0 1px 1px 1px; border-color: #4b556352;">
+                    <td class="col-tag bg-black px-1 py-2 text-center" style="border-width: 0 1px 1px 1px; border-color: #4b556352; vertical-align: middle;">
                         ${tagHTML}
                     </td>
                     </tr>`;
             
             // Renderizar la fila divisoria si está activada
             if (meta.is_divider_after) {
-                // Colspan aumentado a 16
+                // Colspan AHORA ES 16
                 tableHTML += `<tr class="ranking-divider-row"><td colspan="16"></td></tr>`;
             }
         });
@@ -401,12 +409,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     } else {
         rankingsContainer.innerHTML = '<div class="bg-[#222222] p-8 rounded-xl"><p class="text-center text-gray-400">Seleccione una categoría para ver las posiciones.</p></div>';
     }
-});
+    
+    // Listener para los botones de vista (Singles/SuperLiga)
+    document.getElementById('view-switcher-container').addEventListener('click', (e) => {
+        const viewBtn = e.target.closest('.btn-view');
+        if (viewBtn) {
+            handleViewChange(viewBtn);
+        }
+    });
 
-tournamentFilter.addEventListener('change', () => {
-    if (currentView === 'category') {
-        renderCategoryRankings();
-    } else {
-        renderTeamRankings();
-    }
+    // Listener para el <select> de torneo
+    tournamentFilter.addEventListener('change', () => {
+        if (currentView === 'category') {
+            renderCategoryRankings();
+        } else {
+            renderTeamRankings();
+        }
+    });
 });
