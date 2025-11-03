@@ -14,6 +14,7 @@ const pageTitle = document.querySelector('h1');
 // --- Estado Global ---
 let allTournaments = [];
 let currentView = 'category';
+// --- CAMBIO: Ahora el Map usa la POSICIÓN (rank) como clave, no el ID del jugador ---
 let currentRankingMetadata = new Map(); // Para guardar metadata
 
 // --- Lógica de Vistas y Filtros ---
@@ -129,6 +130,7 @@ async function renderCategoryRankings(playerToHighlight = null) {
     const playerIds = tournamentPlayersLinks.map(link => link.player_id);
 
     // 3. Cargar el resto de datos en un 'Promise.all'
+    // --- CAMBIO: Consultar la nueva tabla 'ranking_position_metadata' ---
     const [
         { data: playersInTournament, error: pError },
         { data: matchesInTournament, error: mError },
@@ -136,8 +138,7 @@ async function renderCategoryRankings(playerToHighlight = null) {
     ] = await Promise.all([
         supabase.from('players').select('*, teams(name, image_url), categories(id, name)').in('id', playerIds),
         supabase.from('matches').select('*, status, sets, winner_id, bonus_loser, player1_id, player2_id, player3_id, player4_id').eq('tournament_id', tournamentId).not('winner_id', 'is', null),
-        // *** CORRECCIÓN: Pedir solo los campos públicos necesarios ***
-        supabase.from('player_ranking_metadata').select('player_id, is_divider_after, special_tag, tag_color').eq('tournament_id', tournamentId) // Cargar metadata
+        supabase.from('ranking_position_metadata').select('rank_position, is_divider_after, special_tag, tag_color').eq('tournament_id', tournamentId) // Cargar metadata
     ]);
 
     if (pError || mError) {
@@ -149,9 +150,10 @@ async function renderCategoryRankings(playerToHighlight = null) {
     }
 
     // Guardar metadata en el estado global
+    // --- CAMBIO: Usar 'rank_position' como clave del Map ---
     currentRankingMetadata.clear();
     (metadataData || []).forEach(meta => {
-        currentRankingMetadata.set(meta.player_id, meta);
+        currentRankingMetadata.set(meta.rank_position, meta); // <--- CLAVE CAMBIADA
     });
 
     // 4. Calcular estadísticas
@@ -265,7 +267,7 @@ function calculateCategoryStats(players, matches) {
  * @param {object} category - La categoría
  * @param {Array} stats - Los stats de los jugadores
  * @param {string} playerToHighlight - ID del jugador a resaltar
- * @param {Map} metadataMap - Map(playerId -> metadata)
+ * @param {Map} metadataMap - Map(rank_position -> metadata)
  */
 function generateCategoryRankingsHTML(category, stats, playerToHighlight = null, metadataMap) {
     
@@ -333,8 +335,9 @@ function generateCategoryRankingsHTML(category, stats, playerToHighlight = null,
             const difGClass = 'text-[#e8b83a]';
             const highlightClass = s.playerId == playerToHighlight ? 'bg-yellow-900/50' : '';
 
-            // Obtener metadata para este jugador
-            const meta = metadataMap.get(s.playerId) || { is_divider_after: false, special_tag: null, tag_color: null };
+            // --- CAMBIO: Obtener metadata por POSICIÓN (rank = index + 1) ---
+            const rank_position = index + 1;
+            const meta = metadataMap.get(rank_position) || { is_divider_after: false, special_tag: null, tag_color: null };
             
             // --- INICIO: CORRECCIÓN LÓGICA PÚBLICA ---
             // Simplemente llamar a renderTag
@@ -343,7 +346,7 @@ function generateCategoryRankingsHTML(category, stats, playerToHighlight = null,
 
             tableHTML += `
                 <tr class="${highlightClass}">
-                    <td class="col-rank px-2 py-2 text-xl font-bold text-white text-center" style="border-width: 0 0 3px 1px; background-color: #757170; border-color: black; vertical-align: middle;">${index + 1}°</td>
+                    <td class="col-rank px-2 py-2 text-xl font-bold text-white text-center" style="border-width: 0 0 3px 1px; background-color: #757170; border-color: black; vertical-align: middle;">${rank_position}°</td>
                     <td class="col-player bg-black px-0 py-2 whitespace-nowrap" style="border-width: 0 0 2px 1px; border-color: #4b556352; vertical-align: middle;">
                         <div class="flex items-center bg-black font-light player-cell-content">
                             <span class="flex-grow bg-black font-bold text-gray-100 player-name-container text-center">
@@ -414,7 +417,36 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('view-switcher-container').addEventListener('click', (e) => {
         const viewBtn = e.target.closest('.btn-view');
         if (viewBtn) {
-            handleViewChange(viewBtn);
+            // --- CAMBIO: Lógica de cambio de vista movida a esta función ---
+            if (viewBtn.id === 'btn-view-category') {
+                if (currentView === 'category') return;
+                currentView = 'category';
+                if(pageTitle) pageTitle.textContent = "Categorías";
+                viewBtn.classList.add('active');
+                document.getElementById('btn-view-teams')?.classList.remove('active');
+                populateTournamentFilter();
+                rankingsContainer.innerHTML = '';
+            } else if (viewBtn.id === 'btn-view-teams') {
+                if (currentView === 'teams') return;
+                currentView = 'teams';
+                if(pageTitle) pageTitle.textContent = "SuperLiga";
+                viewBtn.classList.add('active');
+                document.getElementById('btn-view-category')?.classList.remove('active');
+                
+                (async () => {
+                    await populateTournamentFilter();
+                    const teamTournaments = allTournaments.filter(t => t.category && t.category.name === 'Equipos');
+                    if (teamTournaments.length > 0) {
+                        teamTournaments.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+                        const latestTournament = teamTournaments[0];
+                        tournamentFilter.value = latestTournament.id;
+                        renderTeamRankings();
+                    } else {
+                        rankingsContainer.innerHTML = '';
+                    }
+                })();
+            }
+            // --- FIN CAMBIO ---
         }
     });
 

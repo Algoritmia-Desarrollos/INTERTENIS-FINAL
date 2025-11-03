@@ -20,7 +20,8 @@ const saveRankingChangesBtn = document.getElementById('save-ranking-changes-btn'
 let allTournaments = [];
 let currentView = 'category';
 let currentRankingData = []; // Guardará los stats calculados
-let currentRankingMetadata = new Map(); // Map(playerId -> { player_id, tournament_id, is_divider_after, tag_type })
+// --- CAMBIO: Ahora el Map usa la POSICIÓN (rank) como clave, no el ID del jugador ---
+let currentRankingMetadata = new Map(); // Map(rank_position -> { rank_position, tournament_id, is_divider_after, tag_type })
 let rankingDirty = false; // Flag para cambios pendientes
 
 // --- PRESETS DE ETIQUETAS (Tipos de Tag) ---
@@ -265,6 +266,7 @@ async function fetchAndRenderRankings(playerToHighlight = null) {
     const playerIds = tournamentPlayersLinks.map(link => link.player_id);
 
     // 3. Cargar el resto de datos en un 'Promise.all'
+    // --- CAMBIO: Consultar la nueva tabla 'ranking_position_metadata' ---
     const [
         { data: playersInTournament, error: pError },
         { data: matchesInTournament, error: mError },
@@ -272,7 +274,7 @@ async function fetchAndRenderRankings(playerToHighlight = null) {
     ] = await Promise.all([
         supabase.from('players').select('*, teams(name, image_url), categories(id, name)').in('id', playerIds),
         supabase.from('matches').select('*, status, sets, winner_id, bonus_loser, player1_id, player2_id, player3_id, player4_id').eq('tournament_id', tournamentId).not('winner_id', 'is', null),
-        supabase.from('player_ranking_metadata').select('player_id, is_divider_after, special_tag, tag_color').eq('tournament_id', tournamentId) // Cargar metadata
+        supabase.from('ranking_position_metadata').select('rank_position, is_divider_after, special_tag, tag_color').eq('tournament_id', tournamentId) // Cargar metadata
     ]);
 
     if (pError || mError) {
@@ -285,6 +287,7 @@ async function fetchAndRenderRankings(playerToHighlight = null) {
     }
 
     // 4. Guardar metadata en el estado global
+    // --- CAMBIO: Usar 'rank_position' como clave del Map ---
     currentRankingMetadata.clear();
     (metadataData || []).forEach(meta => {
         let tag_type = null;
@@ -294,8 +297,8 @@ async function fetchAndRenderRankings(playerToHighlight = null) {
             else if (meta.special_tag.startsWith(TAG_PRESETS.PROMO_DESCENSO.prefix)) tag_type = 'PROMO_DESCENSO';
             else if (meta.special_tag.startsWith(TAG_PRESETS.DESCENSO_SEGURO.prefix)) tag_type = 'DESCENSO_SEGURO';
         }
-        currentRankingMetadata.set(meta.player_id, {
-            player_id: meta.player_id,
+        currentRankingMetadata.set(meta.rank_position, { // <--- CLAVE CAMBIADA
+            rank_position: meta.rank_position, // <--- CAMBIADO
             tournament_id: Number(tournamentId), 
             is_divider_after: meta.is_divider_after,
             tag_type: tag_type 
@@ -436,7 +439,7 @@ function calculateCategoryStats(players, matches) {
  * @param {object} category - La categoría
  * @param {Array} stats - Los stats de los jugadores
  * @param {string} playerToHighlight - ID del jugador a resaltar
- * @param {Map} metadataMap - Map(playerId -> metadata)
+ * @param {Map} metadataMap - Map(rank_position -> metadata)
  */
 function generateCategoryRankingsHTML(category, stats, playerToHighlight = null, metadataMap) {
     
@@ -445,22 +448,36 @@ function generateCategoryRankingsHTML(category, stats, playerToHighlight = null,
     const playersWhoPlayed = stats.filter(s => s.pj > 0);
     
     // 2. Crear listas para cada tipo de tag, YA ORDENADAS POR RANKING
-    const getTagType = (id) => metadataMap.get(id)?.tag_type;
+    // --- CAMBIO: getTagType ahora usa la POSICIÓN (rank) ---
+    // La 'rank_position' es el índice general de la tabla 'stats' + 1
+    const getTagType = (rank_position) => metadataMap.get(rank_position)?.tag_type;
 
     const ascensoSeguroPlayers = playersWhoPlayed
-        .filter(p => getTagType(p.playerId) === 'ASCENSO_SEGURO');
+        .filter(p => {
+            const overallRank = stats.findIndex(s => s.playerId === p.playerId) + 1;
+            return getTagType(overallRank) === 'ASCENSO_SEGURO';
+        });
         
     const promoAscensoPlayers = playersWhoPlayed
-        .filter(p => getTagType(p.playerId) === 'PROMO_ASCENSO');
+        .filter(p => {
+            const overallRank = stats.findIndex(s => s.playerId === p.playerId) + 1;
+            return getTagType(overallRank) === 'PROMO_ASCENSO';
+        });
     
     // 3. Para descensos, crear las listas y LUEGO INVERTIRLAS
     const promoDescensoPlayers = playersWhoPlayed
-        .filter(p => getTagType(p.playerId) === 'PROMO_DESCENSO')
+        .filter(p => {
+            const overallRank = stats.findIndex(s => s.playerId === p.playerId) + 1;
+            return getTagType(overallRank) === 'PROMO_DESCENSO';
+        })
         .slice() // Crear copia
         .reverse(); // Invertir (el último ahora es 0)
         
     const descensoSeguroPlayers = playersWhoPlayed
-        .filter(p => getTagType(p.playerId) === 'DESCENSO_SEGURO')
+        .filter(p => {
+            const overallRank = stats.findIndex(s => s.playerId === p.playerId) + 1;
+            return getTagType(overallRank) === 'DESCENSO_SEGURO';
+        })
         .slice() // Crear copia
         .reverse(); // Invertir (el último ahora es 0)
     // --- FIN: LÓGICA DE NÚMEROS DE ETIQUETA ---
@@ -508,9 +525,10 @@ function generateCategoryRankingsHTML(category, stats, playerToHighlight = null,
             const difSClass = 'text-[#e8b83a]';
             const difGClass = 'text-[#e8b83a]';
             const highlightClass = s.playerId == playerToHighlight ? 'bg-yellow-900/50' : '';
-
-            // Obtener metadata para este jugador
-            const meta = metadataMap.get(s.playerId) || { is_divider_after: false, tag_type: null };
+            
+            // --- CAMBIO: Obtener metadata por POSICIÓN (rank = index + 1) ---
+            const rank_position = index + 1;
+            const meta = metadataMap.get(rank_position) || { is_divider_after: false, tag_type: null };
             const isDividerActive = meta.is_divider_after;
             const activeTagType = meta.tag_type;
             
@@ -533,41 +551,40 @@ function generateCategoryRankingsHTML(category, stats, playerToHighlight = null,
             // --- FIN: LÓGICA DE ETIQUETAS AUTOMÁTICAS ---
             
             // --- INICIO: LÓGICA DE EDITOR INLINE ---
-            // Generar el HTML para el modo editor (que estará oculto)
+            // --- CAMBIO: Usar 'data-rank-position' en lugar de 'data-player-id' ---
             let editorHTML = `<div class="tag-edit-mode">`; // Oculto por defecto
             TAG_TYPES.forEach(tagType => {
                 const preset = TAG_PRESETS[tagType];
                 editorHTML += `
-                    <button class="tag-inline-btn" data-action="set-tag" data-player-id="${s.playerId}" data-tag-type="${tagType}">
+                    <button class="tag-inline-btn" data-action="set-tag" data-rank-position="${rank_position}" data-tag-type="${tagType}">
                         <span class="tag-preview" style="background-color: ${preset.color}"></span>
                         <span>${preset.title}</span>
                     </button>`;
             });
-            // *** INICIO CORRECCIÓN BOTÓN QUITAR ***
             editorHTML += `
-                <button class="tag-inline-btn remove" data-action="set-tag" data-player-id="${s.playerId}" data-tag-type="null">
+                <button class="tag-inline-btn remove" data-action="set-tag" data-rank-position="${rank_position}" data-tag-type="null">
                     <span class="material-icons !text-sm">block</span>
                     <span>Quitar Etiqueta</span>
                 </button>`;
             editorHTML += `
-                <button class="tag-inline-btn cancel" data-action="cancel-tag-edit" data-player-id="${s.playerId}" title="Cancelar">
+                <button class="tag-inline-btn cancel" data-action="cancel-tag-edit" data-rank-position="${rank_position}" title="Cancelar">
                     <span class="material-icons !text-sm">close</span>
                     <span>Cancelar</span>
                 </button>
             </div>`;
-            // *** FIN CORRECCIÓN BOTÓN QUITAR ***
             // --- FIN: LÓGICA DE EDITOR INLINE ---
 
 
             // Renderizar la fila del jugador
+            // --- CAMBIO: Usar 'data-rank-position' en la fila y botones ---
             tableHTML += `
-                <tr class="${highlightClass}" data-player-id="${s.playerId}">
+                <tr class="${highlightClass}" data-rank-position="${rank_position}" data-player-id="${s.playerId}">
                     <td class="admin-actions" style="border-width: 0 0 2px 1px; border-color: #4b556352; vertical-align: middle; padding: 0.5rem 0.25rem;">
-                        <button class="admin-btn toggle-divider-btn ${isDividerActive ? 'active' : ''}" data-action="toggle-divider" data-player-id="${s.playerId}" title="Poner/Quitar línea divisoria">
+                        <button class="admin-btn toggle-divider-btn ${isDividerActive ? 'active' : ''}" data-action="toggle-divider" data-rank-position="${rank_position}" title="Poner/Quitar línea divisoria">
                             <span class="material-icons">horizontal_rule</span>
                         </button>
                     </td>
-                    <td class="col-rank px-2 py-2 text-xl font-bold text-white text-center" style="border-width: 0 0 3px 1px; background-color: #757170; border-color: black; vertical-align: middle;">${index + 1}°</td>
+                    <td class="col-rank px-2 py-2 text-xl font-bold text-white text-center" style="border-width: 0 0 3px 1px; background-color: #757170; border-color: black; vertical-align: middle;">${rank_position}°</td>
                     <td class="col-player bg-black px-0 py-2 whitespace-nowrap" style="border-width: 0 0 2px 1px; border-color: #4b556352; vertical-align: middle;">
                         <div class="flex items-center bg-black font-light player-cell-content">
                             <span class="flex-grow bg-black font-bold text-gray-100 player-name-container text-center">
@@ -595,8 +612,8 @@ function generateCategoryRankingsHTML(category, stats, playerToHighlight = null,
                     
                     <td class="col-tag bg-black px-1 py-2 text-center" style="border-width: 0 1px 1px 1px; border-color: #4b556352; vertical-align: middle; position: relative;">
                         <div class="tag-view-mode admin-actions" style="flex-direction: row; min-height: 40px; justify-content: center; gap: 8px;">
-                            <span class="tag-container" data-player-id="${s.playerId}">${tagHTML}</span>
-                            <button class="admin-btn edit-tag-btn ${activeTagType ? 'active' : ''}" data-action="edit-tag" data-player-id="${s.playerId}" title="Editar etiqueta">
+                            <span class="tag-container" data-rank-position="${rank_position}">${tagHTML}</span>
+                            <button class="admin-btn edit-tag-btn ${activeTagType ? 'active' : ''}" data-action="edit-tag" data-rank-position="${rank_position}" title="Editar etiqueta">
                                 <span class="material-icons">sell</span>
                             </button>
                         </div>
@@ -607,7 +624,7 @@ function generateCategoryRankingsHTML(category, stats, playerToHighlight = null,
             // Renderizar la fila divisoria si está activada
             if (isDividerActive) {
                 // Colspan AHORA ES 17
-                tableHTML += `<tr class="ranking-divider-row" data-divider-for-player-id="${s.playerId}"><td colspan="17"></td></tr>`;
+                tableHTML += `<tr class="ranking-divider-row" data-divider-for-rank-position="${rank_position}"><td colspan="17"></td></tr>`;
             }
         });
     }
@@ -653,14 +670,15 @@ function cancelTagEdit(btn) {
  * @param {HTMLElement} btn - El botón que fue clickeado
  */
 function handleToggleDivider(btn) {
-    const playerId = Number(btn.dataset.playerId);
-    if (!playerId) return; // Evitar si el ID es nulo o NaN
+    // --- CAMBIO: Usar 'data-rank-position' ---
+    const rankPosition = Number(btn.dataset.rankPosition);
+    if (!rankPosition) return; // Evitar si el ID es nulo o NaN
     
     const tournamentId = Number(tournamentFilter.value);
     
-    // Obtener o crear la metadata para este jugador
-    let meta = currentRankingMetadata.get(playerId) || {
-        player_id: playerId,
+    // Obtener o crear la metadata para esta POSICIÓN
+    let meta = currentRankingMetadata.get(rankPosition) || {
+        rank_position: rankPosition, // <--- CAMBIADO
         tournament_id: tournamentId,
         is_divider_after: false,
         tag_type: null
@@ -668,7 +686,7 @@ function handleToggleDivider(btn) {
 
     // Alternar el estado
     meta.is_divider_after = !meta.is_divider_after;
-    currentRankingMetadata.set(playerId, meta);
+    currentRankingMetadata.set(rankPosition, meta); // <--- CAMBIADO
     
     // Llamar a la función que redibuja la tabla desde el estado
     const playerToHighlight = document.querySelector('.bg-yellow-900\\/50')?.dataset.playerId || null;
@@ -692,12 +710,13 @@ function handleEditTag(btn) {
 }
 
 /**
- * Asigna el tipo de tag al jugador y re-renderiza la tabla
+ * Asigna el tipo de tag a la posición y re-renderiza la tabla
  * @param {HTMLElement} btn - El botón de tipo de tag que fue clickeado
  */
 function handleSetTag(btn) {
-    const playerId = Number(btn.dataset.playerId);
-    if (!playerId) return; // Evitar si el ID es nulo o NaN
+    // --- CAMBIO: Usar 'data-rank-position' ---
+    const rankPosition = Number(btn.dataset.rankPosition);
+    if (!rankPosition) return;
 
     let tagType = btn.dataset.tagType;
     if (tagType === 'null') {
@@ -707,13 +726,13 @@ function handleSetTag(btn) {
     const tournamentId = Number(tournamentFilter.value);
 
     // Actualizar el estado global
-    let meta = currentRankingMetadata.get(playerId) || {
-        player_id: playerId,
+    let meta = currentRankingMetadata.get(rankPosition) || {
+        rank_position: rankPosition, // <--- CAMBIADO
         tournament_id: tournamentId,
         is_divider_after: false,
     };
     meta.tag_type = tagType; // Guardar el TIPO de tag
-    currentRankingMetadata.set(playerId, meta);
+    currentRankingMetadata.set(rankPosition, meta); // <--- CAMBIADO
     
     setRankingDirty(true);
     
@@ -743,27 +762,40 @@ async function handleSaveRankingChanges() {
     saveRankingChangesBtn.innerHTML = '<div class="spinner inline-block mr-2"></div> Guardando...';
 
     // --- LÓGICA DE NÚMEROS DE ETIQUETA ---
+    // --- CAMBIO: getTagType ahora usa la POSICIÓN (rank) ---
     const playersWhoPlayed = currentRankingData.filter(s => s.pj > 0);
-    const getTagType = (id) => currentRankingMetadata.get(id)?.tag_type;
-    const ascensoSeguroPlayers = playersWhoPlayed.filter(p => getTagType(p.playerId) === 'ASCENSO_SEGURO');
-    const promoAscensoPlayers = playersWhoPlayed.filter(p => getTagType(p.playerId) === 'PROMO_ASCENSO');
-    const promoDescensoPlayers = playersWhoPlayed.filter(p => getTagType(p.playerId) === 'PROMO_DESCENSO').slice().reverse();
-    const descensoSeguroPlayers = playersWhoPlayed.filter(p => getTagType(p.playerId) === 'DESCENSO_SEGURO').slice().reverse();
+    const getTagType = (rank) => currentRankingMetadata.get(rank)?.tag_type;
+
+    // Esta lógica ahora filtra la lista 'playersWhoPlayed' basándose en la metadata de su POSICIÓN general
+    const ascensoSeguroPlayers = playersWhoPlayed.filter(p => {
+        const overallRank = currentRankingData.findIndex(s => s.playerId === p.playerId) + 1;
+        return getTagType(overallRank) === 'ASCENSO_SEGURO';
+    });
+    const promoAscensoPlayers = playersWhoPlayed.filter(p => {
+        const overallRank = currentRankingData.findIndex(s => s.playerId === p.playerId) + 1;
+        return getTagType(overallRank) === 'PROMO_ASCENSO';
+    });
+    const promoDescensoPlayers = playersWhoPlayed.filter(p => {
+        const overallRank = currentRankingData.findIndex(s => s.playerId === p.playerId) + 1;
+        return getTagType(overallRank) === 'PROMO_DESCENSO';
+    }).slice().reverse();
+    const descensoSeguroPlayers = playersWhoPlayed.filter(p => {
+        const overallRank = currentRankingData.findIndex(s => s.playerId === p.playerId) + 1;
+        return getTagType(overallRank) === 'DESCENSO_SEGURO';
+    }).slice().reverse();
     // --- FIN LÓGICA ---
 
     const metadataToUpsert = [];
-    const playerIdsWithMetadata = new Set();
-    const playerIdsInCurrentRanking = currentRankingData.map(s => s.playerId);
+    // --- CAMBIO: de playerIds a positions ---
+    const positionsWithMetadata = new Set();
+    const positionsInCurrentRanking = currentRankingData.map((s, i) => i + 1);
 
-    // 1. Encontrar todos los jugadores que tienen metadata (divisor o tag)
-    currentRankingMetadata.forEach((meta, playerId) => {
-        // *** INICIO DE LA CORRECCIÓN ***
-        // Asegurarnos de que el playerID es válido antes de procesar
-        if (!playerId || isNaN(playerId) || playerId === 0) {
-            console.warn("Se omitió metadata con player_id inválido:", playerId, meta);
-            return; // Saltar este ciclo
+    // 1. Encontrar todas las POSICIONES que tienen metadata (divisor o tag)
+    currentRankingMetadata.forEach((meta, rank_position) => {
+        if (!rank_position || isNaN(rank_position) || rank_position === 0) {
+            console.warn("Se omitió metadata con rank_position inválido:", rank_position, meta);
+            return;
         }
-        // *** FIN DE LA CORRECCIÓN ***
 
         const metaTournamentId = meta.tournament_id || tournamentId; // Asignar ID de torneo si falta
         
@@ -777,10 +809,19 @@ async function handleSaveRankingChanges() {
                 if (meta.tag_type) {
                     const preset = TAG_PRESETS[meta.tag_type];
                     let rank = -1;
-                    if (meta.tag_type === 'ASCENSO_SEGURO') rank = ascensoSeguroPlayers.findIndex(p => p.playerId === playerId);
-                    else if (meta.tag_type === 'PROMO_ASCENSO') rank = promoAscensoPlayers.findIndex(p => p.playerId === playerId);
-                    else if (meta.tag_type === 'PROMO_DESCENSO') rank = promoDescensoPlayers.findIndex(p => p.playerId === playerId);
-                    else if (meta.tag_type === 'DESCENSO_SEGURO') rank = descensoSeguroPlayers.findIndex(p => p.playerId === playerId);
+                    
+                    // Encontrar qué jugador está en esta posición
+                    const playerAtThisRank = currentRankingData[rank_position - 1];
+                    
+                    if (playerAtThisRank) {
+                        const playerId = playerAtThisRank.playerId;
+                        
+                        // Encontrar el sub-ranking de ese jugador
+                        if (meta.tag_type === 'ASCENSO_SEGURO') rank = ascensoSeguroPlayers.findIndex(p => p.playerId === playerId);
+                        else if (meta.tag_type === 'PROMO_ASCENSO') rank = promoAscensoPlayers.findIndex(p => p.playerId === playerId);
+                        else if (meta.tag_type === 'PROMO_DESCENSO') rank = promoDescensoPlayers.findIndex(p => p.playerId === playerId);
+                        else if (meta.tag_type === 'DESCENSO_SEGURO') rank = descensoSeguroPlayers.findIndex(p => p.playerId === playerId);
+                    }
 
                     if (rank !== -1 && preset) {
                         special_tag = `${preset.prefix}${rank + 1}`;
@@ -790,36 +831,38 @@ async function handleSaveRankingChanges() {
 
                 metadataToUpsert.push({
                     tournament_id: tournamentId,
-                    player_id: playerId, // El 'playerId' aquí es la clave del Map, que ya filtramos
+                    rank_position: rank_position, // <--- CAMBIADO
                     is_divider_after: meta.is_divider_after || false,
                     special_tag: special_tag, 
                     tag_color: tag_color      
                 });
-                playerIdsWithMetadata.add(playerId);
+                positionsWithMetadata.add(rank_position); // <--- CAMBIADO
             }
         }
     });
     
-    // 2. Encontrar todos los jugadores que NO tienen metadata (y están en el ranking actual)
-    const playerIdsToClear = playerIdsInCurrentRanking.filter(id => id && !playerIdsWithMetadata.has(id));
+    // 2. Encontrar todas las POSICIONES que NO tienen metadata (y están en el ranking actual)
+    const positionsToClear = positionsInCurrentRanking.filter(pos => pos && !positionsWithMetadata.has(pos)); // <--- CAMBIADO
 
     try {
-        // 3. Borrar la metadata de los que ya no la necesitan
-        if (playerIdsToClear.length > 0) {
+        // 3. Borrar la metadata de las posiciones que ya no la necesitan
+        // --- CAMBIO: Usar 'ranking_position_metadata' y 'rank_position' ---
+        if (positionsToClear.length > 0) {
             const { error: deleteError } = await supabase
-                .from('player_ranking_metadata')
+                .from('ranking_position_metadata')
                 .delete()
                 .eq('tournament_id', tournamentId)
-                .in('player_id', playerIdsToClear);
+                .in('rank_position', positionsToClear);
             
             if (deleteError) throw deleteError;
         }
         
         // 4. Insertar/Actualizar los que SÍ la necesitan
+        // --- CAMBIO: Usar 'ranking_position_metadata' y 'onConflict' ---
         if (metadataToUpsert.length > 0) {
             const { error: upsertError } = await supabase
-                .from('player_ranking_metadata')
-                .upsert(metadataToUpsert, { onConflict: 'tournament_id, player_id' });
+                .from('ranking_position_metadata')
+                .upsert(metadataToUpsert, { onConflict: 'tournament_id, rank_position' });
             
             if (upsertError) throw upsertError;
         }
@@ -888,7 +931,36 @@ async function loadInitialData() {
         const viewBtn = target.closest('button[data-action="view-change"]');
         if (viewBtn) {
             e.stopPropagation();
-            handleViewChange(viewBtn);
+            // --- CAMBIO: Lógica de cambio de vista movida a esta función ---
+            if (viewBtn.id === 'btn-view-category') {
+                if (currentView === 'category') return;
+                currentView = 'category';
+                if(pageTitle) pageTitle.textContent = "Categorías";
+                viewBtn.classList.add('active');
+                document.getElementById('btn-view-teams')?.classList.remove('active');
+                populateTournamentFilter();
+                rankingsContainer.innerHTML = '';
+            } else if (viewBtn.id === 'btn-view-teams') {
+                if (currentView === 'teams') return;
+                currentView = 'teams';
+                if(pageTitle) pageTitle.textContent = "SuperLiga";
+                viewBtn.classList.add('active');
+                document.getElementById('btn-view-category')?.classList.remove('active');
+                
+                (async () => {
+                    await populateTournamentFilter();
+                    const teamTournaments = allTournaments.filter(t => t.category && t.category.name === 'Equipos');
+                    if (teamTournaments.length > 0) {
+                        teamTournaments.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+                        const latestTournament = teamTournaments[0];
+                        tournamentFilter.value = latestTournament.id;
+                        renderTeamRankings();
+                    } else {
+                        rankingsContainer.innerHTML = '';
+                    }
+                })();
+            }
+            // --- FIN CAMBIO ---
             return; // Acción completada
         }
         

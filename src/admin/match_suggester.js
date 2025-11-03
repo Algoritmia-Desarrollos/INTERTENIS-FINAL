@@ -497,6 +497,51 @@ function addSlotRow(data = {}, insertAfterRow = null) {
 }
 // --- FIN: CAMBIO INPUT HORA (PUNTO 3) ---
 
+// --- INICIO: NUEVA FUNCIÓN PARA PRESETS ---
+/**
+ * Añade una fila de slot pre-configurada basada en el preset clickeado.
+ * @param {string} presetKey - Ej: "vie-m", "sab-t", etc.
+ */
+function addPresetSlot(presetKey) {
+    const data = {
+        sede: 'Funes', // Default
+        canchas: 6     // Default
+    };
+
+    let dayOfWeekUTC = -1;
+    let time = '09:00'; // Default mañana
+
+    switch (presetKey) {
+        case 'vie-m': dayOfWeekUTC = 5; time = '09:00'; break;
+        case 'vie-t': dayOfWeekUTC = 5; time = '15:00'; break;
+        case 'sab-m': dayOfWeekUTC = 6; time = '09:00'; break;
+        case 'sab-t': dayOfWeekUTC = 6; time = '15:00'; break;
+        case 'dom-m': dayOfWeekUTC = 0; time = '09:00'; break;
+        case 'dom-t': dayOfWeekUTC = 0; time = '15:00'; break;
+    }
+    
+    data.time = time;
+
+    // Encontrar la fecha (value) para ese día de la semana en la semana actual
+    const dayOption = currentWeekDaysOptions.find(opt => {
+        // Parsear la fecha YYYY-MM-DD como UTC
+        const [y, m, d] = opt.value.split('-').map(Number);
+        const dateObj = new Date(Date.UTC(y, m - 1, d));
+        return dateObj.getUTCDay() === dayOfWeekUTC;
+    });
+
+    if (dayOption) {
+        data.date = dayOption.value;
+    } else {
+        // Fallback al primer día de la semana si no se encuentra
+        data.date = currentWeekDaysOptions[0]?.value || '';
+    }
+
+    // Llamar a la función existente para añadir la fila
+    addSlotRow(data);
+}
+// --- FIN: NUEVA FUNCIÓN PARA PRESETS ---
+
 function handleSlotListClick(event) {
     const button = event.target.closest('button[data-action]');
     if (!button) return;
@@ -597,7 +642,7 @@ async function handleFindSuggestions() {
             supabase.from('matches').select('*').in('tournament_id', selectedTournamentIds),
             supabase.from('matches').select('match_date, match_time, location').gte('match_date', startStr).lte('match_date', endStr).is('winner_id', null).not('tournament_id', 'in', `(${selectedTournamentIds.join(',')})`),
             // *** ESTA ES LA LÍNEA MODIFICADA ***
-            supabase.from('player_ranking_metadata').select('tournament_id, player_id, is_divider_after').in('tournament_id', selectedTournamentIds),
+            supabase.from('ranking_position_metadata').select('tournament_id, rank_position, is_divider_after').in('tournament_id', selectedTournamentIds), // CAMBIADO
             supabase.from('players').select('id, name, category_id').in('id', playerIdsInSelectedTournaments)
         ]);
 
@@ -633,17 +678,21 @@ async function handleFindSuggestions() {
 
             const playerZones = new Map();
             if (hasDividers) {
-                const metadataMap = new Map(metadataForThisTournament.map(m => [m.player_id, m]));
+                // --- CAMBIO: La metadata ahora se basa en POSICIÓN, no en player_id ---
+                const metadataMap = new Map(metadataForThisTournament.map(m => [m.rank_position, m]));
                 const sortedRankingForZones = stats.sort((a, b) => (playerRanks.get(a.playerId) || 999) - (playerRanks.get(b.playerId) || 999));
                 
                 let currentZone = 1;
-                sortedRankingForZones.forEach(player => {
+                sortedRankingForZones.forEach((player, index) => {
+                    const rank_position = index + 1; // La posición es 1-based
                     playerZones.set(player.playerId, currentZone);
-                    const meta = metadataMap.get(player.playerId);
+                    
+                    const meta = metadataMap.get(rank_position); // Buscar metadata por POSICIÓN
                     if (meta?.is_divider_after) {
                         currentZone++;
                     }
                 });
+                // --- FIN CAMBIO ---
             }
             playerZonesPerTournament.set(tournamentId, playerZones);
         }
@@ -1226,6 +1275,20 @@ document.addEventListener('DOMContentLoaded', () => {
     if (btnBackToConfig) btnBackToConfig.addEventListener('click', () => showStep('configuration'));
     if (btnAddSlotRow) btnAddSlotRow.addEventListener('click', () => addSlotRow());
     if (slotsListContainer) slotsListContainer.addEventListener('click', handleSlotListClick);
+    
+    // --- INICIO DE LA MODIFICACIÓN: Listener para botones de preset ---
+    const configStep = document.getElementById('configuration-step');
+    if (configStep) {
+        configStep.addEventListener('click', (e) => {
+            const presetButton = e.target.closest('button[data-action="add-preset"]');
+            if (presetButton) {
+                e.preventDefault();
+                const preset = presetButton.dataset.preset;
+                addPresetSlot(preset);
+            }
+        });
+    }
+    // --- FIN DE LA MODIFICACIÓN ---
     
     // INICIO MODIFICACIÓN: Listeners para los nuevos filtros y lista de "Juega 2"
     if (juegaDosCategoryFilter) juegaDosCategoryFilter.addEventListener('change', populateJuegaDosPlayerList);
