@@ -38,6 +38,12 @@
             padding-bottom: 0.5rem;
             margin-bottom: 0.25rem;
         }
+        
+        /* Span para la fecha (Ej: 3/11) */
+        .day-header .date-span {
+            font-weight: 400;
+            color: #9ca3af; /* gray-400 */
+        }
 
         /* Checkbox + Label */
         .availability-checkbox {
@@ -81,7 +87,7 @@
 
                 <form id="availability-form" class="space-y-6">
                     
-                    <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
+                    <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
                         
                         <div class="day-column">
                             <h3 class="day-header" id="header-lun">Lunes</h3>
@@ -147,7 +153,7 @@
                         </div>
 
                     </div>
-
+                    
                     <div class="pt-4 text-center">
                         <button type="submit" id="save-button" class="btn btn-primary !py-3 !px-12 text-lg w-full sm:w-auto">
                             <span class="material-icons mr-2">save</span>

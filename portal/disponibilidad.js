@@ -60,17 +60,25 @@ function getStartOfWeek(date) {
 /**
  * Calcula las fechas de la semana ACTUAL (Lunes a Domingo)
  */
-function calculateCurrentWeekDates() { // <--- NOMBRE CAMBIADO
+function calculateCurrentWeekDates() {
     const today = new Date();
     
     // Obtener el Lunes de la semana actual
-    const currentMonday = getStartOfWeek(today); // <--- LÓGICA CAMBIADA
+    const currentMonday = getStartOfWeek(today);
 
     const weekDates = [];
     const dateKeys = ['lun', 'mar', 'mie', 'jue', 'vie', 'sab', 'dom'];
 
     const formatDate = (date) => date.toISOString().split('T')[0];
-    const formatDisplay = (date) => date.toLocaleDateString('es-AR', { day: 'numeric' }); // Solo el número
+    
+    // --- INICIO DE LA MODIFICACIÓN ---
+    // Nuevo formato de display: "D/M"
+    const formatDisplay = (date) => {
+        const d = date.getDate();
+        const m = date.getMonth() + 1; // getMonth() es 0-indexado
+        return `${d}/${m}`;
+    };
+    // --- FIN DE LA MODIFICACIÓN ---
 
     targetDates = {};
     for (let i = 0; i < 7; i++) {
@@ -80,20 +88,26 @@ function calculateCurrentWeekDates() { // <--- NOMBRE CAMBIADO
         // Guardar la fecha YYYY-MM-DD
         targetDates[key] = formatDate(date);
         
-        // Actualizar el header del día
+        // --- INICIO DE LA MODIFICACIÓN ---
+        // Actualizar el header del día con el nuevo formato
         if (dayHeaders[key]) {
             const dayName = date.toLocaleDateString('es-AR', { weekday: 'short' });
-            dayHeaders[key].innerHTML = `${dayName.charAt(0).toUpperCase() + dayName.slice(1)} <span class="text-gray-400">${formatDisplay(date)}</span>`;
+            // Ej: "Vie 7/11"
+            dayHeaders[key].innerHTML = `${dayName.charAt(0).toUpperCase() + dayName.slice(1)} <span class="date-span">${formatDisplay(date)}</span>`;
         }
+        // --- FIN DE LA MODIFICACIÓN ---
     }
 
     // Actualizar el display principal
     const firstDay = new Date(targetDates.lun + 'T00:00:00'); // Lunes
     const lastDay = new Date(targetDates.dom + 'T00:00:00');  // Domingo
     
+    // --- INICIO DE LA MODIFICACIÓN ---
+    // Formato de título de semana actualizado
     weekDisplay.textContent = `
-        Lun ${formatDisplay(firstDay)} al Dom ${formatDisplay(lastDay)} de ${lastDay.toLocaleDateString('es-AR', { month: 'long' })}
+        Semana del Lun ${formatDisplay(firstDay)} al Dom ${formatDisplay(lastDay)}
     `;
+    // --- FIN DE LA MODIFICACIÓN ---
 }
 
 /**
@@ -174,7 +188,7 @@ async function handleSave(e) {
                 available_date: keyMap[key].date,
                 time_slot: keyMap[key].slot,
                 zone: zone,
-                source: 'player' // <-- ¡AQUÍ ESTÁ EL CAMBIO!
+                source: 'player'
             });
         }
     }
@@ -218,7 +232,7 @@ document.addEventListener('DOMContentLoaded', () => {
     player = getPlayer(); // Obtener el jugador que está en localStorage
     headerContainer.innerHTML = renderPortalHeader();
     
-    calculateCurrentWeekDates(); // <--- NOMBRE CAMBIADO
+    calculateCurrentWeekDates(); 
     loadCurrentAvailability();
 
     form.addEventListener('submit', handleSave);
