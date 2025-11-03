@@ -334,7 +334,7 @@ function generateCategoryRankingsHTML(category, stats, playerToHighlight = null,
             tableHTML += `
                 <tr class="${highlightClass}">
                     <td class="col-rank px-2 py-2 text-xl font-bold text-white text-center" style="border-width: 0 0 3px 1px; background-color: #757170; border-color: black; vertical-align: middle;">${rank_position}°</td>
-                    <td class="col-player bg-black px-0 py-2 whitespace-nowrap" style="border-width: 0 0 2px 1px; border-color: #4b556352; vertical-align: middle;">
+                    <td class="col-player bg-black px-0 py-0 whitespace-nowrap" style="border-width: 0 0 2px 1px; border-color: #4b556352; vertical-align: middle;">
                         <div class="flex items-center bg-black font-light player-cell-content">
                             <span class="flex-grow bg-black font-bold text-gray-100 player-name-container text-center">
                                 ${s.name}
