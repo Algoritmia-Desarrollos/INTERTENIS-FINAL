@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>InterTenis - POSICIONES</title>
+    <link rel="icon" href="/logo_2021_02.png" type="image/png">
+    <meta property="og:image" content="/logo_2021_02.png" />
+    <meta name="twitter:image" content="/logo_2021_02.png" />
+    <link rel="stylesheet" href="/src/common/styles.css">
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"/>
+    
+<style>
+   /* Reglas que se aplican SIEMPRE (escritorio y celular) */
+    .rankings-table .col-prom {
+      white-space: nowrap; /* Evita el salto de línea en la columna Promedio */
+    }
+    /* Estilos para pantallas chicas (celulares) */
+    @media (max-width: 768px) {
+      
+        /* Contenedor del nombre del jugador */
+        .rankings-table .player-name-container {
+            font-size: 0.875rem;
+            font-weight: 600;
+            text-align: left;
+            padding-left: 0.5rem; /* Mantenemos el texto a la izquierda */
+        }
+
+        .rankings-table .col-player {
+            min-width: 200px; /* Ancho mínimo para ver el nombre */
+        }
+    }
+
+    /* --- Estilos para Dividers y Tags (copiados de index.html) --- */
+    .ranking-divider-row td {
+      height: 1px !important;
+      padding: 0 !important;
+      background-color: #facc15 !important; /* Amarillo */
+      border-bottom: 1px solid #757170 !important;
+      border-top: 1px solid #757170 !important;
+      overflow: hidden;
+    }
+    .special-tag {
+      display: inline-block;
+      padding: 2px 6px;
+      font-size: 0.7rem;
+      font-weight: 900;
+      border-radius: 4px;
+      line-height: 1;
+      vertical-align: middle;
+      text-shadow: 0 0 2px rgba(0,0,0,0.5);
+    }
+</style>
+</head>
+<body class="bg-black text-gray-200">
+    <header id="header"></header>
+    
+    <main class="flex-1 py-8">
+        <div class="content-container max-w-7xl mx-auto space-y-8">
+            <h1 class="text-3xl font-bold text-gray-100">POSICIONES</h1>
+
+            <div class="bg-[#222222] p-6 rounded-xl shadow-lg">
+                <div id="view-switcher-container" class="mb-4">
+                    </div>
+                <div class="max-w-xs">
+                    <label id="filter-label" for="tournament-filter" class="block text-sm font-medium text-gray-300 mb-2">Seleccionar Categoría</label>
+                    <select id="tournament-filter" class="input-field dark-input"></select>
+                </div>
+            </div>
+
+            <div id="rankings-container" class="space-y-8">
+                </div>
+        </div>
+    </main>
+    
+    <script type="module" src="ranking.js"></script>
+</body>
+</html>

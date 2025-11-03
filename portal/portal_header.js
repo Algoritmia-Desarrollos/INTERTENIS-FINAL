@@ -9,16 +9,32 @@ export function renderPortalHeader() {
   
   const getLinkClasses = (href) => {
     const base = "text-sm font-medium transition-colors px-3 py-2 rounded-md";
-    const isActive = href.split('/').pop() === currentPage;
+    const pageName = href.split('/').pop();
+    
+    // --- Lógica de highglight ---
+    // Resaltar "Ranking" si estamos en ranking.html
+    if (pageName === 'ranking.html' && currentPage === 'ranking.html') {
+        return `${base} bg-yellow-400 text-black font-semibold`;
+    }
+    // Resaltar "Programación" si estamos en programacion.html
+    if (pageName === 'programacion.html' && currentPage === 'programacion.html') {
+        return `${base} bg-yellow-400 text-black font-semibold`;
+    }
+    // Resaltar "Mi Perfil" y "Disponibilidad"
+    const isActive = (pageName === currentPage) && (pageName === 'dashboard.html' || pageName === 'disponibilidad.html');
     return isActive 
       ? `${base} bg-yellow-400 text-black font-semibold` 
       : `${base} text-gray-300 hover:bg-gray-700 hover:text-white`;
   };
 
+  // --- INICIO DE LA MODIFICACIÓN: Links internos ---
   const navLinks = `
     <a class="${getLinkClasses('dashboard.html')}" href="/portal/dashboard.html">Mi Perfil</a>
     <a class="${getLinkClasses('disponibilidad.html')}" href="/portal/disponibilidad.html">Disponibilidad</a>
+    <a class="${getLinkClasses('ranking.html')}" href="/portal/ranking.html">Ranking</a>
+    <a class="${getLinkClasses('programacion.html')}" href="/portal/programacion.html">Programación</a>
   `;
+  // --- FIN DE LA MODIFICACIÓN ---
 
   const headerHTML = `
     <header class="flex items-center justify-between border-b border-gray-700 bg-[#222222] px-4 sm:px-6 py-3 sticky top-0 z-50">
@@ -34,8 +50,8 @@ export function renderPortalHeader() {
       <nav class="hidden lg:flex items-center gap-2">${navLinks}</nav>
       
       <div class="flex items-center gap-4">
-        <button id="btnLogout" class="text-sm font-medium text-gray-300 hover:text-red-400 flex items-center gap-2">
-          <span class="hidden sm:inline">Cerrar Sesión</span>
+        <button id="btnLogout" class="text-sm font-medium text-gray-300 hover:text-red-400 hidden lg:flex items-center gap-2">
+          <span class_ ="sm:inline">Cerrar Sesión</span>
           <span class="material-icons">logout</span>
         </button>
         <button id="hamburgerBtn" class="lg:hidden text-gray-300"><span class="material-icons">menu</span></button>

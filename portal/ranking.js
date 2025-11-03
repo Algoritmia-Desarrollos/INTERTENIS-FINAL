@@ -1,7 +1,13 @@
-import { supabase } from './src/common/supabase.js';
-import { renderPublicHeader } from './public/public-header.js';
-import { renderTeamScoreboard } from './src/admin/team-scoreboard.js';
-import { calculatePoints } from './src/admin/calculatePoints.js';
+// Ruta: portal/ranking.js
+
+import { supabase } from '../src/common/supabase.js';
+import { renderPortalHeader } from './portal_header.js'; // CAMBIADO
+import { requirePlayer, getPlayer } from './portal_router.js'; // CAMBIADO
+import { renderTeamScoreboard } from '../src/admin/team-scoreboard.js';
+import { calculatePoints } from '../src/admin/calculatePoints.js';
+
+// --- PROTEGER PÁGINA ---
+requirePlayer();
 
 // --- Elementos del DOM ---
 const header = document.getElementById('header');
@@ -14,9 +20,12 @@ const pageTitle = document.querySelector('h1');
 // --- Estado Global ---
 let allTournaments = [];
 let currentView = 'category';
-let currentRankingMetadata = new Map(); // Para guardar metadata
+let currentRankingMetadata = new Map(); 
 
 // --- Lógica de Vistas y Filtros ---
+// (Las funciones setupViewSwitcher, populateTournamentFilter, renderTeamRankings,
+// renderCategoryRankings, calculateCategoryStats, y generateCategoryRankingsHTML
+// son idénticas a las de public.js. Las copiamos aquí)
 
 function setupViewSwitcher() {
     viewSwitcherContainer.innerHTML = `
@@ -258,16 +267,8 @@ function calculateCategoryStats(players, matches) {
     return stats;
 }
 
-/**
- * Genera el HTML para la tabla de ranking pública (MODIFICADO)
- * @param {object} category - La categoría
- * @param {Array} stats - Los stats de los jugadores
- * @param {string} playerToHighlight - ID del jugador a resaltar
- * @param {Map} metadataMap - Map(rank_position -> metadata)
- */
 function generateCategoryRankingsHTML(category, stats, playerToHighlight = null, metadataMap) {
     
-    // Función helper para la etiqueta (para no repetir código)
     const renderTag = (meta) => {
         if (meta && meta.special_tag) {
             const tagColor = meta.tag_color || '#374151';
@@ -277,7 +278,6 @@ function generateCategoryRankingsHTML(category, stats, playerToHighlight = null,
         return '';
     };
 
-    // Función helper para el color de texto de la etiqueta
     const isColorLight = (hex) => {
         if (!hex || typeof hex !== 'string') return false;
         let c = hex.startsWith('#') ? hex.slice(1) : hex;
@@ -363,7 +363,6 @@ function generateCategoryRankingsHTML(category, stats, playerToHighlight = null,
                     </td>
                     </tr>`;
             
-            // Renderizar la fila divisoria si está activada
             if (meta.is_divider_after) {
                 tableHTML += `<tr class="ranking-divider-row"><td colspan="16"></td></tr>`;
             }
@@ -376,20 +375,20 @@ function generateCategoryRankingsHTML(category, stats, playerToHighlight = null,
 
 // --- INICIALIZACIÓN Y EVENTOS ---
 document.addEventListener('DOMContentLoaded', async () => {
-    header.innerHTML = renderPublicHeader();
+    // --- CAMBIO: Usar renderPortalHeader ---
+    header.innerHTML = renderPortalHeader();
     if(pageTitle) pageTitle.textContent = "Categorías";
     setupViewSwitcher();
     await populateTournamentFilter();
     
-    const urlParams = new URLSearchParams(window.location.search);
-    let tournamentIdToSelect = urlParams.get('tournamentId');
-    const playerToHighlight = urlParams.get('highlightPlayerId');
-    const teamToHighlight = urlParams.get('highlightTeamId');
-
-    // --- INICIO DE LA MODIFICACIÓN: Auto-selección de torneo ---
-    if (!tournamentIdToSelect && playerToHighlight) {
-        // No hay torneo en la URL, pero sí un jugador. ¡Vamos a buscar su torneo!
-        
+    // --- CAMBIO: Lógica para obtener el jugador desde el portal ---
+    const player = getPlayer();
+    const playerToHighlight = player?.id || null;
+    const teamToHighlight = player?.team?.id || null;
+    let tournamentIdToSelect = null;
+    
+    // Auto-seleccionar el torneo del jugador
+    if (playerToHighlight) {
         // 1. Buscar en qué torneos individuales está inscrito
         const { data: enrollments, error } = await supabase
             .from('tournament_players')
@@ -405,30 +404,28 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
     
+    // Auto-seleccionar el torneo de SuperLiga (si no se encontró uno individual)
     if (!tournamentIdToSelect && teamToHighlight) {
-        // No hay torneo, pero hay un equipo. Seleccionamos el último torneo de "SuperLiga"
-        document.getElementById('btn-view-teams').click(); // Cambiar a la vista de SuperLiga
         const teamTournaments = allTournaments.filter(t => t.category && t.category.name === 'Equipos');
         if (teamTournaments.length > 0) {
             teamTournaments.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
             tournamentIdToSelect = teamTournaments[0].id; // Seleccionar el más nuevo
         }
     }
-    // --- FIN DE LA MODIFICACIÓN ---
-
+    // --- FIN DEL CAMBIO ---
 
     if (tournamentIdToSelect) {
         tournamentFilter.value = tournamentIdToSelect;
         const selectedTournament = allTournaments.find(t => t.id == tournamentIdToSelect);
         
-        // Comprobar si debemos cambiar a la vista de "SuperLiga"
         if (selectedTournament?.category?.name === 'Equipos') {
             document.getElementById('btn-view-teams').click();
-            await renderTeamRankings(teamToHighlight); // Pasamos el highlight
+            await renderTeamRankings(teamToHighlight); 
         } else {
-             await renderCategoryRankings(playerToHighlight); // Pasamos el highlight
+             await renderCategoryRankings(playerToHighlight); 
         }
     } else {
+        // Si el jugador no está en ningún torneo, simplemente no selecciona nada
         rankingsContainer.innerHTML = '<div class="bg-[#222222] p-8 rounded-xl"><p class="text-center text-gray-400">Seleccione una categoría para ver las posiciones.</p></div>';
     }
     

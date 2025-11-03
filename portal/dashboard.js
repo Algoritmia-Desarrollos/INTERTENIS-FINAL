@@ -6,7 +6,6 @@ import { requirePlayer, getPlayer } from './portal_router.js';
 import { renderPortalHeader } from './portal_header.js';
 
 // --- PROTEGER PÁGINA ---
-// Esto se ejecuta primero. Si no hay jugador logueado, redirige a /portal/login.html
 requirePlayer();
 
 // --- ELEMENTOS DEL DOM ---
@@ -27,6 +26,82 @@ function isColorLight(hex) {
     return ((0.299 * r + 0.587 * g + 0.114 * b) > 150);
 }
 
+// --- INICIO DE LA MODIFICACIÓN: Funciones para chequear disponibilidad ---
+
+/**
+ * Función auxiliar para obtener el Lunes de la semana de una fecha dada.
+ */
+function getStartOfWeek(date) {
+  const d = new Date(date);
+  const day = d.getDay(); // 0 = Domingo, 1 = Lunes, ..., 6 = Sábado
+  const diff = d.getDate() - day + (day === 0 ? -6 : 1); 
+  const monday = new Date(d.setDate(diff));
+  monday.setHours(0, 0, 0, 0); // Establecer al inicio del día
+  return monday;
+}
+
+/**
+ * Renderiza el botón de disponibilidad según si el jugador ya cargó o no.
+ * @param {number} entryCount - 0 si no cargó, >0 si ya cargó.
+ * @param {boolean} hasError - true si hubo un error al chequear.
+ */
+function renderAvailabilityPrompt(entryCount, hasError = false) {
+    if (hasError) {
+        availabilityContainer.innerHTML = `<p class="text-red-500">No se pudo verificar tu disponibilidad.</p>`;
+        return;
+    }
+
+    if (entryCount > 0) {
+        // El jugador YA cargó. Mostrar un link normal.
+        availabilityContainer.innerHTML = `
+            <a href="/portal/disponibilidad.html" class="btn btn-secondary !py-3 !px-6 text-lg">
+                <span class="material-icons mr-2">edit_calendar</span>
+                Ver/Editar mi Disponibilidad
+            </a>
+        `;
+    } else {
+        // El jugador NO cargó. Mostrar un link "incitador".
+        availabilityContainer.innerHTML = `
+            <a href="/portal/disponibilidad.html" class="btn btn-primary !py-4 !px-8 text-lg animate-pulse">
+                <span class="material-icons mr-2">calendar_today</span>
+                ¡Cargá tu Disponibilidad para esta semana!
+            </a>
+        `;
+    }
+}
+
+/**
+ * Chequea en Supabase si el jugador tiene entradas de disponibilidad
+ * (creadas por 'player') para la semana en curso.
+ */
+async function checkCurrentWeekAvailability(playerId) {
+    const currentMonday = getStartOfWeek(new Date());
+    const allTargetDates = [];
+    for (let i = 0; i < 7; i++) {
+        const date = new Date(currentMonday.getTime() + i * 24 * 60 * 60 * 1000);
+        allTargetDates.push(date.toISOString().split('T')[0]);
+    }
+
+    // Usamos .select() y contamos el length.
+    // Solo contamos las que el 'source' sea 'player'.
+    const { data, error } = await supabase
+        .from('player_availability')
+        .select('available_date') // Solo pedimos una columna para ser eficientes
+        .eq('player_id', playerId)
+        .in('available_date', allTargetDates)
+        .eq('source', 'player'); // Solo las que cargó el jugador
+    
+    if (error) {
+         console.error("Error chequeando disponibilidad:", error);
+         renderAvailabilityPrompt(0, true); // Pasar 0 y error=true
+         return;
+    }
+    
+    renderAvailabilityPrompt(data.length, false);
+}
+// --- FIN DE LA MODIFICACIÓN ---
+
+
 /**
  * Carga todos los datos del dashboard del jugador
  */
@@ -44,9 +119,11 @@ async function loadDashboardData() {
     // 3. Renderizar el perfil del jugador
     renderPlayerProfile(player);
 
-    // 4. Buscar los partidos del jugador
-    // --- INICIO DE LA MODIFICACIÓN ---
-    // AÑADIMOS UN FILTRO `.or()` PARA PEDIR SOLO LOS PARTIDOS DE ESTE JUGADOR
+    // 4. NUEVO: Chequear disponibilidad de la semana actual
+    // (Se ejecuta en paralelo con la carga de partidos)
+    checkCurrentWeekAvailability(player.id); 
+
+    // 5. Buscar los partidos del jugador
     const { data: matches, error } = await supabase
         .from('matches')
         .select(`
@@ -61,8 +138,7 @@ async function loadDashboardData() {
             winner:winner_id(id, name)
         `)
         .or(`player1_id.eq.${player.id},player2_id.eq.${player.id},player3_id.eq.${player.id},player4_id.eq.${player.id}`)
-        .order('match_date', { ascending: true }); // Ordenamos para filtrar fácil
-    // --- FIN DE LA MODIFICACIÓN ---
+        .order('match_date', { ascending: true });
 
     if (error) {
         console.error("Error fetching matches:", error);
@@ -74,15 +150,15 @@ async function loadDashboardData() {
     const allMatches = matches || [];
     const today = new Date().setHours(0, 0, 0, 0);
 
-    // 5. Filtrar partidos pendientes vs historial
+    // 6. Filtrar partidos pendientes vs historial
     const pendingMatches = allMatches.filter(m => !m.winner_id && (new Date(m.match_date) >= today));
     const matchHistory = allMatches.filter(m => !!m.winner_id).reverse(); // .reverse() para mostrar los más nuevos primero
 
-    // 6. Renderizar las tablas de partidos
+    // 7. Renderizar las tablas de partidos
     renderMatchesTable(pendingMatches, pendingContainer, 'No tienes partidos pendientes.');
     renderMatchesTable(matchHistory, historyContainer, 'Aún no has jugado partidos.');
 
-    // 7. Calcular y mostrar estadísticas en el perfil
+    // 8. Calcular y mostrar estadísticas en el perfil
     const stats = calculatePlayerStats(player.id, matchHistory);
     document.getElementById('stat-pj').textContent = stats.pj;
     document.getElementById('stat-pg').textContent = stats.pg;
@@ -102,13 +178,15 @@ function renderPlayerProfile(player) {
                     <h1 class="text-3xl sm:text-4xl font-bold text-gray-100">${player.name}</h1>
                     <p class="text-md text-gray-400">${player.category?.name || 'Sin Categoría'} | ${player.team?.name || 'Sin Equipo'}</p>
                 </div>
-                <div class="flex-shrink-0">
-                    <a href="/public/public-player-dashboard.html?id=${player.id}" class="btn btn-secondary !py-2 !px-4 text-sm" target="_blank">
-                        <span class="material-icons !text-sm">open_in_new</span>
-                        Ver Perfil Público
+                
+                <div class="flex-shrink-0 flex flex-col gap-2 w-full sm:w-auto">
+                    <a href="/portal/ranking.html" class="btn btn-primary !py-2 !px-4 text-sm w-full">
+                        <span class="material-icons !text-sm">leaderboard</span>
+                        Ver Mi Ranking
                     </a>
+                   
                 </div>
-            </div>
+                </div>
             <div class="mt-6 grid grid-cols-2 md:grid-cols-4 gap-3 text-center">
                 <div class="bg-gray-800 p-3 rounded-lg"><p id="stat-pj" class="text-2xl font-bold">0</p><p class="text-xs text-gray-400">Jugados</p></div>
                 <div class="bg-gray-800 p-3 rounded-lg"><p id="stat-pg" class="text-2xl font-bold text-green-400">0</p><p class="text-xs text-gray-400">Victorias</p></div>
@@ -117,13 +195,9 @@ function renderPlayerProfile(player) {
             </div>
         </div>
     `;
-
-    availabilityContainer.innerHTML = `
-        <a href="/portal/disponibilidad.html" class="btn btn-primary !py-4 !px-8 text-lg">
-            <span class="material-icons mr-2">calendar_today</span>
-            Cargar mi Disponibilidad
-        </a>
-    `;
+    
+    // Dejamos el contenedor vacío, se rellenará con el prompt de disponibilidad
+    availabilityContainer.innerHTML = `<div class="h-20 flex justify-center items-center"><div class="spinner"></div></div>`; // Espaciador con spinner
 }
 
 /**
