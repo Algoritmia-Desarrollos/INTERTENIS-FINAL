@@ -1,15 +1,14 @@
 // Ruta: portal/report-view.js
 
 import { supabase } from '../src/common/supabase.js';
-import { renderPortalHeader } from './portal_header.js'; // CAMBIADO
-import { requirePlayer } from './portal_router.js'; // CAMBIADO
+import { renderPortalHeader } from './portal_header.js'; 
+import { requirePlayer } from './portal_router.js'; 
 import { calculatePoints } from '../src/admin/calculatePoints.js';
 
 // --- PROTEGER PÁGINA ---
 requirePlayer();
 
 document.addEventListener('DOMContentLoaded', async () => {
-    // --- CAMBIADO ---
     const headerContainer = document.getElementById('header');
     const reportTitleEl = document.getElementById('report-title');
     const matchesContainer = document.getElementById('matches-container');
@@ -24,7 +23,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         return ((0.299 * r + 0.587 * g + 0.114 * b) > 150);
     }
 
-    // (Esta función es idéntica a la de public-report-view.js)
+    // --- INICIO DE LA CORRECCIÓN: Código copiado de public/public-report-view.js ---
     function renderMatches(matchesToRender) {
         if (!matchesToRender || matchesToRender.length === 0) {
             matchesContainer.innerHTML = '<p class="text-center text-gray-400 py-8">Este reporte no contiene partidos.</p>';
@@ -136,19 +135,17 @@ document.addEventListener('DOMContentLoaded', async () => {
                     const canchaBackgroundColor = sede.toLowerCase() === 'centro' ? '#222222' : '#ffc000';
                     const canchaTextColor = sede.toLowerCase() === 'centro' ? '#ffc000' : '#222';
                     const suspendedClass = match.status === 'suspendido' ? 'suspended-row' : '';
-                    const categoryDisplay = match.category?.name || 'N/A'; // Definir categoryDisplay
 
                     tableHTML += `
                         <tr class="data-row ${suspendedClass}">
                             <td style="background-color: ${canchaBackgroundColor} !important; color: ${canchaTextColor} !important; font-weight: bold; font-size: 16px; font-weight:600">${cancha}</td>
                             <td style="background:#000;color:#fff; font-size: 16px; font-weight:600">${hora}</td>
                             <td class="player-name player-name-right ${team1_class}" style='background:#000;color:#fff;${team1NameStyle};  font-size: 16px !important;'>${team1_names}</td>
-                            <td class="pts-col" style='text-align:center;background:${p1TeamColor || '#3a3838'};color:${p1TextColor};font-weight:700;font-size: 11pt;'>${team1PointsDisplay}</td>
-                            <td style='text-align:center;' class="font-mono">${resultadoDisplay}</td>
-                            <td class="pts-col" style='text-align:center;background:${p2TeamColor || '#3a3838'};color:${p2TextColor};font-weight:700;font-size: 11pt;'>${team2PointsDisplay}</td>
-                            
+                            <td class="pts-col" style='background:${p1TeamColor || '#3a3838'};color:${p1TextColor}; font-size: 20px; font-weight: 800'>${team1PointsDisplay}</td>
+                            <td class="font-mono" style="background:#000;color:#fff; font-size: 16px; font-weight: 700;">${resultadoDisplay}</td>
+                            <td class="pts-col" style='background:${p2TeamColor || '#3a3838'};color:${p2TextColor}; font-size: 20px; font-weight: 800'>${team2PointsDisplay}</td>
                             <td class="player-name player-name-left ${team2_class}" style='background:#000;color:#fff;${team2NameStyle}; font-size: 16px !important;'>${team2_names}</td>
-                            <td class="cat-col" style="background:#000;color:${match.category?.color || '#b45309'};font-family:'Segoe UI Black',Arial,sans-serif;font-weight:900; font-size: 11pt;">${categoryDisplay}</td>
+                            <td class="cat-col" style="background:#000;color:${match.category?.color || '#b45309'}; font-size: 18px; font-weight: 800">${match.category?.name || 'N/A'}</td>
                         </tr>`;
                 }
             }
@@ -162,9 +159,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 </table>
             </div>`;
     }
+    // --- FIN DE LA CORRECCIÓN ---
 
     async function loadReportData() {
-        // --- CAMBIADO ---
         headerContainer.innerHTML = renderPortalHeader();
         const urlParams = new URLSearchParams(window.location.search);
         const reportId = urlParams.get('id');
