@@ -45,7 +45,6 @@ const DEFAULT_ZONE = 'Ambas'; // Hardcodeado como pide el admin
 
 /**
  * Función auxiliar para obtener el Lunes de la semana de una fecha dada.
- * @param {Date} date - La fecha de referencia (ej: new Date())
  */
 function getStartOfWeek(date) {
   const d = new Date(date);
@@ -71,14 +70,12 @@ function calculateCurrentWeekDates() {
 
     const formatDate = (date) => date.toISOString().split('T')[0];
     
-    // --- INICIO DE LA MODIFICACIÓN ---
-    // Nuevo formato de display: "D/M"
+    // Formato de display: "D/M"
     const formatDisplay = (date) => {
         const d = date.getDate();
         const m = date.getMonth() + 1; // getMonth() es 0-indexado
         return `${d}/${m}`;
     };
-    // --- FIN DE LA MODIFICACIÓN ---
 
     targetDates = {};
     for (let i = 0; i < 7; i++) {
@@ -88,26 +85,21 @@ function calculateCurrentWeekDates() {
         // Guardar la fecha YYYY-MM-DD
         targetDates[key] = formatDate(date);
         
-        // --- INICIO DE LA MODIFICACIÓN ---
         // Actualizar el header del día con el nuevo formato
         if (dayHeaders[key]) {
             const dayName = date.toLocaleDateString('es-AR', { weekday: 'short' });
             // Ej: "Vie 7/11"
             dayHeaders[key].innerHTML = `${dayName.charAt(0).toUpperCase() + dayName.slice(1)} <span class="date-span">${formatDisplay(date)}</span>`;
         }
-        // --- FIN DE LA MODIFICACIÓN ---
     }
 
     // Actualizar el display principal
     const firstDay = new Date(targetDates.lun + 'T00:00:00'); // Lunes
     const lastDay = new Date(targetDates.dom + 'T00:00:00');  // Domingo
     
-    // --- INICIO DE LA MODIFICACIÓN ---
-    // Formato de título de semana actualizado
     weekDisplay.textContent = `
         Semana del Lun ${formatDisplay(firstDay)} al Dom ${formatDisplay(lastDay)}
     `;
-    // --- FIN DE LA MODIFICACIÓN ---
 }
 
 /**
@@ -212,14 +204,22 @@ async function handleSave(e) {
             if (insertError) throw insertError;
         }
 
-        showToast("Disponibilidad guardada con éxito", "success");
+        // --- INICIO DE LA MODIFICACIÓN ---
+        showToast("Disponibilidad guardada. Volviendo al perfil...", "success");
         statusMessage.textContent = '';
+
+        // Esperar 1 segundo para que el usuario vea el toast y redirigir
+        setTimeout(() => {
+            window.location.href = '/portal/dashboard.html';
+        }, 1000);
+        // --- FIN DE LA MODIFICACIÓN ---
 
     } catch (error) {
         console.error("Error al guardar:", error);
         showToast("Error al guardar: " + error.message, "error");
         statusMessage.textContent = 'Error al guardar. Intenta de nuevo.';
-    } finally {
+        
+        // Si hay error, SÍ reactivamos el botón
         isLoading = false;
         saveButton.disabled = false;
         saveButton.innerHTML = `<span class="material-icons mr-2">save</span> Guardar Disponibilidad`;
