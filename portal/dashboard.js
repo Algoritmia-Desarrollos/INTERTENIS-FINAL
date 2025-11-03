@@ -58,7 +58,7 @@ function renderAvailabilityPrompt(entryCount, hasError = false) {
         // El jugador YA cargó. Mostrar un link normal.
         // --- INICIO DE LA MODIFICACIÓN: Clases responsive ---
         container.innerHTML = `
-            <a href="/portal/disponibilidad.html" class="btn btn-secondary !py-3 !px-4 text-sm sm:text-lg sm:!px-6 whitespace-nowrap">
+            <a href="/portal/disponibilidad.html" class="btn btn-primary !py-3 !px-4 text-sm sm:text-lg sm:!px-6 whitespace-nowrap">
                 <span class="material-icons mr-2">edit_calendar</span>
                 Ver/Editar mi Disponibilidad
             </a>
@@ -183,7 +183,7 @@ function renderPlayerProfile(player) {
                 </div>
                 
                 <div class="flex-shrink-0 flex flex-col gap-2 w-full sm:w-auto">
-                    <a href="/portal/ranking.html" class="btn btn-primary !py-2 !px-4 text-sm w-full">
+                    <a href="/portal/ranking.html" class="btn btn-secondary !py-2 !px-4 text-sm w-full">
                         <span class="material-icons !text-sm">leaderboard</span>
                         Ver Mi Ranking
                     </a>
