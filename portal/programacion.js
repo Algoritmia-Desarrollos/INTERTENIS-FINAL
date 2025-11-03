@@ -9,11 +9,13 @@ requirePlayer();
 
 document.addEventListener('DOMContentLoaded', async () => {
     // --- ELEMENTOS DEL DOM ---
-    const headerContainer = document.getElementById('header'); // CAMBIADO
+    // --- INICIO DE LA CORRECCIÓN ---
+    const headerContainer = document.getElementById('header'); // <-- El ID correcto es 'header'
+    // --- FIN DE LA CORRECCIÓN ---
     const reportsListContainer = document.getElementById('reports-list-container');
 
     // --- RENDERIZAR HEADER ---
-    headerContainer.innerHTML = renderPortalHeader(); // CAMBIADO
+    headerContainer.innerHTML = renderPortalHeader(); // Esta línea (16) ahora funcionará
 
     // --- CARGAR Y RENDERIZAR REPORTES ---
     async function loadReports() {
@@ -36,7 +38,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         
         reportsListContainer.innerHTML = data.map(report => `
-            <a href="/public/public-report-view.html?id=${report.id}" target="_blank" class="block bg-[#222222] rounded-lg shadow-lg p-4 flex items-center justify-between hover:bg-gray-800 transition-colors group">
+            <a href="/portal/report-view.html?id=${report.id}" class="block bg-[#222222] rounded-lg shadow-lg p-4 flex items-center justify-between hover:bg-gray-800 transition-colors group">
                 <div>
                     <div class="font-semibold text-gray-100 group-hover:text-yellow-400">${report.title}</div>
                     <div class="text-xs text-gray-400">Publicado: ${new Date(report.created_at).toLocaleDateString('es-AR')}</div>

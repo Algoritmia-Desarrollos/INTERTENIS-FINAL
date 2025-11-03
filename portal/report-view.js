@@ -1,0 +1,214 @@
+// Ruta: portal/report-view.js
+
+import { supabase } from '../src/common/supabase.js';
+import { renderPortalHeader } from './portal_header.js'; // CAMBIADO
+import { requirePlayer } from './portal_router.js'; // CAMBIADO
+import { calculatePoints } from '../src/admin/calculatePoints.js';
+
+// --- PROTEGER PÁGINA ---
+requirePlayer();
+
+document.addEventListener('DOMContentLoaded', async () => {
+    // --- CAMBIADO ---
+    const headerContainer = document.getElementById('header');
+    const reportTitleEl = document.getElementById('report-title');
+    const matchesContainer = document.getElementById('matches-container');
+
+    function isColorLight(hex) {
+        if (!hex) return false;
+        let c = hex.replace('#', '');
+        if (c.length === 3) c = c.split('').map(x => x + x).join('');
+        const r = parseInt(c.substr(0, 2), 16),
+              g = parseInt(c.substr(2, 2), 16),
+              b = parseInt(c.substr(4, 2), 16);
+        return ((0.299 * r + 0.587 * g + 0.114 * b) > 150);
+    }
+
+    // (Esta función es idéntica a la de public-report-view.js)
+    function renderMatches(matchesToRender) {
+        if (!matchesToRender || matchesToRender.length === 0) {
+            matchesContainer.innerHTML = '<p class="text-center text-gray-400 py-8">Este reporte no contiene partidos.</p>';
+            return;
+        }
+
+        const groupedByDate = matchesToRender.reduce((acc, match) => {
+            const date = match.match_date || 'Sin fecha';
+            if (!acc[date]) acc[date] = [];
+            acc[date].push(match);
+            return acc;
+        }, {});
+
+        const sortedDates = Object.keys(groupedByDate).sort((a, b) => new Date(a) - new Date(b));
+        let tableHTML = '';
+
+        for (const [dateIdx, date] of sortedDates.entries()) {
+            if (dateIdx > 0) tableHTML += `<tr><td colspan="8" style="height: 18px; background: #000; border: none;"></td></tr>`;
+            
+            const groupedBySede = groupedByDate[date].reduce((acc, match) => {
+                const sede = (match.location ? match.location.split(' - ')[0] : 'Sede no definida').trim();
+                if(!acc[sede]) acc[sede] = [];
+                acc[sede].push(match);
+                return acc;
+            }, {});
+
+            for(const sede in groupedBySede) {
+                const matchesInSede = groupedBySede[sede];
+                const dateObj = new Date(date + 'T00:00:00');
+                let formattedDate = new Intl.DateTimeFormat('es-AR', { weekday: 'long', day: 'numeric', month: 'long' }).format(dateObj);
+                formattedDate = formattedDate.charAt(0).toUpperCase() + formattedDate.slice(1);
+                formattedDate = formattedDate.replace(/ de (\w)/, (match, p1) => ` de ${p1.toUpperCase()}`);
+                const headerBgColor = sede.toLowerCase() === 'centro' ? '#222222' : '#fdc100';
+                const headerTextColor = sede.toLowerCase() === 'centro' ? '#ffc000' : '#000000';
+                
+                tableHTML += `
+                    <tr>
+                        <td colspan="2" style="background-color: ${headerBgColor}; color: ${headerTextColor}; font-weight: 700; text-align: left; vertical-align: middle; padding: 12px 1rem; font-size: 15pt; border-radius: 0; letter-spacing: 1px;">${sede.toUpperCase()}</td>
+                        <td colspan="6" style="background-color: ${headerBgColor}; color: ${headerTextColor}; font-weight: 700; text-align: center; vertical-align: middle; padding: 12px 1rem; padding-right: 155px; font-size: 15pt; border-radius: 0; letter-spacing: 1px;">${formattedDate}</td>
+                    </tr>
+                    <tr style="font-size: 8px; color: #a0a0a0; font-weight: normal;">
+                        <th style="font-size: 12px; padding-bottom: 2px;background: black; text-align: center;">Cancha</th>
+                        <th style="font-size: 12px; padding-bottom: 2px;background: black;  text-align: center;">Horario</th>
+                        <th style="padding-bottom: 2px;background: black;  text-align: center;"></th>
+                        <th style="background: black;"></th>
+                        <th style="background: black;"></th>
+                        <th style="background: black;"></th>
+                        <th style="background: black;"></th>
+                        <th style="padding-bottom: 2px;background: black;  font-size: 12px; text-left: center;">Categoría</th>
+                    </tr>
+                    `;
+
+                for (const match of matchesInSede) {
+                    const { p1_points, p2_points } = calculatePoints(match);
+                    const isDoubles = match.player3 && match.player4;
+                    const played = !!match.winner_id;
+                    
+                    const team1_winner = isDoubles ? (match.winner_id === match.player1.id || match.winner_id === match.player3.id) : (match.winner_id === match.player1.id);
+                    
+                    const team1_class = team1_winner ? 'winner' : '';
+                    const team2_class = !team1_winner && match.winner_id ? 'winner' : '';
+
+                    const team1_confirmed_class = match.p1_confirmed && !played ? 'player-confirmed' : '';
+                    const team2_confirmed_class = match.p2_confirmed && !played ? 'player-confirmed' : '';
+
+                    let team1_names = `<span class="${team1_confirmed_class}">${match.player1.name}</span>`;
+                    if (isDoubles && match.player3) team1_names += ` / <span class="${team1_confirmed_class}">${match.player3.name}</span>`;
+
+                    let team2_names = `<span class="${team2_confirmed_class}">${match.player2.name}</span>`;
+                    if (isDoubles && match.player4) team2_names += ` / <span class="${team2_confirmed_class}">${match.player4.name}</span>`;
+                    
+                    let hora = match.match_time ? match.match_time.substring(0, 5) : 'HH:MM';
+                    
+                    const setsDisplayRaw = (match.sets || []).map(s => {
+                        if (match.winner_id && !team1_winner) {
+                            return `${s.p2}/${s.p1}`;
+                        }
+                        return `${s.p1}/${s.p2}`;
+                    }).join(' ');
+
+                    let resultadoDisplay = '';
+                    if (match.status === 'suspendido') {
+                        resultadoDisplay = '<span style="color:#fff;font-weight:700;">Suspendido</span>';
+                    } else if (match.status === 'completado_wo') {
+                        resultadoDisplay = '<span style="font-weight:700;">W.O.</span>';
+                    } else if (match.status === 'completado_ret') {
+                        resultadoDisplay = `<span style="font-weight:700;">${setsDisplayRaw} ret.</span>`;
+                    } else {
+                        resultadoDisplay = setsDisplayRaw;
+                    }
+                    
+                    const p1TeamColor = match.player1.team?.color;
+                    const p2TeamColor = match.player2.team?.color;
+                    const p1TextColor = isColorLight(p1TeamColor) ? '#222' : '#fff';
+                    const p2TextColor = isColorLight(p2TeamColor) ? '#222' : '#fff';
+
+                    let team1NameStyle = played && !team1_winner ? 'color:#888;' : '';
+                    let team2NameStyle = played && (team1_winner || !match.winner_id) ? 'color:#888;' : '';
+
+                    let team1PointsDisplay = played ? (p1_points ?? '') : (match.player1.team?.image_url ? `<img src="${match.player1.team.image_url}" alt="" style="height: 20px; object-fit: contain; margin: auto; display: block;">` : '');
+                    if (team1PointsDisplay === 0) team1PointsDisplay = '0';
+                    let team2PointsDisplay = played ? (p2_points ?? '') : (match.player2.team?.image_url ? `<img src="${match.player2.team.image_url}" alt="" style="height: 20px; object-fit: contain; margin: auto; display: block;">` : '');
+                    if (team2PointsDisplay === 0) team2PointsDisplay = '0';
+
+                    let cancha = match.location ? (match.location.split(' - ')[1] || match.location.split(' - ')[0] || 'N/A') : 'N/A';
+                    const matchNum = cancha.match(/\d+/);
+                    if (matchNum) cancha = matchNum[0];
+
+                    const canchaBackgroundColor = sede.toLowerCase() === 'centro' ? '#222222' : '#ffc000';
+                    const canchaTextColor = sede.toLowerCase() === 'centro' ? '#ffc000' : '#222';
+                    const suspendedClass = match.status === 'suspendido' ? 'suspended-row' : '';
+                    const categoryDisplay = match.category?.name || 'N/A'; // Definir categoryDisplay
+
+                    tableHTML += `
+                        <tr class="data-row ${suspendedClass}">
+                            <td style="background-color: ${canchaBackgroundColor} !important; color: ${canchaTextColor} !important; font-weight: bold; font-size: 16px; font-weight:600">${cancha}</td>
+                            <td style="background:#000;color:#fff; font-size: 16px; font-weight:600">${hora}</td>
+                            <td class="player-name player-name-right ${team1_class}" style='background:#000;color:#fff;${team1NameStyle};  font-size: 16px !important;'>${team1_names}</td>
+                            <td class="pts-col" style='text-align:center;background:${p1TeamColor || '#3a3838'};color:${p1TextColor};font-weight:700;font-size: 11pt;'>${team1PointsDisplay}</td>
+                            <td style='text-align:center;' class="font-mono">${resultadoDisplay}</td>
+                            <td class="pts-col" style='text-align:center;background:${p2TeamColor || '#3a3838'};color:${p2TextColor};font-weight:700;font-size: 11pt;'>${team2PointsDisplay}</td>
+                            
+                            <td class="player-name player-name-left ${team2_class}" style='background:#000;color:#fff;${team2NameStyle}; font-size: 16px !important;'>${team2_names}</td>
+                            <td class="cat-col" style="background:#000;color:${match.category?.color || '#b45309'};font-family:'Segoe UI Black',Arial,sans-serif;font-weight:900; font-size: 11pt;">${categoryDisplay}</td>
+                        </tr>`;
+                }
+            }
+        }
+        
+        matchesContainer.innerHTML = `
+            <div class="bg-[#18191b] p-4 sm:p-6 rounded-xl shadow-lg overflow-x-auto">
+                <table class="matches-report-style">
+                    <colgroup><col style="width: 5%"><col style="width: 8%"><col style="width: 25%"><col style="width: 5%"><col style="width: 13%"><col style="width: 5%"><col style="width: 25%"><col style="width: 13%"></colgroup>
+                    <tbody>${tableHTML}</tbody>
+                </table>
+            </div>`;
+    }
+
+    async function loadReportData() {
+        // --- CAMBIADO ---
+        headerContainer.innerHTML = renderPortalHeader();
+        const urlParams = new URLSearchParams(window.location.search);
+        const reportId = urlParams.get('id');
+
+        if (!reportId) {
+            reportTitleEl.textContent = "Reporte no encontrado";
+            return;
+        }
+
+        const { data: savedReport, error } = await supabase
+            .from('reports')
+            .select('title, report_data')
+            .eq('id', reportId)
+            .single();
+
+        if (error || !savedReport) {
+            reportTitleEl.textContent = "Error al cargar el reporte";
+            console.error(error);
+            return;
+        }
+
+        document.title = savedReport.title;
+        reportTitleEl.textContent = savedReport.title;
+        const matchIds = savedReport.report_data || [];
+
+        const { data: freshMatches, error: matchesError } = await supabase
+            .from('matches')
+            .select(`*, 
+                p1_confirmed, p2_confirmed,
+                category:category_id(id, name, color), 
+                player1:player1_id(*, team:team_id(name, image_url, color)), 
+                player2:player2_id(*, team:team_id(name, image_url, color)),
+                player3:player3_id(*, team:team_id(name, image_url, color)),
+                player4:player4_id(*, team:team_id(name, image_url, color)),
+                winner:winner_id(id, name)`)
+            .in('id', matchIds);
+
+        if (matchesError) {
+            reportTitleEl.textContent = "Error al cargar los partidos del reporte";
+            return;
+        }
+        
+        renderMatches(freshMatches);
+    }
+
+    loadReportData();
+});

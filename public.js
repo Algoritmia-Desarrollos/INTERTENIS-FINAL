@@ -333,8 +333,8 @@ function generateCategoryRankingsHTML(category, stats, playerToHighlight = null,
 
             tableHTML += `
                 <tr class="${highlightClass}">
-                    <td class="col-rank px-2 py-0 text-xl font-bold text-white text-center" style="border-width: 0 0 3px 1px; background-color: #757170; border-color: black; vertical-align: middle;">${rank_position}°</td>
-                    <td class="col-player bg-black px-0 py-0 whitespace-nowrap" style="border-width: 0 0 2px 1px; border-color: #4b556352; vertical-align: middle;">
+                    <td class="col-rank px-2 py-2 text-xl font-bold text-white text-center" style="border-width: 0 0 3px 1px; background-color: #757170; border-color: black; vertical-align: middle;">${rank_position}°</td>
+                    <td class="col-player bg-black px-0 py-2 whitespace-nowrap" style="border-width: 0 0 2px 1px; border-color: #4b556352; vertical-align: middle;">
                         <div class="flex items-center bg-black font-light player-cell-content">
                             <span class="flex-grow bg-black font-bold text-gray-100 player-name-container text-center">
                                 ${s.name}
@@ -363,7 +363,6 @@ function generateCategoryRankingsHTML(category, stats, playerToHighlight = null,
                     </td>
                     </tr>`;
             
-            // Renderizar la fila divisoria si está activada
             if (meta.is_divider_after) {
                 tableHTML += `<tr class="ranking-divider-row"><td colspan="16"></td></tr>`;
             }
@@ -382,55 +381,45 @@ document.addEventListener('DOMContentLoaded', async () => {
     await populateTournamentFilter();
     
     const urlParams = new URLSearchParams(window.location.search);
-    let tournamentIdToSelect = urlParams.get('tournamentId');
+    const tournamentIdToSelect = urlParams.get('tournamentId');
     const playerToHighlight = urlParams.get('highlightPlayerId');
     const teamToHighlight = urlParams.get('highlightTeamId');
 
-    // --- INICIO DE LA MODIFICACIÓN: Auto-selección de torneo ---
-    if (!tournamentIdToSelect && playerToHighlight) {
-        // No hay torneo en la URL, pero sí un jugador. ¡Vamos a buscar su torneo!
-        
-        // 1. Buscar en qué torneos individuales está inscrito
-        const { data: enrollments, error } = await supabase
-            .from('tournament_players')
-            .select('tournament:tournaments!inner(id, category:category_id(name))')
-            .eq('player_id', playerToHighlight);
-            
-        if (enrollments && enrollments.length > 0) {
-            // 2. Encontrar el primer torneo que NO sea de 'Equipos'
-            const individualEnrollment = enrollments.find(e => e.tournament.category.name !== 'Equipos');
-            if (individualEnrollment) {
-                tournamentIdToSelect = individualEnrollment.tournament.id;
-            }
-        }
-    }
-    
-    if (!tournamentIdToSelect && teamToHighlight) {
-        // No hay torneo, pero hay un equipo. Seleccionamos el último torneo de "SuperLiga"
-        document.getElementById('btn-view-teams').click(); // Cambiar a la vista de SuperLiga
-        const teamTournaments = allTournaments.filter(t => t.category && t.category.name === 'Equipos');
-        if (teamTournaments.length > 0) {
-            teamTournaments.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-            tournamentIdToSelect = teamTournaments[0].id; // Seleccionar el más nuevo
-        }
-    }
-    // --- FIN DE LA MODIFICACIÓN ---
-
-
+    // --- INICIO DE LA MODIFICACIÓN: Cargar 1ra División por defecto ---
     if (tournamentIdToSelect) {
         tournamentFilter.value = tournamentIdToSelect;
         const selectedTournament = allTournaments.find(t => t.id == tournamentIdToSelect);
-        
-        // Comprobar si debemos cambiar a la vista de "SuperLiga"
         if (selectedTournament?.category?.name === 'Equipos') {
             document.getElementById('btn-view-teams').click();
-            await renderTeamRankings(teamToHighlight); // Pasamos el highlight
+            await renderTeamRankings(teamToHighlight);
         } else {
-             await renderCategoryRankings(playerToHighlight); // Pasamos el highlight
+             await renderCategoryRankings(playerToHighlight);
         }
     } else {
-        rankingsContainer.innerHTML = '<div class="bg-[#222222] p-8 rounded-xl"><p class="text-center text-gray-400">Seleccione una categoría para ver las posiciones.</p></div>';
+        // 1. Obtener los torneos de "Singles" (vista 'category')
+        let singlesTournaments = allTournaments.filter(t => t.category && t.category.name !== 'Equipos');
+        
+        // 2. Ordenarlos (misma lógica que populateTournamentFilter)
+        singlesTournaments.sort((a, b) => {
+            const nameA = a.name || '';
+            const nameB = b.name || '';
+            return nameA.localeCompare(nameB, undefined, { numeric: true });
+        });
+
+        // 3. Seleccionar el primer torneo (ej: "1° ...")
+        const defaultTournament = singlesTournaments[0];
+
+        if (defaultTournament) {
+            // 4. Si se encontró, seleccionarlo y renderizar
+            tournamentFilter.value = defaultTournament.id;
+            // playerToHighlight será null, lo cual es correcto
+            await renderCategoryRankings(playerToHighlight); 
+        } else {
+            // 5. Si no hay torneos de singles, mostrar el mensaje original
+            rankingsContainer.innerHTML = '<div class="bg-[#222222] p-8 rounded-xl"><p class="text-center text-gray-400">No hay categorías disponibles para mostrar.</p></div>';
+        }
     }
+    // --- FIN DE LA MODIFICACIÓN ---
     
     // Listener para los botones de vista (Singles/SuperLiga)
     document.getElementById('view-switcher-container').addEventListener('click', (e) => {
