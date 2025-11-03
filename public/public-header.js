@@ -22,7 +22,11 @@ export function renderPublicHeader() {
         <nav class="hidden sm:flex items-center gap-2">
             <a href="/index.html" class="text-sm font-medium text-gray-300 hover:text-white px-3 py-2 rounded-md">POSICIONES</a>
             <a href="/public/public-reports-list.html" class="text-sm font-medium text-gray-300 hover:text-white px-3 py-2 rounded-md">PROGRAMACION</a>
-        </nav>
+            <a href="/portal/login.html" class="text-sm font-bold text-yellow-400 hover:text-yellow-300 px-3 py-2 rounded-md border border-yellow-400/50 hover:border-yellow-300">
+                <span class="material-icons !text-sm align-middle mr-1">account_circle</span>
+                Ingresar
+            </a>
+            </nav>
         <button id="hamburgerBtn" class="sm:hidden text-gray-300">
             <span class="material-icons">menu</span>
         </button>
@@ -42,12 +46,14 @@ export function renderPublicHeader() {
             <nav class="flex flex-col gap-4">
                 <a href="/index.html" class="text-lg font-medium text-gray-300 hover:text-yellow-400 px-3 py-2 rounded-md">POSICIONES</a>
                 <a href="/public/public-reports-list.html" class="text-lg font-medium text-gray-300 hover:text-yellow-400 px-3 py-2 rounded-md">PROGRAMACION</a>
-            </nav>
+                <a href="/portal/login.html" class="text-lg font-bold text-yellow-400 hover:text-yellow-300 px-3 py-2 rounded-md mt-4 border border-yellow-400/50">
+                    Ingresar al Portal
+                </a>
+                </nav>
         </div>
     </div>
   `;
 
-  // --- INICIO DE LA MODIFICACIÓN ---
   // Se eliminó la clase "hidden" y "sm:inline" del span para que siempre sea visible
   const floatingButton = `
     <a href="https://wa.me/5493416940596?text=Hola" target="_blank" 
@@ -56,7 +62,6 @@ export function renderPublicHeader() {
         <span>INSCRIBITE</span>
     </a>
   `;
-  // --- FIN DE LA MODIFICACIÓN ---
 
   // Se agrega un temporizador para asegurar que el DOM esté listo
   setTimeout(() => {

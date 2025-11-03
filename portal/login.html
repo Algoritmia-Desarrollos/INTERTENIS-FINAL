@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Club de Tenis - Portal de Jugador</title>
+  <link rel="icon" href="/logo_2021_02.png" type="image/png">
+  <meta property="og:image" content="/logo_2021_02.png" />
+  <meta name="twitter:image" content="/logo_2021_02.png" />
+
+  <link rel="stylesheet" href="/src/common/styles.css" />
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"/>
+  <style>
+    /* Estilos para los inputs en modo oscuro */
+    .dark-input {
+      background-color: #374151; /* gray-700 */
+      border-color: #4b5563; /* gray-600 */
+      color: #e5e7eb; /* gray-200 */
+    }
+    .dark-input:focus {
+      border-color: #fbbF24; /* amber-400 */
+      box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.3);
+    }
+  </style>
+</head>
+<body class="bg-black">
+  <div class="min-h-screen flex items-center justify-center p-4">
+    <div class="bg-[#222222] w-full max-w-md p-8 rounded-2xl shadow-lg">
+      <div class="text-center mb-8">
+        <a href="/index.html" class="inline-block mb-6">
+          <img src="/logo_2021_02.png" alt="Logo Club" class="mx-auto h-20 w-auto">
+        </a>
+        <h1 class="text-3xl font-bold text-gray-100 mb-2">Portal de Jugador</h1>
+        <p class="text-gray-400">Ingresa con tu email y contraseña</p>
+      </div>
+      
+      <div id="errorMessage" class="hidden p-3 rounded-lg mb-4 bg-red-900/50 text-red-400 border border-red-500/30">
+        <div class="flex items-center">
+          <span class="material-icons mr-2">error</span>
+          <span id="errorText"></span>
+        </div>
+      </div>
+      
+      <form id="loginForm" class="space-y-6">
+        <div>
+          <label for="email" class="block text-sm font-semibold text-gray-300 mb-2">Correo electrónico</label>
+          <input type="email" id="email" class="input-field dark-input w-full p-3 rounded-lg" required autocomplete="email">
+        </div>
+        <div>
+          <label for="password" class="block text-sm font-semibold text-gray-300 mb-2">Contraseña</label>
+          <input type="password" id="password" class="input-field dark-input w-full p-3 rounded-lg" required autocomplete="current-password">
+        </div>
+        <button type="submit" id="loginBtn" class="w-full btn btn-primary text-black font-semibold p-3 rounded-lg flex items-center justify-center transition-all">
+          <span id="loginText">Iniciar Sesión</span>
+          <div id="loadingSpinner" class="w-5 h-5 border-2 border-black border-t-transparent rounded-full animate-spin hidden"></div>
+        </button>
+      </form>
+    </div>
+  </div>
+  
+  <script type="module" src="login.js"></script>
+</body>
+</html>

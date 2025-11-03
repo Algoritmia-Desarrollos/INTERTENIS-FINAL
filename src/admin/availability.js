@@ -107,22 +107,27 @@ async function loadAvailabilityForWeek(startDate) {
     const endStr = formatDateYYYYMMDD(endDate);
 
     try {
+        // --- INICIO DE LA MODIFICACIÓN: Pedir la columna 'source' ---
         const { data, error } = await supabase
             .from('player_availability')
-            .select('player_id, available_date, time_slot, zone')
+            .select('player_id, available_date, time_slot, zone, source') // <-- AÑADIDO 'source'
             .gte('available_date', startStr)
             .lte('available_date', endStr);
+        // --- FIN DE LA MODIFICACIÓN ---
 
         if (error) throw error;
 
         availabilityForCurrentWeek = (data || []).map(item => ({
             ...item,
-            available_date: item.available_date.split('T')[0]
+            available_date: item.available_date.split('T')[0],
+            source: item.source || 'admin' // Asegurarse de que 'source' no sea nulo
         }));
 
         initialAvailabilityForCurrentWeek.clear();
         availabilityForCurrentWeek.forEach(a =>
-            initialAvailabilityForCurrentWeek.add(`${a.player_id}-${a.available_date}-${a.time_slot}-${a.zone || DEFAULT_ZONE}`)
+            // --- INICIO DE LA MODIFICACIÓN: Añadir 'source' a la clave de estado ---
+            initialAvailabilityForCurrentWeek.add(`${a.player_id}-${a.available_date}-${a.time_slot}-${a.zone || DEFAULT_ZONE}-${a.source}`)
+            // --- FIN DE LA MODIFICACIÓN ---
         );
 
         filterAndRenderTable();
@@ -394,8 +399,21 @@ function renderAvailabilityTable() {
                       </td>`;
         dateStringsOfWeek.forEach(dateStr => {
             TIME_SLOTS.forEach(slot => {
-                const isAvailable = isPlayerAvailableOnDate(player.id, dateStr, slot);
-                tableHTML += `<td class="slot-cell ${isAvailable ? 'available' : ''}" data-player-id="${player.id}" data-date="${dateStr}" data-slot="${slot}"></td>`;
+                // --- INICIO DE LA MODIFICACIÓN: Aplicar clase según 'source' ---
+                const avail = getPlayerAvailability(player.id, dateStr, slot);
+                let cellClass = '';
+                if (avail) {
+                    cellClass = avail.source === 'player' ? 'available-player' : 'available-admin';
+                }
+                
+                tableHTML += `<td 
+                                class="slot-cell ${cellClass}" 
+                                data-player-id="${player.id}" 
+                                data-date="${dateStr}" 
+                                data-slot="${slot}"
+                                data-source="${avail ? avail.source : ''}"
+                              ></td>`;
+                // --- FIN DE LA MODIFICACIÓN ---
             });
         });
         tableHTML += '</tr>';
@@ -407,43 +425,64 @@ function renderAvailabilityTable() {
     updateSelectedPlayerVisuals();
 }
 
-function isPlayerAvailableOnDate(playerId, dateStr, timeSlot) {
-    return availabilityForCurrentWeek.some(a =>
+/**
+ * Busca una entrada de disponibilidad específica.
+ * @returns {object|null} La entrada de disponibilidad o null.
+ */
+function getPlayerAvailability(playerId, dateStr, timeSlot) {
+    return availabilityForCurrentWeek.find(a =>
         a.player_id == playerId &&
         a.available_date === dateStr &&
         a.time_slot === timeSlot &&
         (a.zone || DEFAULT_ZONE)
-    );
+    ) || null;
 }
 
+// --- INICIO DE LA MODIFICACIÓN: Bloquear clic en celdas de jugador ---
 function handleCellClick(event) {
     const cell = event.target.closest('.slot-cell');
     if (!cell) return;
+
+    // Si la celda es de un jugador (amarilla), mostrar aviso y no hacer nada.
+    if (cell.classList.contains('available-player')) {
+        showToast("Disponibilidad cargada por jugador. Use 'Acciones' para anular.", "error");
+        return;
+    }
+
+    // Si es una celda vacía o una verde (admin), permitir el clic.
     const playerId = cell.dataset.playerId;
     const dateStr = cell.dataset.date;
     const slot = cell.dataset.slot;
     const currentZone = DEFAULT_ZONE;
+    const currentSource = 'admin'; // Clics del admin siempre son 'admin'
 
     const availabilityIndex = availabilityForCurrentWeek.findIndex(a =>
         a.player_id == playerId &&
         a.available_date === dateStr &&
-        a.time_slot === slot &&
-        (a.zone || DEFAULT_ZONE) === currentZone
+        a.time_slot === slot
+        // No necesitamos chequear zona o source aquí, el clic anula todo
     );
 
     if (availabilityIndex !== -1) {
+        // Si existe (sin importar la fuente, ya filtramos 'player' arriba), la borra.
         availabilityForCurrentWeek.splice(availabilityIndex, 1);
-        cell.classList.remove('available');
+        cell.classList.remove('available-admin', 'available-player'); // Quita ambas clases
+        cell.dataset.source = '';
     } else {
+        // Si no existe, la crea como 'admin'.
         availabilityForCurrentWeek.push({
             player_id: parseInt(playerId),
             available_date: dateStr,
             time_slot: slot,
-            zone: currentZone
+            zone: currentZone,
+            source: currentSource // <-- Guardar como 'admin'
         });
-        cell.classList.add('available');
+        cell.classList.add('available-admin'); // <-- Añadir clase 'admin'
+        cell.dataset.source = currentSource;
     }
 }
+// --- FIN DE LA MODIFICACIÓN ---
+
 
 function getSelectedTimeSlots() {
     const slots = [];
@@ -459,24 +498,22 @@ function getSelectedTimeSlots() {
 }
 
 function applyMassAvailability(makeAvailable) {
-    // --- INICIO DE LA CORRECCIÓN ---
-    // En lugar de usar 'selectedPlayerIds' directamente (que puede tener IDs no visibles),
-    // filtramos los 'displayedPlayers' que están seleccionados.
     const selectedPlayersToShow = displayedPlayers.filter(p => 
         selectedPlayerIds.has(String(p.id))
     );
 
     if (selectedPlayersToShow.length === 0) {
-         showToast("No hay jugadores seleccionados *en la vista actual*. Usa el checkbox de la fila o 'Seleccionar Todos'.", "error");
+         showToast("No hay jugadores seleccionados *en la vista actual*.", "error");
         return;
     }
-    // --- FIN DE LA CORRECCIÓN ---
 
     const selectedDaySlots = getSelectedTimeSlots();
     if (selectedDaySlots.length === 0) {
          showToast("Selecciona al menos un horario (M/T) en el encabezado de la tabla.", "error");
         return;
     }
+
+    let skippedCount = 0; // Contador para celdas bloqueadas
 
     selectedPlayersToShow.forEach(player => {
         const playerId = player.id;
@@ -486,6 +523,7 @@ function applyMassAvailability(makeAvailable) {
             const targetDayOfWeek = daySlot.dayOfWeek;
             const slot = daySlot.slot;
             const currentZone = DEFAULT_ZONE;
+            const currentSource = 'admin'; // Las acciones masivas siempre son 'admin'
 
             let targetDate = null;
             for (let i = 0; i < 7; i++) {
@@ -496,11 +534,18 @@ function applyMassAvailability(makeAvailable) {
             const dateStr = formatDateYYYYMMDD(targetDate);
 
             const cell = tableContainer.querySelector(`.slot-cell[data-player-id="${playerIdStr}"][data-date="${dateStr}"][data-slot="${slot}"]`);
+            
+            // --- INICIO DE LA MODIFICACIÓN: Chequear si está bloqueada ---
+            if (cell && cell.classList.contains('available-player')) {
+                skippedCount++;
+                return; // Saltar esta celda, está bloqueada
+            }
+            // --- FIN DE LA MODIFICACIÓN ---
+
             const availabilityIndex = availabilityForCurrentWeek.findIndex(a =>
                 a.player_id === playerId &&
                 a.available_date === dateStr &&
-                a.time_slot === slot &&
-                (a.zone || DEFAULT_ZONE) === currentZone
+                a.time_slot === slot
             );
 
             if (makeAvailable) {
@@ -509,18 +554,34 @@ function applyMassAvailability(makeAvailable) {
                         player_id: playerId,
                         available_date: dateStr,
                         time_slot: slot,
-                        zone: currentZone
+                        zone: currentZone,
+                        source: currentSource // <-- Marcar como admin
                     });
+                } else {
+                    // Si ya existe (y sabemos que no es 'player'), la forzamos a 'admin'
+                    availabilityForCurrentWeek[availabilityIndex].source = currentSource;
+                    availabilityForCurrentWeek[availabilityIndex].zone = currentZone;
                 }
-                if (cell) cell.classList.add('available');
+                if (cell) {
+                    cell.classList.remove('available-player');
+                    cell.classList.add('available-admin'); // <-- Poner clase verde
+                    cell.dataset.source = currentSource;
+                }
             } else {
                 if (availabilityIndex !== -1) {
                     availabilityForCurrentWeek.splice(availabilityIndex, 1);
                 }
-                if (cell) cell.classList.remove('available');
+                if (cell) {
+                    cell.classList.remove('available-admin', 'available-player');
+                    cell.dataset.source = '';
+                }
             }
         });
     });
+
+    if (skippedCount > 0) {
+        showToast(`${skippedCount} celdas fueron omitidas por estar cargadas por jugadores.`, "info");
+    }
 
     const checkboxesInHeader = tableContainer.querySelectorAll('thead .column-select-cb');
     checkboxesInHeader.forEach(cb => cb.checked = false);
@@ -533,32 +594,45 @@ async function saveAllChanges() {
     const currentWeekSet = new Set();
     availabilityForCurrentWeek
         .filter(a => a.time_slot === 'mañana' || a.time_slot === 'tarde')
-        .forEach(a => currentWeekSet.add(`${a.player_id}-${a.available_date}-${a.time_slot}-${a.zone || DEFAULT_ZONE}`) );
+        // --- INICIO MODIFICACIÓN: Añadir source a la clave ---
+        .forEach(a => currentWeekSet.add(`${a.player_id}-${a.available_date}-${a.time_slot}-${a.zone || DEFAULT_ZONE}-${a.source || 'admin'}`) );
 
     const toInsert = [];
     const toDeleteConditions = [];
 
     const parseKey = (key) => {
         const parts = key.split('-');
-        if (parts.length < 4) { console.warn("Clave inválida:", key); return null; }
+        if (parts.length < 5) { console.warn("Clave inválida (faltan partes):", key); return null; }
+        
         const playerId = parseInt(parts[0], 10);
-        let dateStr = ''; let timeSlot = ''; let zone = '';
-        if (parts[1].match(/^\d{4}-\d{2}-\d{2}$/) && parts.length === 4) {
-             dateStr = parts[1]; timeSlot = parts[2]; zone = parts[3];
-        } else if (parts.length >= 5 && parts[1].match(/^\d{4}$/) && parts[2].match(/^\d{2}$/) && parts[3].match(/^\d{2}$/)) {
-             dateStr = `${parts[1]}-${parts[2]}-${parts[3]}`; timeSlot = parts[4]; zone = parts[5] || DEFAULT_ZONE;
-        } else { console.warn("Clave inválida:", key); return null; }
-        if (isNaN(playerId) || !dateStr.match(/^\d{4}-\d{2}-\d{2}$/) || !timeSlot || !zone) {
-            console.warn("Clave inválida:", key); return null;
+        let dateStr = '';
+        let timeSlot = '';
+        let zone = '';
+        let source = '';
+        
+        // Asumir que la fecha es YYYY-MM-DD
+        if (parts[1].match(/^\d{4}-\d{2}-\d{2}$/)) {
+            dateStr = parts[1];
+            timeSlot = parts[2];
+            zone = parts[3];
+            source = parts[4]; // El 'source' es la 5ta parte
+        } else {
+            console.warn("Formato de fecha no reconocido en clave:", key);
+            return null;
         }
-        return { player_id: playerId, available_date: dateStr, time_slot: timeSlot, zone: zone };
+
+        if (isNaN(playerId) || !dateStr || !timeSlot || !zone || !source) {
+            console.warn("Clave inválida (datos nulos):", key, {playerId, dateStr, timeSlot, zone, source}); return null;
+        }
+        return { player_id: playerId, available_date: dateStr, time_slot: timeSlot, zone: zone, source: source };
     };
+    // --- FIN MODIFICACIÓN ---
 
     currentWeekSet.forEach(key => {
         if (!initialAvailabilityForCurrentWeek.has(key)) {
             const parsed = parseKey(key);
             if (parsed && (parsed.time_slot === 'mañana' || parsed.time_slot === 'tarde')) {
-                 toInsert.push(parsed);
+                 toInsert.push(parsed); // 'source' ya está en el objeto 'parsed'
              }
         }
     });
@@ -566,11 +640,13 @@ async function saveAllChanges() {
         if (!currentWeekSet.has(key)) {
              const parsed = parseKey(key);
              if (parsed && (parsed.time_slot === 'mañana' || parsed.time_slot === 'tarde')) {
+                // Borrar solo si coincide TODO, incluyendo la fuente
                 toDeleteConditions.push({
                     player_id: parsed.player_id,
                     available_date: parsed.available_date,
                     time_slot: parsed.time_slot,
-                    zone: parsed.zone
+                    zone: parsed.zone,
+                    source: parsed.source
                 });
              }
         }
@@ -609,49 +685,33 @@ async function saveAllChanges() {
     }
 }
 
-// --- INICIO DE LA CORRECCIÓN ---
 
-/**
- * Maneja el clic en el checkbox de una fila de jugador
- * @param {Event} event
- */
 function handlePlayerSelection(event) {
     const checkbox = event.target;
     const playerId = checkbox.dataset.playerId;
     if (!playerId) return;
     
-    // Simplemente actualiza el Set global
     if (checkbox.checked) { 
         selectedPlayerIds.add(playerId); 
     } else { 
         selectedPlayerIds.delete(playerId); 
     }
-    updateSelectedPlayerVisuals(); // Actualiza los estilos y el checkbox "Select All"
+    updateSelectedPlayerVisuals();
 }
 
-/**
- * Maneja el clic en el checkbox "Seleccionar Todos" del encabezado
- * @param {Event} event
- */
 function handleSelectAllPlayers(event) {
     const isChecked = event.target.checked;
     
-    // Solo afecta a los jugadores actualmente VISIBLES
     if (isChecked) {
         displayedPlayers.forEach(p => selectedPlayerIds.add(String(p.id)));
     } else {
         displayedPlayers.forEach(p => selectedPlayerIds.delete(String(p.id)));
     }
     
-    // Actualiza los estilos de las filas y los checkboxes
     updateSelectedPlayerVisuals();
 }
 
-/**
- * Actualiza los estilos de las filas y el estado del checkbox "Seleccionar Todos"
- */
 function updateSelectedPlayerVisuals() {
-    // 1. Actualizar estilos de las filas visibles
      const rows = tableContainer.querySelectorAll('.player-row');
     rows.forEach(row => {
         const playerId = row.dataset.playerId;
@@ -666,13 +726,11 @@ function updateSelectedPlayerVisuals() {
         }
     });
 
-    // 2. Actualizar estado del checkbox "Seleccionar Todos"
      const selectAllCheckbox = document.getElementById('select-all-players');
      if (selectAllCheckbox) {
          const numDisplayed = displayedPlayers.length;
          let numSelectedDisplayed = 0;
          
-         // Contar cuántos de los jugadores VISIBLES están en el Set de selección
          displayedPlayers.forEach(p => {
              if (selectedPlayerIds.has(String(p.id))) {
                  numSelectedDisplayed++;
@@ -683,21 +741,17 @@ function updateSelectedPlayerVisuals() {
              selectAllCheckbox.checked = false;
              selectAllCheckbox.indeterminate = false;
          } else if (numSelectedDisplayed === numDisplayed) {
-             // Todos los visibles están seleccionados
              selectAllCheckbox.checked = true;
              selectAllCheckbox.indeterminate = false;
          } else if (numSelectedDisplayed > 0) {
-             // Algunos (pero no todos) los visibles están seleccionados
              selectAllCheckbox.checked = false;
              selectAllCheckbox.indeterminate = true;
          } else {
-             // Ninguno de los visibles está seleccionado
              selectAllCheckbox.checked = false;
              selectAllCheckbox.indeterminate = false;
          }
      }
 }
-// --- FIN DE LA CORRECCIÓN ---
 
 
 // --- EVENT LISTENERS ---
