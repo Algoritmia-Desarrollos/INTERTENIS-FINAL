@@ -1,3 +1,5 @@
+// Ruta: src/common/router.js
+
 import { getCurrentUser } from './auth.js';
 
 /**
@@ -17,9 +19,12 @@ export function requireRole(requiredRole) {
   const user = getCurrentUser();
   
   // Si no hay un usuario logueado o su rol no es el requerido,
-  // se le redirige a la página de login de admin.
+  // se le redirige a la página de login UNIFICADA.
   if (!user || user.role !== requiredRole) {
-    goTo('/src/admin/login.html');
+    // --- INICIO DE LA MODIFICACIÓN ---
+    // ANTES: goTo('/src/admin/login.html');
+    goTo('/portal/login.html'); // AHORA: Redirige al login de portal
+    // --- FIN DE LA MODIFICACIÓN ---
   }
 }
 

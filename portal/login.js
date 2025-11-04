@@ -27,10 +27,18 @@ form.addEventListener('submit', async (e) => {
     const password = form.password.value;
 
     try {
-        const player = await login(email, password);
+        // Llama a la nueva función de login unificada
+        const result = await login(email, password);
         
-        // Si tiene éxito, redirigimos al dashboard del JUGADOR.
-        window.location.href = '/portal/dashboard.html';
+        // --- INICIO DE LA MODIFICACIÓN: Redirección inteligente ---
+        if (result.type === 'admin') {
+            window.location.href = '/src/admin/dashboard.html';
+        } else if (result.type === 'player') {
+            window.location.href = '/portal/dashboard.html';
+        } else {
+            throw new Error('Tipo de usuario desconocido.');
+        }
+        // --- FIN DE LA MODIFICACIÓN ---
 
     } catch (err) {
         // Mostrar mensaje de error
