@@ -78,6 +78,7 @@
     }
 
 
+/* --- INICIO DE LA MODIFICACIÓN --- */
     /* Celdas de Slot */
     .slot-cell { 
       background-color: #374151; /* NO disponible */
@@ -90,7 +91,8 @@
     }
     .slot-cell.available-player { 
       background-color: #facc15; /* DISPONIBLE JUGADOR (Amarillo) */
-      cursor: not-allowed; /* No clickeable */
+      /* cursor: not-allowed;  <-- ESTO SE CAMBIA */
+      cursor: pointer;        /* <-- POR ESTO */
     }
 
     /* Hover effects */
@@ -98,7 +100,9 @@
     .player-row:hover .slot-cell { background-color: #4b5563; } /* Hover gris */
     .player-row:hover .slot-cell.available-admin { background-color: #15803d; } /* Hover verde */
     .player-row:hover .slot-cell.available-player { background-color: #eab308; } /* Hover amarillo */
+    /* --- FIN DE LA MODIFICACIÓN --- */
 
+    
     /* Inputs y botones (Panel Superior) */
     .dark-input { background-color: #374151; border-color: #4b5563; color: #e5e7eb; }
     .dark-input:focus { border-color: #facc15; box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.3); }

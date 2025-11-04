@@ -503,63 +503,80 @@ function getPlayerAvailability(playerId, dateStr, timeSlot) {
     ) || null;
 }
 
+// --- INICIO DE LA MODIFICACIÓN: Permitir anular clic de jugador con confirmación ---
 function handleCellClick(event) {
     const cell = event.target.closest('.slot-cell');
     if (!cell) return;
 
+    // Si la celda es de un jugador (amarilla), pedir confirmación.
     if (cell.classList.contains('available-player')) {
-        showToast("Disponibilidad cargada por jugador. Use 'Acciones' para anular.", "error");
-        return;
+        const confirmed = confirm(
+            "Esta disponibilidad fue cargada por el jugador.\n\n" +
+            "¿Estás seguro de que quieres ANULARLA? (La celda se borrará)."
+        );
+        
+        // Si el admin presiona "Cancelar", no hacemos nada.
+        if (!confirmed) {
+            return;
+        }
+        // Si confirma, la lógica de abajo se encargará de borrarla.
     }
+
+    // Si es una celda vacía o una verde (admin), o si se confirmó borrar la amarilla,
+    // la lógica de "toggle" (activar/desactivar) se ejecuta:
 
     const playerId = cell.dataset.playerId;
     const dateStr = cell.dataset.date;
     const slot = cell.dataset.slot;
     const currentZone = DEFAULT_ZONE;
-    const currentSource = 'admin'; 
+    const currentSource = 'admin'; // Clics del admin siempre son 'admin'
 
     const availabilityIndex = availabilityForCurrentWeek.findIndex(a =>
         a.player_id == playerId &&
         a.available_date === dateStr &&
         a.time_slot === slot
+        // No necesitamos chequear zona o source aquí, el clic anula todo
     );
 
     if (availabilityIndex !== -1) {
+        // Si existe (sin importar la fuente, 'player' o 'admin'), la borra.
         availabilityForCurrentWeek.splice(availabilityIndex, 1);
-        cell.classList.remove('available-admin', 'available-player'); 
+        cell.classList.remove('available-admin', 'available-player'); // Quita ambas clases
         cell.dataset.source = '';
+
+        // Actualizar el estado de "any" y el ícono al borrar
+        const allAvailForPlayer = availabilityForCurrentWeek.filter(a => a.player_id == playerId);
+        const iconCell = cell.closest('tr')?.querySelector('.player-name-cell .material-icons');
+        
+        if (allAvailForPlayer.length === 0) {
+            playersWithAnyAvailability.delete(parseInt(playerId));
+            if (iconCell) iconCell.remove(); // Quitar ícono si ya no tiene disponibilidad
+        }
+
     } else {
+        // Si no existe, la crea como 'admin'.
         availabilityForCurrentWeek.push({
             player_id: parseInt(playerId),
             available_date: dateStr,
             time_slot: slot,
             zone: currentZone,
-            source: currentSource 
+            source: currentSource // <-- Guardar como 'admin'
         });
-        cell.classList.add('available-admin'); 
+        cell.classList.add('available-admin'); // <-- Añadir clase 'admin'
         cell.dataset.source = currentSource;
-    }
-    
-    // --- INICIO DE LA MODIFICACIÓN (5/5) ---
-    // Actualizar el estado de "any" y el ícono al hacer clic
-    const allAvailForPlayer = availabilityForCurrentWeek.filter(a => a.player_id == playerId);
-    const iconCell = cell.closest('tr').querySelector('.player-name-cell .material-icons');
-    
-    if (allAvailForPlayer.length === 0) {
-        playersWithAnyAvailability.delete(parseInt(playerId));
-        if (iconCell) iconCell.remove(); // Quitar ícono si ya no tiene disponibilidad
-    } else {
+
+        // Actualizar el estado de "any" y el ícono al añadir
         playersWithAnyAvailability.add(parseInt(playerId));
-        // Si no tenía ícono y la fuente no es 'player', agregar el de 'admin'
+        const iconCell = cell.closest('tr')?.querySelector('.player-name-cell .material-icons');
         if (!iconCell && !playersWithPlayerAvailability.has(parseInt(playerId))) {
-             const nameSpan = cell.closest('tr').querySelector('.player-name-cell .flex-grow');
+            const nameSpan = cell.closest('tr')?.querySelector('.player-name-cell .flex-grow');
              if (nameSpan) {
                  nameSpan.insertAdjacentHTML('afterend', '<span class="material-icons !text-sm text-green-500" title="Disponibilidad cargada por admin">admin_panel_settings</span>');
              }
         }
     }
-    // --- FIN DE LA MODIFICACIÓN (5/5) ---
 }
+// --- FIN DE LA MODIFICACIÓN ---
 
 
 function getSelectedTimeSlots() {
