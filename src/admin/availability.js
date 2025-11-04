@@ -600,32 +600,40 @@ async function saveAllChanges() {
     const toInsert = [];
     const toDeleteConditions = [];
 
-    const parseKey = (key) => {
-        const parts = key.split('-');
-        if (parts.length < 5) { console.warn("Clave inválida (faltan partes):", key); return null; }
-        
-        const playerId = parseInt(parts[0], 10);
-        let dateStr = '';
-        let timeSlot = '';
-        let zone = '';
-        let source = '';
-        
-        // Asumir que la fecha es YYYY-MM-DD
-        if (parts[1].match(/^\d{4}-\d{2}-\d{2}$/)) {
-            dateStr = parts[1];
-            timeSlot = parts[2];
-            zone = parts[3];
-            source = parts[4]; // El 'source' es la 5ta parte
-        } else {
-            console.warn("Formato de fecha no reconocido en clave:", key);
-            return null;
-        }
+ const parseKey = (key) => {
+            const parts = key.split('-');
+            
+            // Una clave válida ahora debe tener 7 partes:
+            // [0]playerId, [1]YYYY, [2]MM, [3]DD, [4]timeSlot, [5]zone, [6]source
+            if (parts.length !== 7) { 
+                console.warn("Clave inválida (partes incorrectas):", key, "Se esperaban 7, se obtuvieron", parts.length); 
+                return null; 
+            }
+            
+            const playerId = parseInt(parts[0], 10);
+            
+            // Reconstruir la fecha desde parts[1], parts[2], y parts[3]
+            const dateStr = `${parts[1]}-${parts[2]}-${parts[3]}`;
+            
+            // Validar que la fecha reconstruida tenga el formato YYYY-MM-DD
+            if (!dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                 console.warn("Formato de fecha no reconocido en clave:", key);
+                 return null;
+            }
 
-        if (isNaN(playerId) || !dateStr || !timeSlot || !zone || !source) {
-            console.warn("Clave inválida (datos nulos):", key, {playerId, dateStr, timeSlot, zone, source}); return null;
-        }
-        return { player_id: playerId, available_date: dateStr, time_slot: timeSlot, zone: zone, source: source };
-    };
+            const timeSlot = parts[4];
+            const zone = parts[5];
+            const source = parts[6];
+            
+            if (isNaN(playerId) || !dateStr || !timeSlot || !zone || !source) {
+                console.warn("Clave inválida (datos nulos):", key, {playerId, dateStr, timeSlot, zone, source}); 
+                return null;
+            }
+            
+            return { player_id: playerId, available_date: dateStr, time_slot: timeSlot, zone: zone, source: source };
+        };
+
+        
     // --- FIN MODIFICACIÓN ---
 
     currentWeekSet.forEach(key => {

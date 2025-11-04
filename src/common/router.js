@@ -17,9 +17,9 @@ export function requireRole(requiredRole) {
   const user = getCurrentUser();
   
   // Si no hay un usuario logueado o su rol no es el requerido,
-  // se le redirige a la página de inicio.
+  // se le redirige a la página de login de admin.
   if (!user || user.role !== requiredRole) {
-    goTo('/index.html');
+    goTo('/src/admin/login.html');
   }
 }
 

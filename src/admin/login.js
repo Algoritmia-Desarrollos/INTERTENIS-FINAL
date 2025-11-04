@@ -1,3 +1,5 @@
+// Ruta: src/admin/login.js
+
 import { login } from '../common/auth.js';
 
 // --- Selectores de elementos del DOM ---
@@ -10,6 +12,7 @@ const errorTextSpan = document.getElementById('errorText');
 
 // Limpiar cualquier sesión anterior al cargar la página de login
 localStorage.removeItem('user');
+localStorage.removeItem('player_user'); // Limpia también la sesión de jugador
 
 // --- Evento para el formulario de login ---
 form.addEventListener('submit', async (e) => {

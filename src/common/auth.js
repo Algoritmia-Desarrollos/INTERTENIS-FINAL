@@ -58,7 +58,9 @@ export async function login(email, password) {
     id: loginData.user.id,
     role: profile.role,
   };
-  localStorage.setItem('user', JSON.stringify(userToStore));
+  
+  localStorage.removeItem('player_user'); // Cierra sesión de jugador
+  localStorage.setItem('user', JSON.stringify(userToStore)); // Inicia sesión de admin
   
   return userToStore;
 }
@@ -69,5 +71,6 @@ export async function login(email, password) {
 export async function logout() {
   await supabase.auth.signOut();
   localStorage.removeItem('user');
+  localStorage.removeItem('player_user'); // Asegura limpiar ambas sesiones
   window.location.href = '/index.html';
 }

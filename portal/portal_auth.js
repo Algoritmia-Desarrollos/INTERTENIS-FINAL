@@ -1,3 +1,5 @@
+// Ruta: portal/portal_auth.js
+
 // Importa el cliente de Supabase desde la carpeta 'common'
 import { supabase } from '../src/common/supabase.js';
 
@@ -49,8 +51,8 @@ export async function login(email, password) {
   }
 
   // 3. Si todo es correcto, guarda el PERFIL DEL JUGADOR en el navegador.
-  // No guardamos el 'role' de admin, guardamos el jugador.
-  localStorage.setItem('player_user', JSON.stringify(playerProfile));
+  localStorage.removeItem('user'); // Cierra sesión de admin
+  localStorage.setItem('player_user', JSON.stringify(playerProfile)); // Inicia sesión de jugador
   
   return playerProfile;
 }
@@ -61,5 +63,6 @@ export async function login(email, password) {
 export async function logout() {
   await supabase.auth.signOut();
   localStorage.removeItem('player_user');
+  localStorage.removeItem('user'); // Asegura limpiar ambas sesiones
   window.location.href = '/index.html'; // Redirige al ranking público
 }

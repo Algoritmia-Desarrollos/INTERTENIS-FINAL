@@ -1,3 +1,5 @@
+// Ruta: portal/login.js
+
 import { login } from './portal_auth.js';
 
 // --- Selectores de elementos del DOM ---
@@ -9,8 +11,8 @@ const errorMsgDiv = document.getElementById('errorMessage');
 const errorTextSpan = document.getElementById('errorText');
 
 // Limpiar cualquier sesión anterior al cargar la página de login
-// (Ojo: solo limpiamos la sesión del jugador, no la del admin)
 localStorage.removeItem('player_user');
+localStorage.removeItem('user'); // Limpia también la sesión de admin
 
 // --- Evento para el formulario de login ---
 form.addEventListener('submit', async (e) => {
@@ -28,7 +30,6 @@ form.addEventListener('submit', async (e) => {
         const player = await login(email, password);
         
         // Si tiene éxito, redirigimos al dashboard del JUGADOR.
-        // (Crearemos esta página en el próximo paso)
         window.location.href = '/portal/dashboard.html';
 
     } catch (err) {
