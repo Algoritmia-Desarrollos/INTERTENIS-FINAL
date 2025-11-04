@@ -25,6 +25,9 @@ const header = document.getElementById('header');
 const categoryFilter = document.getElementById('category-filter');
 const playerSearchInput = document.getElementById('player-search-input');
 const habitualFilter = document.getElementById('habitual-filter');
+// --- INICIO DE LA MODIFICACIÓN (1/5) ---
+const playerSourceFilter = document.getElementById('player-source-filter');
+// --- FIN DE LA MODIFICACIÓN (1/5) ---
 const tableContainer = document.getElementById('availability-table-container');
 const loadingIndicator = document.getElementById('loading-indicator');
 const btnApplyAvailability = document.getElementById('btn-apply-availability');
@@ -44,6 +47,10 @@ let displayedPlayers = []; // <-- Esta es la lista filtrada
 let selectedPlayerIds = new Set();
 let currentWeekStartDate = getStartOfWeek(new Date()); 
 let habitualAvailabilityPatterns = new Map(); 
+// --- INICIO DE LA MODIFICACIÓN (2/5) ---
+let playersWithPlayerAvailability = new Set(); // Jugadores que cargaron (source='player')
+let playersWithAnyAvailability = new Set();    // Jugadores que tienen CUALQUIER carga (admin O player)
+// --- FIN DE LA MODIFICACIÓN (2/5) ---
 let selectedHabitualSlot = '';
 let isLoadingHabitual = false;
 
@@ -107,28 +114,40 @@ async function loadAvailabilityForWeek(startDate) {
     const endStr = formatDateYYYYMMDD(endDate);
 
     try {
-        // --- INICIO DE LA MODIFICACIÓN: Pedir la columna 'source' ---
         const { data, error } = await supabase
             .from('player_availability')
-            .select('player_id, available_date, time_slot, zone, source') // <-- AÑADIDO 'source'
+            .select('player_id, available_date, time_slot, zone, source') 
             .gte('available_date', startStr)
             .lte('available_date', endStr);
-        // --- FIN DE LA MODIFICACIÓN ---
 
         if (error) throw error;
 
         availabilityForCurrentWeek = (data || []).map(item => ({
             ...item,
             available_date: item.available_date.split('T')[0],
-            source: item.source || 'admin' // Asegurarse de que 'source' no sea nulo
+            source: item.source || 'admin' 
         }));
 
         initialAvailabilityForCurrentWeek.clear();
-        availabilityForCurrentWeek.forEach(a =>
-            // --- INICIO DE LA MODIFICACIÓN: Añadir 'source' a la clave de estado ---
-            initialAvailabilityForCurrentWeek.add(`${a.player_id}-${a.available_date}-${a.time_slot}-${a.zone || DEFAULT_ZONE}-${a.source}`)
-            // --- FIN DE LA MODIFICACIÓN ---
-        );
+        
+        // --- INICIO DE LA MODIFICACIÓN (3/5) ---
+        playersWithPlayerAvailability.clear(); // Limpiar el set (solo 'player')
+        playersWithAnyAvailability.clear();    // Limpiar el set (CUALQUIERA)
+        // --- FIN DE LA MODIFICACIÓN (3/5) ---
+
+        availabilityForCurrentWeek.forEach(a => {
+            initialAvailabilityForCurrentWeek.add(`${a.player_id}-${a.available_date}-${a.time_slot}-${a.zone || DEFAULT_ZONE}-${a.source}`);
+            
+            // --- INICIO DE LA MODIFICACIÓN (3/5) ---
+            // 1. Añadir a CUALQUIERA que tenga al menos una entrada
+            playersWithAnyAvailability.add(a.player_id);
+
+            // 2. Añadir solo si la fuente es 'player'
+            if (a.source === 'player') {
+                playersWithPlayerAvailability.add(a.player_id);
+            }
+            // --- FIN DE LA MODIFICACIÓN (3/5) ---
+        });
 
         filterAndRenderTable();
 
@@ -318,6 +337,10 @@ function filterAndRenderTable() {
     const searchTerm = normalizeText(playerSearchInput.value);
     selectedHabitualSlot = habitualFilter.value;
 
+    // --- INICIO DE LA MODIFICACIÓN (4/5) ---
+    const sourceFilter = playerSourceFilter.value; 
+    // --- FIN DE LA MODIFICACIÓN (4/5) ---
+
     let playersToDisplay = allPlayers;
 
     if (selectedCategoryId !== 'all') {
@@ -335,6 +358,21 @@ function filterAndRenderTable() {
         });
     }
 
+    // --- INICIO DE LA MODIFICACIÓN (4/5) ---
+    // Aplicar el filtro de fuente (quién cargó)
+    if (sourceFilter === 'any') {
+        // Mostrar solo jugadores que tienen CUALQUIER disponibilidad (admin o player)
+        playersToDisplay = playersToDisplay.filter(p => playersWithAnyAvailability.has(p.id));
+    } else if (sourceFilter === 'none') {
+        // Mostrar solo jugadores que NO tienen NINGUNA disponibilidad
+        playersToDisplay = playersToDisplay.filter(p => !playersWithAnyAvailability.has(p.id));
+    } else if (sourceFilter === 'player_only') {
+        // Mostrar solo jugadores que cargaron ELLOS MISMOS (amarillo)
+        playersToDisplay = playersToDisplay.filter(p => playersWithPlayerAvailability.has(p.id));
+    }
+    // Si es 'all', no se aplica filtro
+    // --- FIN DE LA MODIFICACIÓN (4/5) ---
+
     displayedPlayers = playersToDisplay; // <-- Guarda la lista filtrada
     renderAvailabilityTable();
     updateSelectedPlayerVisuals(); // Asegura que los checkboxes se actualicen
@@ -345,14 +383,27 @@ function renderAvailabilityTable() {
         const searchTerm = playerSearchInput.value;
         const categorySelected = categoryFilter.value !== 'all';
         const habitualSelected = selectedHabitualSlot !== '';
+        // --- INICIO DE LA MODIFICACIÓN (5/5) ---
+        const sourceFilter = playerSourceFilter.value;
+        // --- FIN DE LA MODIFICACIÓN (5/5) ---
+        
         let message = "No hay jugadores ";
         if(categorySelected) message += `en la categoría seleccionada `;
         if(habitualSelected) {
             const slotText = HABITUAL_SLOTS_CONFIG[selectedHabitualSlot]?.text.toLowerCase() || selectedHabitualSlot.replace('-', ' ');
             message += `que jueguen habitualmente los ${slotText} `;
         }
+        // --- INICIO DE LA MODIFICACIÓN (5/5) ---
+        if(sourceFilter === 'any') {
+            message += `con disponibilidad cargada `;
+        } else if (sourceFilter === 'none') {
+            message += `sin disponibilidad cargada `;
+        } else if (sourceFilter === 'player_only') {
+            message += `que hayan cargado (jugador) `;
+        }
+        // --- FIN DE LA MODIFICACIÓN (5/5) ---
         if(searchTerm) message += `que coincidan con "${searchTerm}"`;
-        else if (!categorySelected && !habitualSelected) message += `registrados.`
+        else if (!categorySelected && !habitualSelected && sourceFilter === 'all') message += `registrados.`
         else message += `.`;
 
         tableContainer.innerHTML = `<p class="text-center text-gray-400 py-16">${message}</p>`;
@@ -392,14 +443,29 @@ function renderAvailabilityTable() {
 
     tableHTML += '<tbody>';
     displayedPlayers.forEach(player => {
+        // --- INICIO DE LA MODIFICACIÓN (5/5) ---
+        // Añadir un ícono si el jugador cargó su disponibilidad
+        let playerIndicator = '';
+        if (playersWithPlayerAvailability.has(player.id)) {
+            // Si el jugador cargó (source=player), ícono amarillo
+            playerIndicator = '<span class="material-icons !text-sm text-yellow-400" title="Disponibilidad cargada por jugador">person_check</span>';
+        } else if (playersWithAnyAvailability.has(player.id)) {
+            // Si no cargó el jugador, PERO tiene carga (source=admin), ícono verde
+            playerIndicator = '<span class="material-icons !text-sm text-green-500" title="Disponibilidad cargada por admin">admin_panel_settings</span>';
+        }
+        // --- FIN DE LA MODIFICACIÓN (5/5) ---
+
         tableHTML += `<tr class="player-row" data-player-id="${player.id}">`;
+        
+        // --- INICIO DE LA MODIFICACIÓN (5/5) ---
         tableHTML += `<td class="player-name-cell">
-                        <input type="checkbox" class="player-select-cb mr-2" data-player-id="${player.id}" ${selectedPlayerIds.has(String(player.id)) ? 'checked' : ''}>
-                        ${player.name}
+                        <div class="flex items-center gap-1"> <input type="checkbox" class="player-select-cb mr-1 flex-shrink-0" data-player-id="${player.id}" ${selectedPlayerIds.has(String(player.id)) ? 'checked' : ''}>
+                            <span class="flex-grow truncate" title="${player.name}">${player.name}</span> ${playerIndicator} </div>
                       </td>`;
+        // --- FIN DE LA MODIFICACIÓN (5/5) ---
+                      
         dateStringsOfWeek.forEach(dateStr => {
             TIME_SLOTS.forEach(slot => {
-                // --- INICIO DE LA MODIFICACIÓN: Aplicar clase según 'source' ---
                 const avail = getPlayerAvailability(player.id, dateStr, slot);
                 let cellClass = '';
                 if (avail) {
@@ -413,7 +479,6 @@ function renderAvailabilityTable() {
                                 data-slot="${slot}"
                                 data-source="${avail ? avail.source : ''}"
                               ></td>`;
-                // --- FIN DE LA MODIFICACIÓN ---
             });
         });
         tableHTML += '</tr>';
@@ -438,50 +503,63 @@ function getPlayerAvailability(playerId, dateStr, timeSlot) {
     ) || null;
 }
 
-// --- INICIO DE LA MODIFICACIÓN: Bloquear clic en celdas de jugador ---
 function handleCellClick(event) {
     const cell = event.target.closest('.slot-cell');
     if (!cell) return;
 
-    // Si la celda es de un jugador (amarilla), mostrar aviso y no hacer nada.
     if (cell.classList.contains('available-player')) {
         showToast("Disponibilidad cargada por jugador. Use 'Acciones' para anular.", "error");
         return;
     }
 
-    // Si es una celda vacía o una verde (admin), permitir el clic.
     const playerId = cell.dataset.playerId;
     const dateStr = cell.dataset.date;
     const slot = cell.dataset.slot;
     const currentZone = DEFAULT_ZONE;
-    const currentSource = 'admin'; // Clics del admin siempre son 'admin'
+    const currentSource = 'admin'; 
 
     const availabilityIndex = availabilityForCurrentWeek.findIndex(a =>
         a.player_id == playerId &&
         a.available_date === dateStr &&
         a.time_slot === slot
-        // No necesitamos chequear zona o source aquí, el clic anula todo
     );
 
     if (availabilityIndex !== -1) {
-        // Si existe (sin importar la fuente, ya filtramos 'player' arriba), la borra.
         availabilityForCurrentWeek.splice(availabilityIndex, 1);
-        cell.classList.remove('available-admin', 'available-player'); // Quita ambas clases
+        cell.classList.remove('available-admin', 'available-player'); 
         cell.dataset.source = '';
     } else {
-        // Si no existe, la crea como 'admin'.
         availabilityForCurrentWeek.push({
             player_id: parseInt(playerId),
             available_date: dateStr,
             time_slot: slot,
             zone: currentZone,
-            source: currentSource // <-- Guardar como 'admin'
+            source: currentSource 
         });
-        cell.classList.add('available-admin'); // <-- Añadir clase 'admin'
+        cell.classList.add('available-admin'); 
         cell.dataset.source = currentSource;
     }
+    
+    // --- INICIO DE LA MODIFICACIÓN (5/5) ---
+    // Actualizar el estado de "any" y el ícono al hacer clic
+    const allAvailForPlayer = availabilityForCurrentWeek.filter(a => a.player_id == playerId);
+    const iconCell = cell.closest('tr').querySelector('.player-name-cell .material-icons');
+    
+    if (allAvailForPlayer.length === 0) {
+        playersWithAnyAvailability.delete(parseInt(playerId));
+        if (iconCell) iconCell.remove(); // Quitar ícono si ya no tiene disponibilidad
+    } else {
+        playersWithAnyAvailability.add(parseInt(playerId));
+        // Si no tenía ícono y la fuente no es 'player', agregar el de 'admin'
+        if (!iconCell && !playersWithPlayerAvailability.has(parseInt(playerId))) {
+             const nameSpan = cell.closest('tr').querySelector('.player-name-cell .flex-grow');
+             if (nameSpan) {
+                 nameSpan.insertAdjacentHTML('afterend', '<span class="material-icons !text-sm text-green-500" title="Disponibilidad cargada por admin">admin_panel_settings</span>');
+             }
+        }
+    }
+    // --- FIN DE LA MODIFICACIÓN (5/5) ---
 }
-// --- FIN DE LA MODIFICACIÓN ---
 
 
 function getSelectedTimeSlots() {
@@ -513,7 +591,7 @@ function applyMassAvailability(makeAvailable) {
         return;
     }
 
-    let skippedCount = 0; // Contador para celdas bloqueadas
+    let skippedCount = 0; 
 
     selectedPlayersToShow.forEach(player => {
         const playerId = player.id;
@@ -523,7 +601,7 @@ function applyMassAvailability(makeAvailable) {
             const targetDayOfWeek = daySlot.dayOfWeek;
             const slot = daySlot.slot;
             const currentZone = DEFAULT_ZONE;
-            const currentSource = 'admin'; // Las acciones masivas siempre son 'admin'
+            const currentSource = 'admin'; 
 
             let targetDate = null;
             for (let i = 0; i < 7; i++) {
@@ -535,12 +613,10 @@ function applyMassAvailability(makeAvailable) {
 
             const cell = tableContainer.querySelector(`.slot-cell[data-player-id="${playerIdStr}"][data-date="${dateStr}"][data-slot="${slot}"]`);
             
-            // --- INICIO DE LA MODIFICACIÓN: Chequear si está bloqueada ---
             if (cell && cell.classList.contains('available-player')) {
                 skippedCount++;
                 return; // Saltar esta celda, está bloqueada
             }
-            // --- FIN DE LA MODIFICACIÓN ---
 
             const availabilityIndex = availabilityForCurrentWeek.findIndex(a =>
                 a.player_id === playerId &&
@@ -555,19 +631,31 @@ function applyMassAvailability(makeAvailable) {
                         available_date: dateStr,
                         time_slot: slot,
                         zone: currentZone,
-                        source: currentSource // <-- Marcar como admin
+                        source: currentSource 
                     });
                 } else {
-                    // Si ya existe (y sabemos que no es 'player'), la forzamos a 'admin'
                     availabilityForCurrentWeek[availabilityIndex].source = currentSource;
                     availabilityForCurrentWeek[availabilityIndex].zone = currentZone;
                 }
                 if (cell) {
                     cell.classList.remove('available-player');
-                    cell.classList.add('available-admin'); // <-- Poner clase verde
+                    cell.classList.add('available-admin'); 
                     cell.dataset.source = currentSource;
                 }
-            } else {
+                
+                // --- INICIO DE LA MODIFICACIÓN (5/5) ---
+                // Asegurarse de que el jugador esté en el set 'any' y tenga el ícono correcto
+                playersWithAnyAvailability.add(playerId);
+                const iconCell = cell?.closest('tr').querySelector('.player-name-cell .material-icons');
+                if (!iconCell && !playersWithPlayerAvailability.has(playerId)) {
+                    const nameSpan = cell?.closest('tr').querySelector('.player-name-cell .flex-grow');
+                    if (nameSpan) {
+                         nameSpan.insertAdjacentHTML('afterend', '<span class="material-icons !text-sm text-green-500" title="Disponibilidad cargada por admin">admin_panel_settings</span>');
+                    }
+                }
+                // --- FIN DE LA MODIFICACIÓN (5/5) ---
+                
+            } else { // (makeAvailable = false, o sea, borrar)
                 if (availabilityIndex !== -1) {
                     availabilityForCurrentWeek.splice(availabilityIndex, 1);
                 }
@@ -575,6 +663,16 @@ function applyMassAvailability(makeAvailable) {
                     cell.classList.remove('available-admin', 'available-player');
                     cell.dataset.source = '';
                 }
+                
+                // --- INICIO DE LA MODIFICACIÓN (5/5) ---
+                // Revisar si el jugador AÚN tiene disponibilidad
+                const allAvailForPlayer = availabilityForCurrentWeek.filter(a => a.player_id == playerId);
+                if (allAvailForPlayer.length === 0) {
+                    playersWithAnyAvailability.delete(playerId); // Quitar del set
+                    const iconCell = cell?.closest('tr').querySelector('.player-name-cell .material-icons');
+                    if (iconCell) iconCell.remove(); // Quitar ícono
+                }
+                // --- FIN DE LA MODIFICACIÓN (5/5) ---
             }
         });
     });
@@ -594,53 +692,47 @@ async function saveAllChanges() {
     const currentWeekSet = new Set();
     availabilityForCurrentWeek
         .filter(a => a.time_slot === 'mañana' || a.time_slot === 'tarde')
-        // --- INICIO MODIFICACIÓN: Añadir source a la clave ---
         .forEach(a => currentWeekSet.add(`${a.player_id}-${a.available_date}-${a.time_slot}-${a.zone || DEFAULT_ZONE}-${a.source || 'admin'}`) );
 
     const toInsert = [];
     const toDeleteConditions = [];
 
- const parseKey = (key) => {
-            const parts = key.split('-');
-            
-            // Una clave válida ahora debe tener 7 partes:
-            // [0]playerId, [1]YYYY, [2]MM, [3]DD, [4]timeSlot, [5]zone, [6]source
-            if (parts.length !== 7) { 
-                console.warn("Clave inválida (partes incorrectas):", key, "Se esperaban 7, se obtuvieron", parts.length); 
-                return null; 
-            }
-            
-            const playerId = parseInt(parts[0], 10);
-            
-            // Reconstruir la fecha desde parts[1], parts[2], y parts[3]
-            const dateStr = `${parts[1]}-${parts[2]}-${parts[3]}`;
-            
-            // Validar que la fecha reconstruida tenga el formato YYYY-MM-DD
-            if (!dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
-                 console.warn("Formato de fecha no reconocido en clave:", key);
-                 return null;
-            }
-
-            const timeSlot = parts[4];
-            const zone = parts[5];
-            const source = parts[6];
-            
-            if (isNaN(playerId) || !dateStr || !timeSlot || !zone || !source) {
-                console.warn("Clave inválida (datos nulos):", key, {playerId, dateStr, timeSlot, zone, source}); 
-                return null;
-            }
-            
-            return { player_id: playerId, available_date: dateStr, time_slot: timeSlot, zone: zone, source: source };
-        };
-
+    const parseKey = (key) => {
+        const parts = key.split('-');
         
-    // --- FIN MODIFICACIÓN ---
+        if (parts.length !== 7) { 
+            console.warn("Clave inválida (partes incorrectas):", key, "Se esperaban 7, se obtuvieron", parts.length); 
+            return null; 
+        }
+        
+        const playerId = parseInt(parts[0], 10);
+        
+        // Reconstruir la fecha desde parts[1], parts[2], y parts[3]
+        const dateStr = `${parts[1]}-${parts[2]}-${parts[3]}`;
+        
+        // Validar que la fecha reconstruida tenga el formato YYYY-MM-DD
+        if (!dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+             console.warn("Formato de fecha no reconocido en clave:", key);
+             return null;
+        }
+
+        const timeSlot = parts[4];
+        const zone = parts[5];
+        const source = parts[6];
+        
+        if (isNaN(playerId) || !dateStr || !timeSlot || !zone || !source) {
+            console.warn("Clave inválida (datos nulos):", key, {playerId, dateStr, timeSlot, zone, source}); 
+            return null;
+        }
+        
+        return { player_id: playerId, available_date: dateStr, time_slot: timeSlot, zone: zone, source: source };
+    };
 
     currentWeekSet.forEach(key => {
         if (!initialAvailabilityForCurrentWeek.has(key)) {
             const parsed = parseKey(key);
             if (parsed && (parsed.time_slot === 'mañana' || parsed.time_slot === 'tarde')) {
-                 toInsert.push(parsed); // 'source' ya está en el objeto 'parsed'
+                 toInsert.push(parsed); 
              }
         }
     });
@@ -648,7 +740,6 @@ async function saveAllChanges() {
         if (!currentWeekSet.has(key)) {
              const parsed = parseKey(key);
              if (parsed && (parsed.time_slot === 'mañana' || parsed.time_slot === 'tarde')) {
-                // Borrar solo si coincide TODO, incluyendo la fuente
                 toDeleteConditions.push({
                     player_id: parsed.player_id,
                     available_date: parsed.available_date,
@@ -771,6 +862,9 @@ document.addEventListener('DOMContentLoaded', () => {
 categoryFilter.addEventListener('change', filterAndRenderTable);
 playerSearchInput.addEventListener('input', filterAndRenderTable);
 habitualFilter.addEventListener('change', filterAndRenderTable);
+// --- INICIO DE LA MODIFICACIÓN (5/5) ---
+playerSourceFilter.addEventListener('change', filterAndRenderTable); // Añadir listener
+// --- FIN DE LA MODIFICACIÓN (5/5) ---
 btnPrevWeek.addEventListener('click', goToPreviousWeek);
 btnNextWeek.addEventListener('click', goToNextWeek);
 btnCurrentWeek.addEventListener('click', goToCurrentWeek);
@@ -798,7 +892,7 @@ tableContainer.addEventListener('click', (event) => {
     if (playerNameCell && playerNameCell.tagName === 'TD') {
         const checkbox = playerNameCell.querySelector('.player-select-cb');
         if (checkbox) {
-            if (target !== checkbox) {
+            if (target !== checkbox && !target.closest('.player-select-cb') && !target.closest('.material-icons')) {
                 checkbox.checked = !checkbox.checked;
             }
             handlePlayerSelection({ target: checkbox });

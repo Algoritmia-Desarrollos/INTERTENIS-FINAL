@@ -69,12 +69,15 @@
     /* Columna Nombres (NO FIJA) */
     .player-name-cell {
       background-color: #1f2937; font-weight: 600; text-align: left;
-      padding-left: 0.5rem; white-space: nowrap; overflow: hidden;
-      text-overflow: ellipsis; width: 170px;
+      /* padding-left: 0.5rem; */ /* Quitado */
+      white-space: nowrap; overflow: hidden;
+      /* text-overflow: ellipsis; */ /* Quitado */
+      width: 170px;
       position: static !important; /* NO sticky */
+      padding: 0 0.25rem; /* Padding horizontal */
     }
 
-    /* --- INICIO DE LA MODIFICACIÓN --- */
+
     /* Celdas de Slot */
     .slot-cell { 
       background-color: #374151; /* NO disponible */
@@ -95,7 +98,6 @@
     .player-row:hover .slot-cell { background-color: #4b5563; } /* Hover gris */
     .player-row:hover .slot-cell.available-admin { background-color: #15803d; } /* Hover verde */
     .player-row:hover .slot-cell.available-player { background-color: #eab308; } /* Hover amarillo */
-    /* --- FIN DE LA MODIFICACIÓN --- */
 
     /* Inputs y botones (Panel Superior) */
     .dark-input { background-color: #374151; border-color: #4b5563; color: #e5e7eb; }
@@ -134,6 +136,16 @@
                    <option value="Dom-mañana">Domingo Mañana</option>
                    <option value="Dom-tarde">Domingo Tarde</option>
                </select>
+           </div>
+           
+           <div>
+              <label for="player-source-filter" class="sr-only">Filtrar por Carga:</label>
+              <select id="player-source-filter" class="input-field dark-input !w-auto !h-9 !py-1 !text-sm">
+                <option value="all">Mostrar Todos</option>
+                <option value="any">Con Disponibilidad (Cualquiera)</option>
+                <option value="none">Sin Disponibilidad Cargada</option>
+                <option value="player_only">Cargada por Jugador</option>
+              </select>
            </div>
            <div class="flex items-center gap-1">
               <button id="btn-prev-week" class="week-nav-button !text-sm !px-2" title="Semana Anterior">&lt;</button>
