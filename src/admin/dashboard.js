@@ -1,12 +1,13 @@
 import { renderHeader } from '../common/header.js';
 import { requireRole } from '../common/router.js';
-import { supabase } from '../common/supabase.js';
+import { supabase, showToast } from '../common/supabase.js';
 import { calculatePoints } from './calculatePoints.js';
 
 requireRole('admin');
 
 let lastMatchesData = []; // Guardar los datos de los partidos para el modal
 let allPlayers = []; // Guardar todos los jugadores para los selects del modal
+let allTournaments = []; // Guardar todos los torneos
 
 // --- Funciones Auxiliares ---
 function isColorLight(hex) {
@@ -37,7 +38,8 @@ async function loadDashboardData() {
         { count: playerCount },
         { count: matchCount },
         { data: lastMatches, error: matchesError },
-        { data: players, error: playersError }
+        { data: players, error: playersError },
+        { data: tournaments } // Cargar torneos para el gráfico
     ] = await Promise.all([
         supabase.from('tournaments').select('*', { count: 'exact', head: true }),
         supabase.from('players').select('*', { count: 'exact', head: true }),
@@ -50,11 +52,13 @@ async function loadDashboardData() {
         .order('match_date', { ascending: false, nullsFirst: false })
         .order('match_time', { ascending: false, nullsFirst: false })
         .limit(15),
-        supabase.from('players').select('*').order('name')
+        supabase.from('players').select('*, category:category_id(name)').order('name'),
+        supabase.from('tournaments').select('*, category:category_id(name)') // Cargar categorías
     ]);
     
     lastMatchesData = lastMatches || [];
     allPlayers = players || [];
+    allTournaments = tournaments || []; // Guardar torneos
 
     summaryContainer.innerHTML = `
         <a href="tournaments.html" class="block bg-[#222222] p-6 rounded-xl shadow-lg border border-transparent flex items-center gap-4 transition hover:shadow-md hover:border-yellow-400">
@@ -89,14 +93,33 @@ async function loadDashboardData() {
 
     if (matchesError || lastMatchesData.length === 0) {
         matchesContainer.innerHTML = '<div class="bg-[#222222] rounded-xl shadow-lg p-4"><p class="text-center text-gray-400 py-4">No hay partidos registrados.</p></div>';
-        return;
+    } else {
+        renderLastMatches(lastMatchesData);
     }
-    
-    renderLastMatches(lastMatchesData);
+
+    // --- ** LLAMADA A LOS GRÁFICOS ** ---
+    // Procesar datos para los gráficos
+    const activeTournaments = allTournaments.filter(t => t.category && t.category.name !== 'Equipos');
+    const categoryData = {};
+    activeTournaments.forEach(t => {
+        const catName = t.category.name || 'Sin Categoría';
+        categoryData[catName] = (categoryData[catName] || 0) + 1;
+    });
+
+    const statusData = { 'Pendientes': 0, 'Completados': 0, 'Suspendidos': 0 };
+    // Usar 'allMatches' para el gráfico de estado (no solo los últimos 15)
+    const { data: allMatchesForChart } = await supabase.from('matches').select('winner_id, status');
+    (allMatchesForChart || []).forEach(m => {
+        if (m.status === 'suspendido') statusData['Suspendidos']++;
+        else if (m.winner_id) statusData['Completados']++;
+        else statusData['Pendientes']++;
+    });
+
+    renderCategoryChart(categoryData);
+    renderStatusChart(statusData);
 }
 
 
-// REEMPLAZA esta función en src/admin/dashboard.js
 function renderLastMatches(matchesToRender) {
     const matchesContainer = document.getElementById('matches-container');
 
@@ -257,7 +280,6 @@ function renderLastMatches(matchesToRender) {
     </div>`;
 }
 
-// REEMPLAZA esta función en src/admin/dashboard.js
 function openScoreModal(match) {
     const modalContainer = document.getElementById('score-modal-container');
     const sets = match.sets || [];
@@ -366,9 +388,7 @@ function openScoreModal(match) {
 }
 
 
-// AGREGA esta nueva función en src/admin/dashboard.js
 async function handleRetirement(match, retiringSide) {
-    // 1. Recopila los resultados de los sets ingresados
     const sets = [];
     let p1SetsWon = 0, p2SetsWon = 0;
     for (let i = 1; i <= 3; i++) {
@@ -384,20 +404,17 @@ async function handleRetirement(match, retiringSide) {
     }
 
     if (sets.length === 0) {
-        return alert("Por favor, ingrese el resultado de al menos un game antes de registrar un retiro.");
+        return showToast("Por favor, ingrese el resultado de al menos un game antes de registrar un retiro.", "error");
     }
 
-    // 2. Determina el ganador y si el perdedor obtiene punto bonus
     const winner_id = retiringSide === 'p1' ? match.player2_id : match.player1_id;
     const bonus_loser = (retiringSide === 'p1' && p1SetsWon >= 1) || (retiringSide === 'p2' && p2SetsWon >= 1);
 
-    // 3. Pide confirmación al administrador
     const retiringPlayerName = retiringSide === 'p1' ? match.player1.name : match.player2.name;
     if (!confirm(`¿Confirmas que ${retiringPlayerName} se retira del partido?`)) {
         return;
     }
 
-    // 4. Prepara los datos para guardar
     const updateData = {
         winner_id,
         sets,
@@ -405,13 +422,12 @@ async function handleRetirement(match, retiringSide) {
         bonus_loser
     };
 
-    // 5. Guarda en la base de datos
     const { error } = await supabase.from('matches').update(updateData).eq('id', match.id);
 
     if (error) {
-        alert("Error al registrar el retiro: " + error.message);
+        showToast("Error al registrar el retiro: " + error.message, "error");
     } else {
-        alert("Retiro registrado con éxito.");
+        showToast("Retiro registrado con éxito.", "success");
         closeModal();
         await loadDashboardData();
     }
@@ -440,11 +456,17 @@ async function saveScores(matchId) {
     
     const p1_id = document.getElementById('player1-select-modal').value;
     const p2_id = document.getElementById('player2-select-modal').value;
-    if (p1_id === p2_id) return alert("Los jugadores no pueden ser los mismos.");
+    if (p1_id === p2_id) {
+        showToast("Los jugadores no pueden ser los mismos.", "error");
+        return;
+    }
 
     let winner_id = null;
     if (sets.length > 0) {
-        if (sets.length < 2 || (p1SetsWon < 2 && p2SetsWon < 2)) return alert("El resultado no es válido. Un jugador debe ganar al menos 2 sets.");
+        if (sets.length < 2 || (p1SetsWon < 2 && p2SetsWon < 2)) {
+            showToast("El resultado no es válido. Un jugador debe ganar al menos 2 sets.", "error");
+            return;
+        }
         winner_id = p1SetsWon > p2SetsWon ? p1_id : p2_id;
     }
     
@@ -457,11 +479,15 @@ async function saveScores(matchId) {
             bonus_loser: (p1SetsWon === 1 && winner_id == p2_id) || (p2SetsWon === 1 && winner_id == p1_id)
         }).eq('id', matchId);
     
-    if (error) alert("Error al guardar: " + error.message);
-    else { closeModal(); await loadDashboardData(); }
+    if (error) {
+        showToast("Error al guardar: " + error.message, "error");
+    } else { 
+        showToast(winner_id ? "Resultado guardado." : "Partido actualizado.", "success");
+        closeModal(); 
+        await loadDashboardData(); 
+    }
 }
 
-// --- INICIO DE LA MODIFICACIÓN: NUEVA FUNCIÓN ---
 async function handleWoWin(matchId, winnerId, loserId) {
     const winner = allPlayers.find(p => p.id === winnerId);
     const loser = allPlayers.find(p => p.id === loserId);
@@ -478,36 +504,50 @@ async function handleWoWin(matchId, winnerId, loserId) {
     }).eq('id', matchId);
 
     if (error) {
-        alert("Error al registrar el WO: " + error.message);
+        showToast("Error al registrar el WO: " + error.message, "error");
     } else {
-        alert("Walkover registrado con éxito.");
+        showToast("Walkover registrado con éxito.", "success");
         closeModal();
         await loadDashboardData();
     }
 }
-// --- FIN DE LA MODIFICACIÓN ---
 
 async function clearScore(matchId) {
     if (confirm("¿Limpiar el resultado de este partido?")) {
         const { error } = await supabase.from('matches').update({ sets: null, winner_id: null, bonus_loser: false, status: 'programado' }).eq('id', matchId);
-        if (error) alert("Error: " + error.message);
-        else { closeModal(); await loadDashboardData(); }
+        if (error) {
+            showToast("Error: " + error.message, "error");
+        } else { 
+            showToast("Resultado limpiado.", "success");
+            closeModal(); 
+            await loadDashboardData(); 
+        }
     }
 }
 
 async function deleteMatch(matchId) {
     if (confirm("¿ELIMINAR este partido permanentemente?")) {
         const { error } = await supabase.from('matches').delete().eq('id', matchId);
-        if (error) alert("Error: " + error.message);
-        else { closeModal(); await loadDashboardData(); }
+        if (error) {
+            showToast("Error: " + error.message, "error");
+        } else { 
+            showToast("Partido eliminado.", "success");
+            closeModal(); 
+            await loadDashboardData(); 
+        }
     }
 }
 
 async function suspendMatch(matchId) {
     if (confirm("¿Marcar este partido como suspendido?")) {
         const { error } = await supabase.from('matches').update({ status: 'suspendido', sets: null, winner_id: null, bonus_loser: false }).eq('id', matchId);
-        if (error) alert("Error: " + error.message);
-        else { closeModal(); await loadDashboardData(); }
+        if (error) {
+            showToast("Error: " + error.message, "error");
+        } else { 
+            showToast("Partido marcado como suspendido.", "success");
+            closeModal(); 
+            await loadDashboardData(); 
+        }
     }
 }
 
@@ -525,3 +565,125 @@ document.getElementById('matches-container').addEventListener('click', (e) => {
         if (matchData) openScoreModal(matchData);
     }
 });
+
+// --- ** FUNCIONES Y LÓGICA PARA LOS GRÁFICOS ** ---
+
+// Configuración global para los gráficos de Chart.js
+Chart.defaults.color = '#e5e7eb'; // Color de fuente (etiquetas, ejes)
+Chart.defaults.borderColor = '#4b5563'; // Color de las líneas de la cuadrícula
+
+/**
+ * Renderiza el gráfico de Torta (Doughnut) para "Torneos por Categoría".
+ * @param {object} categoryData - Objeto con { "NombreCategoría": count, ... }
+ */
+function renderCategoryChart(categoryData) {
+    const ctx = document.getElementById('categoryChart')?.getContext('2d');
+    if (!ctx) return;
+
+    const labels = Object.keys(categoryData);
+    const data = Object.values(categoryData);
+
+    // Paleta de colores más vibrante y oscura
+    const backgroundColors = [
+        '#facc15', // yellow-400
+        '#fb923c', // orange-400
+        '#60a5fa', // blue-400
+        '#4ade80', // green-400
+        '#f87171', // red-400
+        '#a78bfa', // violet-400
+        '#22d3ee', // cyan-400
+        '#fb7185', // rose-400
+    ];
+
+    new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Torneos',
+                data: data,
+                backgroundColor: backgroundColors,
+                borderColor: '#222222',
+                borderWidth: 3,
+                hoverOffset: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                title: {
+                    display: true,
+                    text: 'Torneos Activos por Categoría',
+                    font: { size: 16, weight: 'bold' },
+                    padding: { bottom: 20 }
+                },
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        padding: 15,
+                        font: { size: 12 }
+                    }
+                }
+            }
+        }
+    });
+}
+
+/**
+ * Renderiza el gráfico de Barras para "Estado de Partidos".
+ * @param {object} statusData - Objeto con { "Pendientes": count, "Completados": count, ... }
+ */
+function renderStatusChart(statusData) {
+    const ctx = document.getElementById('statusChart')?.getContext('2d');
+    if (!ctx) return;
+
+    const labels = Object.keys(statusData);
+    const data = Object.values(statusData);
+
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Total de Partidos',
+                data: data,
+                backgroundColor: [
+                    '#fb923c', // orange-400 (Pendientes)
+                    '#4ade80', // green-400 (Completados)
+                    '#f87171', // red-400 (Suspendidos)
+                ],
+                borderRadius: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            indexAxis: 'y', // Hace el gráfico de barras horizontal
+            scales: {
+                x: {
+                    beginAtZero: true,
+                    grid: {
+                        color: '#374151' // Líneas de cuadrícula más tenues
+                    }
+                },
+                y: {
+                    grid: {
+                        display: false // Sin líneas de cuadrícula en el eje Y
+                    }
+                }
+            },
+            plugins: {
+                title: {
+                    display: true,
+                    text: 'Estado General de Partidos',
+                    font: { size: 16, weight: 'bold' },
+                    padding: { bottom: 20 }
+                },
+                legend: {
+                    display: false // Ocultar leyenda, es obvio por las etiquetas
+                }
+            }
+        }
+    });
+}

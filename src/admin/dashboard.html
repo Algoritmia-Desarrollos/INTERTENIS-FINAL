@@ -11,6 +11,9 @@
   <link rel="stylesheet" href="../common/styles.css" />
   <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
   <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"/>
+  
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
 </head>
 <body class="bg-black text-gray-200">
   <header id="header"></header>
@@ -26,6 +29,18 @@
       
       <div id="dashboard-summary" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           </div>
+
+      <div class="bg-[#222222] p-6 rounded-xl shadow-lg">
+        <h2 class="text-2xl font-bold text-gray-100 mb-4">Actividad Reciente</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div id="chart-container-category" class="min-h-[300px]">
+            <canvas id="categoryChart"></canvas>
+          </div>
+          <div id="chart-container-status" class="min-h-[300px]">
+            <canvas id="statusChart"></canvas>
+          </div>
+        </div>
+      </div>
 
       <div>
         <h2 class="text-2xl font-bold text-gray-100 mb-4">Últimos 15 Partidos Registrados</h2>
