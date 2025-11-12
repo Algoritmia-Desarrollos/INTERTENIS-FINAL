@@ -119,7 +119,30 @@ function sortAndRenderTournaments() {
         return aNum - bNum;
     });
 
-    renderTournaments(sorted);
+    // --- ** INICIO DE LA MODIFICACIÓN: EMPTY STATE ** ---
+    if (sorted.length === 0) {
+        tournamentsList.innerHTML = `
+            <div class="text-center py-10 px-6 bg-black rounded-lg">
+                <span class="material-icons text-6xl text-gray-500" style="font-size: 6rem;">emoji_events</span>
+                <h3 class="text-2xl font-bold text-gray-100 mt-4">No hay torneos creados</h3>
+                <p class="text-gray-400 mt-2 mb-6">Parece que aún no has configurado ningún torneo.</p>
+                <button id="btn-create-first-tournament" class="btn btn-primary">
+                    <span class="material-icons">add</span>
+                    Crear tu primer torneo
+                </button>
+            </div>
+        `;
+        
+        // Añadir listener al nuevo botón para que abra el formulario
+        document.getElementById('btn-create-first-tournament').addEventListener('click', () => {
+            btnShowForm.click(); // Simula el clic en el botón principal
+        });
+
+    } else {
+        // Si hay torneos, renderizarlos como antes
+        renderTournaments(sorted);
+    }
+    // --- ** FIN DE LA MODIFICACIÓN ** ---
 }
 
 function tournamentCardTemplate(t) {

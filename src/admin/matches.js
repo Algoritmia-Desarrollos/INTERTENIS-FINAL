@@ -75,9 +75,61 @@ function normalizeText(text) { /* ... (sin cambios) ... */
     return text.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 }
 
+// --- ** INICIO DE LA MODIFICACIÓN: Skeleton Loader ** ---
+/**
+ * Genera el HTML para el "skeleton loader" de la tabla de partidos.
+ */
+function renderMatchesSkeleton() {
+    let skeletonHTML = `
+    <div class="bg-[#18191b] p-4 sm:p-6 rounded-xl shadow-lg overflow-x-auto">
+        <table class="matches-report-style">
+            <colgroup><col style="width: 4%"><col style="width: 5%"><col style="width: 4%"><col style="width: 25%"><col style="width: 5%"><col style="width: 13%"><col style="width: 5%"><col style="width: 25%"><col style="width: 5%"><col style="width: 5%"></colgroup>
+            <thead><tr>
+                <th><input type="checkbox" disabled></th>
+                <th>Cancha</th><th>Hora</th><th style="text-align: right; padding-right: 8px;">Jugador 1</th><th>Pts</th><th>Resultado</th><th>Pts</th><th style="text-align: left; padding-left: 8px;">Jugador 2</th><th>Cat.</th><th>Editar</th>
+            </tr></thead>
+            <tbody>
+    `;
+
+    // Generar 5 filas de esqueleto
+    for (let i = 0; i < 5; i++) {
+        skeletonHTML += `
+            <tr class="data-row">
+                <td style="padding: 4px; background-color: #1a1a1a;">
+                    <div class="skeleton-loader" style="height: 20px; width: 20px; margin: auto; border-radius: 4px;"></div>
+                </td>
+                <td class="skeleton-loader"></td>
+                <td class="skeleton-loader"></td>
+                <td class="player-name player-name-right" style="background:#000;">
+                    <div class="skeleton-loader skeleton-text skeleton-text-long" style="height: 1rem; width: 70%; margin-left: auto;"></div>
+                </td>
+                <td class="pts-col skeleton-loader"></td>
+                <td class="font-mono skeleton-loader"></td>
+                <td class="pts-col skeleton-loader"></td>
+                <td class="player-name player-name-left" style="background:#000;">
+                    <div class="skeleton-loader skeleton-text skeleton-text-long" style="height: 1rem; width: 70%;"></div>
+                </td>
+                <td class="cat-col skeleton-loader"></td>
+                <td class="action-cell" style="background:#000;">
+                    <div class="skeleton-loader" style="height: 20px; width: 20px; margin: auto; border-radius: 99px;"></div>
+                </td>
+            </tr>
+        `;
+    }
+
+    skeletonHTML += `
+            </tbody>
+        </table>
+    </div>`;
+    return skeletonHTML;
+}
+// --- ** FIN DE LA MODIFICACIÓN ** ---
+
 // --- Carga de Datos ---
-async function loadInitialData() { /* ... (sin cambios) ... */
-    matchesContainer.innerHTML = '<p class="text-center p-8 text-white">Cargando datos...</p>';
+async function loadInitialData() {
+    // --- ** MODIFICACIÓN: Mostrar skeleton en lugar de texto ** ---
+    matchesContainer.innerHTML = renderMatchesSkeleton();
+    
     const [
         { data: playersData },
         { data: tournamentsData },

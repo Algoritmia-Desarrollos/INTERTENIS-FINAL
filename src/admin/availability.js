@@ -20,16 +20,62 @@ const HABITUAL_SLOTS_CONFIG = {
     'Dom-tarde': { dayUTC: 0, slot: 'tarde', text: 'Domingo Tarde' }
 };
 
+// --- ** INICIO DE LA MODIFICACIÓN: Skeleton Loader ** ---
+/**
+ * Genera el HTML para el "skeleton loader" de la tabla de disponibilidad.
+ */
+function renderAvailabilitySkeleton() {
+    let skeletonHTML = `
+        <table class="availability-table skeleton-loader">
+            <thead>
+                <tr>
+                    <th class="player-name-cell !bg-gray-900" style="background-color: #1f2937 !important;">
+                        <div class="skeleton-loader skeleton-text" style="width: 60%; height: 1.25rem;"></div>
+                    </th>
+    `;
+    // 7 Cabeceras de Día
+    for (let i = 0; i < 7; i++) {
+        skeletonHTML += `<th colspan="2"><div class="skeleton-loader skeleton-text" style="width: 70%; height: 1rem; margin: auto;"></div></th>`;
+    }
+    skeletonHTML += `</tr><tr><th class="player-name-cell !bg-gray-900" style="background-color: #111827 !important;"></th>`;
+    // 14 Cabeceras de Slot (M/T)
+    for (let i = 0; i < 14; i++) {
+        skeletonHTML += `<th><div class="skeleton-loader skeleton-text" style="width: 1rem; height: 1rem; margin: auto;"></div></th>`;
+    }
+    skeletonHTML += `</tr></thead><tbody>`;
+
+    // 10 filas de jugadores "fantasma"
+    for (let i = 0; i < 10; i++) {
+        skeletonHTML += `
+            <tr class="player-row">
+                <td class="player-name-cell" style="background-color: #1f2937;">
+                    <div class="flex items-center gap-1" style="padding: 0 0.25rem;">
+                        <div class="skeleton-loader" style="width: 1rem; height: 1rem; border-radius: 4px; flex-shrink: 0;"></div>
+                        <div class="skeleton-loader skeleton-text skeleton-text-long" style="height: 0.75rem;"></div>
+                    </div>
+                </td>
+        `;
+        // 14 celdas de slot
+        for (let j = 0; j < 14; j++) {
+            skeletonHTML += `<td class="slot-cell"></td>`;
+        }
+        skeletonHTML += `</tr>`;
+    }
+
+    skeletonHTML += `</tbody></table>`;
+    return skeletonHTML;
+}
+// --- ** FIN DE LA MODIFICACIÓN ** ---
+
+
 // --- ELEMENTOS DEL DOM ---
 const header = document.getElementById('header');
 const categoryFilter = document.getElementById('category-filter');
 const playerSearchInput = document.getElementById('player-search-input');
 const habitualFilter = document.getElementById('habitual-filter');
-// --- INICIO DE LA MODIFICACIÓN (1/5) ---
 const playerSourceFilter = document.getElementById('player-source-filter');
-// --- FIN DE LA MODIFICACIÓN (1/5) ---
 const tableContainer = document.getElementById('availability-table-container');
-const loadingIndicator = document.getElementById('loading-indicator');
+// const loadingIndicator = document.getElementById('loading-indicator'); // Ya no se usa
 const btnApplyAvailability = document.getElementById('btn-apply-availability');
 const btnClearAvailability = document.getElementById('btn-clear-availability');
 const btnSaveAll = document.getElementById('btn-save-all');
@@ -47,10 +93,8 @@ let displayedPlayers = []; // <-- Esta es la lista filtrada
 let selectedPlayerIds = new Set();
 let currentWeekStartDate = getStartOfWeek(new Date()); 
 let habitualAvailabilityPatterns = new Map(); 
-// --- INICIO DE LA MODIFICACIÓN (2/5) ---
-let playersWithPlayerAvailability = new Set(); // Jugadores que cargaron (source='player')
-let playersWithAnyAvailability = new Set();    // Jugadores que tienen CUALQUIER carga (admin O player)
-// --- FIN DE LA MODIFICACIÓN (2/5) ---
+let playersWithPlayerAvailability = new Set(); 
+let playersWithAnyAvailability = new Set();    
 let selectedHabitualSlot = '';
 let isLoadingHabitual = false;
 
@@ -103,9 +147,10 @@ function getPreviousWeekIdentifiers(currentMonday, numberOfWeeks) {
 
 
 async function loadAvailabilityForWeek(startDate) {
-    loadingIndicator.textContent = 'Cargando disponibilidad de la semana...';
-    loadingIndicator.classList.remove('hidden');
-    tableContainer.innerHTML = '';
+    // --- ** MODIFICACIÓN: Mostrar skeleton y no usar loadingIndicator ** ---
+    // loadingIndicator.textContent = 'Cargando disponibilidad de la semana...';
+    // loadingIndicator.classList.remove('hidden');
+    tableContainer.innerHTML = renderAvailabilitySkeleton(); // Reemplaza el ''
 
     const endDate = new Date(startDate);
     endDate.setDate(startDate.getDate() + 6);
@@ -130,23 +175,17 @@ async function loadAvailabilityForWeek(startDate) {
 
         initialAvailabilityForCurrentWeek.clear();
         
-        // --- INICIO DE LA MODIFICACIÓN (3/5) ---
-        playersWithPlayerAvailability.clear(); // Limpiar el set (solo 'player')
-        playersWithAnyAvailability.clear();    // Limpiar el set (CUALQUIERA)
-        // --- FIN DE LA MODIFICACIÓN (3/5) ---
+        playersWithPlayerAvailability.clear(); 
+        playersWithAnyAvailability.clear();    
 
         availabilityForCurrentWeek.forEach(a => {
             initialAvailabilityForCurrentWeek.add(`${a.player_id}-${a.available_date}-${a.time_slot}-${a.zone || DEFAULT_ZONE}-${a.source}`);
             
-            // --- INICIO DE LA MODIFICACIÓN (3/5) ---
-            // 1. Añadir a CUALQUIERA que tenga al menos una entrada
             playersWithAnyAvailability.add(a.player_id);
 
-            // 2. Añadir solo si la fuente es 'player'
             if (a.source === 'player') {
                 playersWithPlayerAvailability.add(a.player_id);
             }
-            // --- FIN DE LA MODIFICACIÓN (3/5) ---
         });
 
         filterAndRenderTable();
@@ -156,7 +195,8 @@ async function loadAvailabilityForWeek(startDate) {
         showToast("Error al cargar disponibilidad de la semana", "error");
         tableContainer.innerHTML = '<p class="text-center text-red-500 py-16">Error al cargar datos de disponibilidad.</p>';
     } finally {
-        loadingIndicator.classList.add('hidden');
+        // --- ** MODIFICACIÓN: Ya no se usa loadingIndicator ** ---
+        // loadingIndicator.classList.add('hidden');
     }
 }
 
@@ -268,7 +308,7 @@ function updateHabitualFilterOptions() {
 }
 
 async function loadInitialData() {
-    loadingIndicator.textContent = 'Cargando jugadores y categorías...';
+    // loadingIndicator.textContent = 'Cargando jugadores y categorías...'; // Ya no se usa
     try {
         const [
             { data: playersData, error: playersError },
@@ -301,8 +341,9 @@ async function loadInitialData() {
     } catch (error) {
         console.error("Error loading initial data:", error);
         showToast("Error al cargar jugadores o categorías", "error");
-        loadingIndicator.textContent = 'Error al cargar datos.';
-        loadingIndicator.classList.remove('hidden');
+        // loadingIndicator.textContent = 'Error al cargar datos.'; // Ya no se usa
+        // loadingIndicator.classList.remove('hidden'); // Ya no se usa
+        tableContainer.innerHTML = '<p class="text-center text-red-500 py-16">Error al cargar datos iniciales.</p>';
     }
 }
 
@@ -337,9 +378,7 @@ function filterAndRenderTable() {
     const searchTerm = normalizeText(playerSearchInput.value);
     selectedHabitualSlot = habitualFilter.value;
 
-    // --- INICIO DE LA MODIFICACIÓN (4/5) ---
     const sourceFilter = playerSourceFilter.value; 
-    // --- FIN DE LA MODIFICACIÓN (4/5) ---
 
     let playersToDisplay = allPlayers;
 
@@ -358,20 +397,13 @@ function filterAndRenderTable() {
         });
     }
 
-    // --- INICIO DE LA MODIFICACIÓN (4/5) ---
-    // Aplicar el filtro de fuente (quién cargó)
     if (sourceFilter === 'any') {
-        // Mostrar solo jugadores que tienen CUALQUIER disponibilidad (admin o player)
         playersToDisplay = playersToDisplay.filter(p => playersWithAnyAvailability.has(p.id));
     } else if (sourceFilter === 'none') {
-        // Mostrar solo jugadores que NO tienen NINGUNA disponibilidad
         playersToDisplay = playersToDisplay.filter(p => !playersWithAnyAvailability.has(p.id));
     } else if (sourceFilter === 'player_only') {
-        // Mostrar solo jugadores que cargaron ELLOS MISMOS (amarillo)
         playersToDisplay = playersToDisplay.filter(p => playersWithPlayerAvailability.has(p.id));
     }
-    // Si es 'all', no se aplica filtro
-    // --- FIN DE LA MODIFICACIÓN (4/5) ---
 
     displayedPlayers = playersToDisplay; // <-- Guarda la lista filtrada
     renderAvailabilityTable();
@@ -383,9 +415,7 @@ function renderAvailabilityTable() {
         const searchTerm = playerSearchInput.value;
         const categorySelected = categoryFilter.value !== 'all';
         const habitualSelected = selectedHabitualSlot !== '';
-        // --- INICIO DE LA MODIFICACIÓN (5/5) ---
         const sourceFilter = playerSourceFilter.value;
-        // --- FIN DE LA MODIFICACIÓN (5/5) ---
         
         let message = "No hay jugadores ";
         if(categorySelected) message += `en la categoría seleccionada `;
@@ -393,7 +423,6 @@ function renderAvailabilityTable() {
             const slotText = HABITUAL_SLOTS_CONFIG[selectedHabitualSlot]?.text.toLowerCase() || selectedHabitualSlot.replace('-', ' ');
             message += `que jueguen habitualmente los ${slotText} `;
         }
-        // --- INICIO DE LA MODIFICACIÓN (5/5) ---
         if(sourceFilter === 'any') {
             message += `con disponibilidad cargada `;
         } else if (sourceFilter === 'none') {
@@ -401,13 +430,12 @@ function renderAvailabilityTable() {
         } else if (sourceFilter === 'player_only') {
             message += `que hayan cargado (jugador) `;
         }
-        // --- FIN DE LA MODIFICACIÓN (5/5) ---
         if(searchTerm) message += `que coincidan con "${searchTerm}"`;
         else if (!categorySelected && !habitualSelected && sourceFilter === 'all') message += `registrados.`
         else message += `.`;
 
         tableContainer.innerHTML = `<p class="text-center text-gray-400 py-16">${message}</p>`;
-        loadingIndicator.classList.add('hidden');
+        // loadingIndicator.classList.add('hidden'); // Ya no se usa
         return;
     }
 
@@ -443,26 +471,19 @@ function renderAvailabilityTable() {
 
     tableHTML += '<tbody>';
     displayedPlayers.forEach(player => {
-        // --- INICIO DE LA MODIFICACIÓN (5/5) ---
-        // Añadir un ícono si el jugador cargó su disponibilidad
         let playerIndicator = '';
         if (playersWithPlayerAvailability.has(player.id)) {
-            // Si el jugador cargó (source=player), ícono amarillo
             playerIndicator = '<span class="material-icons !text-sm text-yellow-400" title="Disponibilidad cargada por jugador">person_check</span>';
         } else if (playersWithAnyAvailability.has(player.id)) {
-            // Si no cargó el jugador, PERO tiene carga (source=admin), ícono verde
             playerIndicator = '<span class="material-icons !text-sm text-green-500" title="Disponibilidad cargada por admin">admin_panel_settings</span>';
         }
-        // --- FIN DE LA MODIFICACIÓN (5/5) ---
 
         tableHTML += `<tr class="player-row" data-player-id="${player.id}">`;
         
-        // --- INICIO DE LA MODIFICACIÓN (5/5) ---
         tableHTML += `<td class="player-name-cell">
                         <div class="flex items-center gap-1"> <input type="checkbox" class="player-select-cb mr-1 flex-shrink-0" data-player-id="${player.id}" ${selectedPlayerIds.has(String(player.id)) ? 'checked' : ''}>
                             <span class="flex-grow truncate" title="${player.name}">${player.name}</span> ${playerIndicator} </div>
                       </td>`;
-        // --- FIN DE LA MODIFICACIÓN (5/5) ---
                       
         dateStringsOfWeek.forEach(dateStr => {
             TIME_SLOTS.forEach(slot => {
@@ -486,7 +507,7 @@ function renderAvailabilityTable() {
     tableHTML += '</tbody></table>';
 
     tableContainer.innerHTML = tableHTML;
-    loadingIndicator.classList.add('hidden');
+    // loadingIndicator.classList.add('hidden'); // Ya no se usa
     updateSelectedPlayerVisuals();
 }
 
@@ -503,69 +524,57 @@ function getPlayerAvailability(playerId, dateStr, timeSlot) {
     ) || null;
 }
 
-// --- INICIO DE LA MODIFICACIÓN: Permitir anular clic de jugador con confirmación ---
 function handleCellClick(event) {
     const cell = event.target.closest('.slot-cell');
     if (!cell) return;
 
-    // Si la celda es de un jugador (amarilla), pedir confirmación.
     if (cell.classList.contains('available-player')) {
         const confirmed = confirm(
             "Esta disponibilidad fue cargada por el jugador.\n\n" +
             "¿Estás seguro de que quieres ANULARLA? (La celda se borrará)."
         );
         
-        // Si el admin presiona "Cancelar", no hacemos nada.
         if (!confirmed) {
             return;
         }
-        // Si confirma, la lógica de abajo se encargará de borrarla.
     }
-
-    // Si es una celda vacía o una verde (admin), o si se confirmó borrar la amarilla,
-    // la lógica de "toggle" (activar/desactivar) se ejecuta:
 
     const playerId = cell.dataset.playerId;
     const dateStr = cell.dataset.date;
     const slot = cell.dataset.slot;
     const currentZone = DEFAULT_ZONE;
-    const currentSource = 'admin'; // Clics del admin siempre son 'admin'
+    const currentSource = 'admin'; 
 
     const availabilityIndex = availabilityForCurrentWeek.findIndex(a =>
         a.player_id == playerId &&
         a.available_date === dateStr &&
         a.time_slot === slot
-        // No necesitamos chequear zona o source aquí, el clic anula todo
     );
 
     if (availabilityIndex !== -1) {
-        // Si existe (sin importar la fuente, 'player' o 'admin'), la borra.
         availabilityForCurrentWeek.splice(availabilityIndex, 1);
-        cell.classList.remove('available-admin', 'available-player'); // Quita ambas clases
+        cell.classList.remove('available-admin', 'available-player'); 
         cell.dataset.source = '';
 
-        // Actualizar el estado de "any" y el ícono al borrar
         const allAvailForPlayer = availabilityForCurrentWeek.filter(a => a.player_id == playerId);
         const iconCell = cell.closest('tr')?.querySelector('.player-name-cell .material-icons');
         
         if (allAvailForPlayer.length === 0) {
             playersWithAnyAvailability.delete(parseInt(playerId));
-            if (iconCell) iconCell.remove(); // Quitar ícono si ya no tiene disponibilidad
+            if (iconCell) iconCell.remove(); 
         }
 
     } else {
-        // Si no existe, la crea como 'admin'.
         availabilityForCurrentWeek.push({
             player_id: parseInt(playerId),
             available_date: dateStr,
             time_slot: slot,
             zone: currentZone,
-            source: currentSource // <-- Guardar como 'admin'
+            source: currentSource 
         });
-        cell.classList.add('available-admin'); // <-- Añadir clase 'admin'
+        cell.classList.add('available-admin'); 
         cell.dataset.source = currentSource;
 
-        // Actualizar el estado de "any" y el ícono al añadir
         playersWithAnyAvailability.add(parseInt(playerId));
         const iconCell = cell.closest('tr')?.querySelector('.player-name-cell .material-icons');
         if (!iconCell && !playersWithPlayerAvailability.has(parseInt(playerId))) {
@@ -576,8 +585,6 @@ function handleCellClick(event) {
         }
     }
 }
-// --- FIN DE LA MODIFICACIÓN ---
-
 
 function getSelectedTimeSlots() {
     const slots = [];
@@ -660,8 +667,6 @@ function applyMassAvailability(makeAvailable) {
                     cell.dataset.source = currentSource;
                 }
                 
-                // --- INICIO DE LA MODIFICACIÓN (5/5) ---
-                // Asegurarse de que el jugador esté en el set 'any' y tenga el ícono correcto
                 playersWithAnyAvailability.add(playerId);
                 const iconCell = cell?.closest('tr').querySelector('.player-name-cell .material-icons');
                 if (!iconCell && !playersWithPlayerAvailability.has(playerId)) {
@@ -670,7 +675,6 @@ function applyMassAvailability(makeAvailable) {
                          nameSpan.insertAdjacentHTML('afterend', '<span class="material-icons !text-sm text-green-500" title="Disponibilidad cargada por admin">admin_panel_settings</span>');
                     }
                 }
-                // --- FIN DE LA MODIFICACIÓN (5/5) ---
                 
             } else { // (makeAvailable = false, o sea, borrar)
                 if (availabilityIndex !== -1) {
@@ -681,15 +685,12 @@ function applyMassAvailability(makeAvailable) {
                     cell.dataset.source = '';
                 }
                 
-                // --- INICIO DE LA MODIFICACIÓN (5/5) ---
-                // Revisar si el jugador AÚN tiene disponibilidad
                 const allAvailForPlayer = availabilityForCurrentWeek.filter(a => a.player_id == playerId);
                 if (allAvailForPlayer.length === 0) {
                     playersWithAnyAvailability.delete(playerId); // Quitar del set
                     const iconCell = cell?.closest('tr').querySelector('.player-name-cell .material-icons');
                     if (iconCell) iconCell.remove(); // Quitar ícono
                 }
-                // --- FIN DE LA MODIFICACIÓN (5/5) ---
             }
         });
     });
@@ -724,10 +725,8 @@ async function saveAllChanges() {
         
         const playerId = parseInt(parts[0], 10);
         
-        // Reconstruir la fecha desde parts[1], parts[2], y parts[3]
         const dateStr = `${parts[1]}-${parts[2]}-${parts[3]}`;
         
-        // Validar que la fecha reconstruida tenga el formato YYYY-MM-DD
         if (!dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
              console.warn("Formato de fecha no reconocido en clave:", key);
              return null;
@@ -879,9 +878,7 @@ document.addEventListener('DOMContentLoaded', () => {
 categoryFilter.addEventListener('change', filterAndRenderTable);
 playerSearchInput.addEventListener('input', filterAndRenderTable);
 habitualFilter.addEventListener('change', filterAndRenderTable);
-// --- INICIO DE LA MODIFICACIÓN (5/5) ---
-playerSourceFilter.addEventListener('change', filterAndRenderTable); // Añadir listener
-// --- FIN DE LA MODIFICACIÓN (5/5) ---
+playerSourceFilter.addEventListener('change', filterAndRenderTable); 
 btnPrevWeek.addEventListener('click', goToPreviousWeek);
 btnNextWeek.addEventListener('click', goToNextWeek);
 btnCurrentWeek.addEventListener('click', goToCurrentWeek);

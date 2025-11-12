@@ -15,10 +15,40 @@ const btnCancel = document.getElementById('btn-cancel');
 const categoriesList = document.getElementById('categories-list');
 const categoryColorInput = document.getElementById('category-color');
 
+// --- ** INICIO DE LA MODIFICACIÓN: Skeleton Loader ** ---
+
+/**
+ * Genera el HTML para el "skeleton loader" de la lista de categorías.
+ */
+function renderCategoriesSkeleton() {
+    let skeletonHTML = '<div class="skeleton-list-container">'; // Contenedor
+    
+    // Generar 3 filas de esqueleto
+    for (let i = 0; i < 3; i++) {
+        skeletonHTML += `
+            <div class="skeleton-list-item" style="padding: 1rem 0.75rem;"> <div class="skeleton-item-content" style="gap: 0.75rem;"> <div class="skeleton-loader skeleton-avatar" style="width: 1.25rem; height: 1.25rem; flex-shrink: 0;"></div> <div class="skeleton-text-container">
+                        <div class="skeleton-loader skeleton-text skeleton-text-long" style="width: 60%;"></div>
+                    </div>
+                </div>
+                <div class="skeleton-actions">
+                    <div class="skeleton-loader skeleton-icon"></div>
+                    <div class="skeleton-loader skeleton-icon"></div>
+                </div>
+            </div>
+        `;
+    }
+    
+    skeletonHTML += '</div>';
+    return skeletonHTML;
+}
+// --- ** FIN DE LA MODIFICACIÓN ** ---
+
+
 // --- Funciones de Renderizado ---
 
 async function renderCategories() {
-    categoriesList.innerHTML = '<p class="text-gray-400">Cargando categorías...</p>';
+    // --- ** MODIFICACIÓN: Mostrar skeleton en lugar de texto ** ---
+    categoriesList.innerHTML = renderCategoriesSkeleton();
     
     const { data, error } = await supabase
         .from('categories')
@@ -32,7 +62,26 @@ async function renderCategories() {
     }
 
     if (data.length === 0) {
-        categoriesList.innerHTML = '<p class="text-center text-gray-400 py-4">No hay categorías registradas.</p>';
+        // --- (Esto lo hicimos en el paso anterior, lo mantenemos) ---
+        categoriesList.innerHTML = `
+            <div class="text-center py-10 px-6">
+                <span class="material-icons text-6xl text-gray-500" style="font-size: 6rem;">category</span>
+                <h3 class="text-2xl font-bold text-gray-100 mt-4">No hay categorías creadas</h3>
+                <p class="text-gray-400 mt-2 mb-6">Puedes crear categorías como "1ra", "2da", "Equipos", etc.</p>
+                <button id="btn-create-first-category" class="btn btn-primary">
+                    <span class="material-icons">add</span>
+                    Crear tu primera categoría
+                </button>
+            </div>
+        `;
+
+        const createFirstBtn = document.getElementById('btn-create-first-category');
+        if (createFirstBtn) {
+            createFirstBtn.addEventListener('click', () => {
+                form.scrollIntoView({ behavior: 'smooth' });
+                categoryNameInput.focus(); 
+            });
+        }
         return;
     }
 

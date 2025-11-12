@@ -33,7 +33,28 @@ async function renderTeams() {
     }
 
     if (data.length === 0) {
-        teamsList.innerHTML = '<p class="text-center text-gray-400 py-4">No hay equipos registrados.</p>';
+        // --- ** INICIO DE LA MODIFICACIÓN: EMPTY STATE ** ---
+        teamsList.innerHTML = `
+            <div class="text-center py-10 px-6">
+                <span class="material-icons text-6xl text-gray-500" style="font-size: 6rem;">shield</span>
+                <h3 class="text-2xl font-bold text-gray-100 mt-4">No hay equipos creados</h3>
+                <p class="text-gray-400 mt-2 mb-6">Crea el primer equipo para empezar a asignar jugadores.</p>
+                <button id="btn-create-first-team" class="btn btn-primary">
+                    <span class="material-icons">add</span>
+                    Crear tu primer equipo
+                </button>
+            </div>
+        `;
+        
+        // Añadir listener al nuevo botón para que haga scroll al formulario
+        const createFirstBtn = document.getElementById('btn-create-first-team');
+        if (createFirstBtn) {
+            createFirstBtn.addEventListener('click', () => {
+                form.scrollIntoView({ behavior: 'smooth' });
+                teamNameInput.focus(); // Poner foco en el input
+            });
+        }
+        // --- ** FIN DE LA MODIFICACIÓN ** ---
         return;
     }
 
