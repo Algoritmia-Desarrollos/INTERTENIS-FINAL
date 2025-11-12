@@ -47,6 +47,11 @@ function normalizeText(text) {
 
 // --- Carga de Datos (MODIFICADA) ---
 async function loadInitialData() {
+    
+    // --- ** INICIO DE LA MODIFICACIÓN: Mostrar Skeleton ** ---
+    playersList.innerHTML = renderPlayersSkeleton();
+    // --- ** FIN DE LA MODIFICACIÓN ** ---
+
     const [
         { data: categories },
         { data: teams },
@@ -93,6 +98,34 @@ async function loadInitialData() {
 }
 
 // --- Renderizado y Lógica de UI (MODIFICADA) ---
+
+// --- ** INICIO DE LA MODIFICACIÓN: Skeleton Loader ** ---
+/**
+ * Genera el HTML para el "skeleton loader" de la lista de jugadores.
+ */
+function renderPlayersSkeleton() {
+    let skeletonHTML = ''; // El contenedor space-y-1 ya está en el HTML
+    
+    // Generar 7 filas de esqueleto
+    for (let i = 0; i < 7; i++) {
+        skeletonHTML += `
+            <div class="player-row grid grid-cols-[auto,1fr,auto] items-center gap-4 px-3 py-2 rounded-lg border-b border-gray-800 last:border-b-0">
+                <div class="skeleton-loader skeleton-avatar" style="height: 2rem; width: 2rem;"></div>
+                
+                <div class="skeleton-text-container">
+                    <div class="skeleton-loader skeleton-text" style="height: 0.875rem; width: 40%; margin-bottom: 0.5rem;"></div> <div class="skeleton-loader skeleton-text" style="height: 0.75rem; width: 60%; margin-bottom: 0.25rem;"></div> <div class="skeleton-loader skeleton-text" style="height: 0.75rem; width: 50%;"></div> </div>
+                
+                <div class="flex items-center gap-1">
+                     <div class="skeleton-loader skeleton-icon" style="border-radius: 99px; height: 1.25rem; width: 1.25rem;"></div>
+                     <div class="skeleton-loader skeleton-icon" style="border-radius: 99px; height: 1.25rem; width: 1.25rem;"></div>
+                </div>
+            </div>
+        `;
+    }
+    return skeletonHTML;
+}
+// --- ** FIN DE LA MODIFICACIÓN ** ---
+
 function applyFiltersAndSort() {
     let processedPlayers = [...allPlayers];
     const teamFilter = filterTeamSelect.value;
@@ -124,7 +157,16 @@ function applyFiltersAndSort() {
 
 function renderPlayers(playersToRender) {
     if (playersToRender.length === 0) {
-        playersList.innerHTML = '<p class="text-center text-gray-400 py-8">No hay jugadores que coincidan con la búsqueda o los filtros.</p>';
+        // --- ** INICIO DE LA MODIFICACIÓN: EMPTY STATE ** ---
+        // (Mejora: combinamos "empty state" con "skeleton loader")
+        playersList.innerHTML = `
+            <div class="text-center py-10 px-6">
+                <span class="material-icons text-6xl text-gray-500" style="font-size: 6rem;">person_search</span>
+                <h3 class="text-2xl font-bold text-gray-100 mt-4">No se encontraron jugadores</h3>
+                <p class="text-gray-400 mt-2">Prueba ajustar los filtros o el término de búsqueda.</p>
+            </div>
+        `;
+        // --- ** FIN DE LA MODIFICACIÓN ** ---
         return;
     }
     playersList.innerHTML = playersToRender.map(player => {

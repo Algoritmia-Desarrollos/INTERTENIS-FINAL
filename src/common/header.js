@@ -4,12 +4,13 @@ import { supabase } from './supabase.js';
 
 export function renderHeader() {
   const user = getUser();
-  const currentPage = window.location.pathname.split('/').pop();
   
-  // Clases actualizadas para los enlaces de navegación en tema oscuro
-  const getLinkClasses = (href) => {
+  // --- (Lógica de .html eliminada de aquí, como hicimos en el paso anterior) ---
+  const currentPage = window.location.pathname.split('/').pop().replace('.html', '');
+  
+  const getLinkClasses = (pageName) => {
     const base = "text-sm font-medium transition-colors px-3 py-2 rounded-md";
-    const isActive = href.split('/').pop() === currentPage;
+    const isActive = pageName === currentPage;
     return isActive 
       ? `${base} bg-yellow-400 text-black font-semibold` 
       : `${base} text-gray-300 hover:bg-gray-700 hover:text-white`;
@@ -18,24 +19,23 @@ export function renderHeader() {
   let navLinks = '';
   if (user?.role === 'admin') {
     navLinks = `
-        <a class="${getLinkClasses('dashboard.html')}" href="/src/admin/dashboard.html">Dashboard</a>
-        <a class="${getLinkClasses('matches.html')}" href="/src/admin/matches.html">Partidos</a>
-                <a class="${getLinkClasses('reportes-historicos.html')}" href="/src/admin/reportes-historicos.html">Reportes</a>
-        <a class="${getLinkClasses('rankings.html')}" href="/src/admin/rankings.html">Ranking</a>
-        <a class="${getLinkClasses('availability.html')}" href="/src/admin/availability.html">Disponibilidad</a>
-        <a class="${getLinkClasses('match_suggester.html')}" href="/src/admin/match_suggester.html">Sugerencia de Partidos</a>
-        <a class="${getLinkClasses('players.html')}" href="/src/admin/players.html">Jugadores</a>
-        <a class="${getLinkClasses('tournaments.html')}" href="/src/admin/tournaments.html">Torneos</a>
-        <a class="${getLinkClasses('teams.html')}" href="/src/admin/teams.html">Equipos</a>
-        <a class="${getLinkClasses('categories.html')}" href="/src/admin/categories.html">Categorías</a>
-        
+        <a class="${getLinkClasses('dashboard')}" href="/src/admin/dashboard">Dashboard</a>
+        <a class="${getLinkClasses('matches')}" href="/src/admin/matches">Partidos</a>
+        <a class="${getLinkClasses('reportes-historicos')}" href="/src/admin/reportes-historicos">Reportes</a>
+        <a class="${getLinkClasses('rankings')}" href="/src/admin/rankings">Ranking</a>
+        <a class="${getLinkClasses('availability')}" href="/src/admin/availability">Disponibilidad</a>
+        <a class="${getLinkClasses('match_suggester')}" href="/src/admin/match_suggester">Sugerencia de Partidos</a>
+        <a class="${getLinkClasses('players')}" href="/src/admin/players">Jugadores</a>
+        <a class="${getLinkClasses('tournaments')}" href="/src/admin/tournaments">Torneos</a>
+        <a class="${getLinkClasses('teams')}" href="/src/admin/teams">Equipos</a>
+        <a class="${getLinkClasses('categories')}" href="/src/admin/categories">Categorías</a>
     `;
   }
   
   const headerHTML = `
     <header class="flex items-center justify-between border-b border-gray-700 bg-[#222222] px-4 sm:px-6 py-3 sticky top-0 z-50">
       <div class="flex items-center gap-4">
-        <a href="/src/admin/dashboard.html">
+        <a href="/src/admin/dashboard">
             <img src="/logo_2021_02.png" alt="Logo" class="h-16">
         </a>
       </div>
@@ -49,7 +49,7 @@ export function renderHeader() {
             <div id="global-search-results" class="absolute top-full mt-2 w-full bg-gray-700 border border-gray-600 rounded-lg shadow-xl z-50 hidden"></div>
         </div>
         
-        <button id="btnLogout" class="text-sm font-medium text-gray-300 hover:text-red-400 flex items-center gap-2">
+        <button id="btnLogout" class="text-sm font-medium text-gray-300 hover:text-red-400 hidden lg:flex items-center gap-2">
           <span class="hidden sm:inline">Cerrar Sesión</span>
           <span class="material-icons">logout</span>
         </button>
@@ -110,10 +110,10 @@ export function renderHeader() {
             }
 
             searchResults.innerHTML = data.map(player => `
-                <a href="/src/admin/player-dashboard.html?id=${player.id}" class="block px-4 py-2 text-sm text-gray-200 hover:bg-gray-600">
+                <a href="/src/admin/player-dashboard?id=${player.id}" class="block px-4 py-2 text-sm text-gray-200 hover:bg-gray-600">
                     ${player.name}
                 </a>
-            `).join('');
+            `).join(''); // Se eliminó .html de la URL del dashboard del jugador
             searchResults.classList.remove('hidden');
         });
 
