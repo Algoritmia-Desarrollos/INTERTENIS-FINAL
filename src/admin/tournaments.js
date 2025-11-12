@@ -1,6 +1,6 @@
 import { renderHeader } from '../common/header.js';
 import { requireRole } from '../common/router.js';
-import { supabase } from '../common/supabase.js';
+import { supabase, showToast } from '../common/supabase.js';
 
 requireRole('admin');
 
@@ -233,7 +233,10 @@ async function handleFormSubmit(e) {
         if (!teamCategory) {
             const { data: newCategory, error: createError } = await supabase
                 .from('categories').insert({ name: TEAM_TOURNAMENT_CATEGORY_NAME, color: '#cccccc' }).select().single();
-            if (createError) { alert(`Error: ${createError.message}`); return; }
+            if (createError) { 
+                showToast(`Error al crear categoría Equipos: ${createError.message}`, "error"); 
+                return; 
+            }
             allCategories.push(newCategory);
             teamCategory = newCategory;
         }
@@ -241,15 +244,20 @@ async function handleFormSubmit(e) {
     }
 
     if (!name || !category_id || !start_date) {
-        alert("Por favor, complete nombre, categoría y fecha de inicio.");
+        showToast("Por favor, complete nombre, categoría y fecha de inicio.", "error");
         return;
     }
 
     const tournamentData = { name, category_id, start_date, end_date };
     const { error } = id ? await supabase.from('tournaments').update(tournamentData).eq('id', id) : await supabase.from('tournaments').insert([tournamentData]);
     
-    if (error) { alert(`Error: ${error.message}`); } 
-    else { resetForm(); await fetchAndRenderTournaments(); }
+    if (error) { 
+        showToast(`Error al guardar torneo: ${error.message}`, "error"); 
+    } else { 
+        showToast(id ? 'Torneo actualizado.' : 'Torneo creado.', 'success');
+        resetForm(); 
+        await fetchAndRenderTournaments(); 
+    }
 }
 
 function resetForm() {
@@ -267,7 +275,11 @@ function resetForm() {
 async function updateSingleTournament(tournamentId) {
     const { data: tournament, error } = await supabase
         .from('tournaments').select(`*, category:category_id(name), players:tournament_players(player:players(*, team:team_id(image_url)))`).eq('id', tournamentId).single();
-    if (error) { console.error("Error al recargar torneo:", error); return; }
+    if (error) { 
+        console.error("Error al recargar torneo:", error); 
+        showToast("Error al recargar datos del torneo.", "error");
+        return; 
+    }
     const index = allTournaments.findIndex(t => t.id == tournamentId);
     if (index !== -1) allTournaments[index] = tournament;
     sortAndRenderTournaments();
@@ -337,6 +349,7 @@ tournamentsList.addEventListener('click', async (e) => {
                 await supabase.from('tournament_players').delete().eq('tournament_id', idToDelete);
                 await supabase.from('matches').delete().eq('tournament_id', idToDelete);
                 await supabase.from('tournaments').delete().eq('id', idToDelete);
+                showToast("Torneo eliminado permanentemente.", "success");
                 await fetchAndRenderTournaments();
             }
             break;
@@ -345,6 +358,7 @@ tournamentsList.addEventListener('click', async (e) => {
             const playerIdToUnenroll = targetElement.dataset.playerId;
             if (confirm('¿Quitar a este jugador del torneo?')) {
                 await supabase.from('tournament_players').delete().match({ tournament_id: tournamentId, player_id: playerIdToUnenroll });
+                showToast("Jugador desinscrito.", "success");
                 await updateSingleTournament(tournamentId);
             }
             break;
@@ -354,8 +368,12 @@ tournamentsList.addEventListener('click', async (e) => {
             const playerIdToEnroll = select.value;
             if (!playerIdToEnroll) return; 
             const { error } = await supabase.from('tournament_players').insert([{ tournament_id: tournamentId, player_id: playerIdToEnroll }]);
-            if (error) alert('Error: ' + error.message);
-            else await updateSingleTournament(tournamentId);
+            if (error) {
+                showToast('Error al inscribir: ' + error.message, "error");
+            } else {
+                showToast("Jugador inscrito.", "success");
+                await updateSingleTournament(tournamentId);
+            }
             break;
 
         case 'enroll-all':
@@ -364,12 +382,19 @@ tournamentsList.addEventListener('click', async (e) => {
             const enrolledIds = new Set(tourney.players.map(p => p.player.id));
             const isTeams = tourney.category.name === TEAM_TOURNAMENT_CATEGORY_NAME;
             const playersToEnroll = (isTeams ? allPlayers : allPlayers.filter(p => p.category_id === tourney.category_id)).filter(p => !enrolledIds.has(p.id));
-            if (playersToEnroll.length === 0) { alert('No hay jugadores nuevos para inscribir.'); return; }
+            if (playersToEnroll.length === 0) { 
+                showToast('No hay jugadores nuevos para inscribir.', "info"); 
+                return; 
+            }
             if (confirm(`¿Inscribir a ${playersToEnroll.length} jugadores a este torneo?`)) {
                 const enrollData = playersToEnroll.map(p => ({ tournament_id: tournamentId, player_id: p.id }));
                 const { error: enrollError } = await supabase.from('tournament_players').insert(enrollData);
-                if (enrollError) alert('Error: ' + enrollError.message);
-                else { alert(`${playersToEnroll.length} jugadores inscritos.`); await updateSingleTournament(tournamentId); }
+                if (enrollError) {
+                    showToast('Error al inscribir masivamente: ' + enrollError.message, "error");
+                } else { 
+                    showToast(`${playersToEnroll.length} jugadores inscritos.`, "success"); 
+                    await updateSingleTournament(tournamentId); 
+                }
             }
             break;
         
@@ -384,7 +409,7 @@ tournamentsList.addEventListener('click', async (e) => {
                 const linksToInsert = newLinkedIds.map(id => ({ team_tournament_id: tournamentId, source_tournament_id: id }));
                 await supabase.from('linked_tournaments').insert(linksToInsert);
             }
-            alert("Vínculos guardados.");
+            showToast("Vínculos guardados.", "success");
             targetElement.disabled = false;
             targetElement.textContent = 'Guardar Vínculos';
             await fetchAndRenderTournaments();

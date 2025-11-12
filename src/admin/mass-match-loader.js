@@ -1,4 +1,4 @@
-import { supabase } from '../common/supabase.js';
+import { supabase, showToast } from '../common/supabase.js';
 
 export function setupMassMatchLoader({
   container,
@@ -268,19 +268,26 @@ export function setupMassMatchLoader({
     let inputElement;
 
     const saveChange = (newValueFromEvent = null) => {
-      // (Función saveChange sin cambios respecto a la versión anterior)
-      // ... [Incluye validaciones y actualización de estado/UI] ...
        if (saveChangeCalled) return;
        saveChangeCalled = true;
-       if (!cell.classList.contains('is-editing') && activeEditingCell !== cell) { activeEditingCell = null; return; } // Chequeo adicional por si acaso
+       if (!cell.classList.contains('is-editing') && activeEditingCell !== cell) { activeEditingCell = null; return; } 
 
        const newValue = newValueFromEvent ?? inputElement.value;
        const matchIndex = matchesData.findIndex(m => m.clientId == rowId);
 
        if (matchIndex > -1) {
-         if (field === 'player1_id' && newValue && newValue == matchesData[matchIndex].player2_id) { alert("Jugador 1 no puede ser igual a Jugador 2."); cell.innerHTML = originalContent; cell.classList.remove('is-editing'); activeEditingCell = null; return; }
-         if (field === 'player2_id' && newValue && newValue == matchesData[matchIndex].player1_id) { alert("Jugador 2 no puede ser igual a Jugador 1."); cell.innerHTML = originalContent; cell.classList.remove('is-editing'); activeEditingCell = null; return; }
-         if (field === 'match_date' && newValue && !/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(newValue)) { alert("Formato fecha inválido (DD/MM/AAAA)."); cell.innerHTML = originalContent; cell.classList.remove('is-editing'); activeEditingCell = null; return; }
+         if (field === 'player1_id' && newValue && newValue == matchesData[matchIndex].player2_id) { 
+             showToast("Jugador 1 no puede ser igual a Jugador 2.", "error"); 
+             cell.innerHTML = originalContent; cell.classList.remove('is-editing'); activeEditingCell = null; return; 
+         }
+         if (field === 'player2_id' && newValue && newValue == matchesData[matchIndex].player1_id) { 
+             showToast("Jugador 2 no puede ser igual a Jugador 1.", "error"); 
+             cell.innerHTML = originalContent; cell.classList.remove('is-editing'); activeEditingCell = null; return; 
+         }
+         if (field === 'match_date' && newValue && !/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(newValue)) { 
+             showToast("Formato fecha inválido (DD/MM/AAAA).", "error"); 
+             cell.innerHTML = originalContent; cell.classList.remove('is-editing'); activeEditingCell = null; return; 
+         }
 
          let valueToSave = newValue;
          if (field.endsWith('_id')) { valueToSave = newValue ? parseInt(newValue, 10) : null; if (isNaN(valueToSave)) valueToSave = null; }
@@ -368,25 +375,45 @@ export function setupMassMatchLoader({
    // --- Fin cuerpos ---
 
   // --- GUARDADO FINAL EN BASE DE DATOS ---
-  async function saveAllMatches() { /* (sin cambios) */ }
    // --- Cuerpo saveAllMatches ---
     async function saveAllMatches() {
         const matchesToInsert = []; let validationFailed = false;
         for (const match of matchesData) {
-            if (!match.tournament_id || !match.player1_id || !match.player2_id || !match.match_date || !match.sede || !match.cancha) { alert(`Fila incompleta (ID: ${match.clientId}). Revisar.`); validationFailed = true; break; }
-            if (match.player1_id === match.player2_id) { alert(`Jugador repetido (ID: ${match.clientId}).`); validationFailed = true; break; }
-             if (!/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(match.match_date)) { alert(`Formato fecha inválido (ID: ${match.clientId}). Usar DD/MM/AAAA.`); validationFailed = true; break; }
+            if (!match.tournament_id || !match.player1_id || !match.player2_id || !match.match_date || !match.sede || !match.cancha) { 
+                showToast(`Fila incompleta (ID: ${match.clientId}). Revisar.`, "error"); 
+                validationFailed = true; break; 
+            }
+            if (match.player1_id === match.player2_id) { 
+                showToast(`Jugador repetido (ID: ${match.clientId}).`, "error"); 
+                validationFailed = true; break; 
+            }
+             if (!/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(match.match_date)) { 
+                 showToast(`Formato fecha inválido (ID: ${match.clientId}). Usar DD/MM/AAAA.`, "error"); 
+                 validationFailed = true; break; 
+             }
 
             const [d, m, y] = match.match_date.split('/'); const formattedDate = `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
             const tournament = allTournaments.find(t => t.id == match.tournament_id); const categoryId = tournament?.category?.id || null;
             const location = `${match.sede} - ${match.cancha}`;
             matchesToInsert.push({ tournament_id: match.tournament_id, category_id: categoryId, player1_id: match.player1_id, player2_id: match.player2_id, match_date: formattedDate, match_time: match.match_time || null, location: location });
         }
-        if (validationFailed || matchesToInsert.length === 0) { if (!validationFailed && matchesToInsert.length === 0) alert("Nada para guardar."); return; }
+        if (validationFailed || matchesToInsert.length === 0) { 
+            if (!validationFailed && matchesToInsert.length === 0) showToast("Nada para guardar.", "info"); 
+            return; 
+        }
         btnSave.disabled = true; btnSave.textContent = 'Guardando...';
         const { error } = await supabase.from('matches').insert(matchesToInsert);
-        if (error) { alert('Error: ' + error.message); btnSave.disabled = false; updateSaveButton(); }
-        else { alert(`${matchesToInsert.length} partidos guardados.`); matchesData = []; renderTable(); sessionStorage.removeItem('matchesToPreload'); if (typeof loadInitialData === 'function') { try { await loadInitialData(); } catch(err) {} } }
+        if (error) { 
+            showToast('Error: ' + error.message, "error"); 
+            btnSave.disabled = false; updateSaveButton(); 
+        }
+        else { 
+            showToast(`${matchesToInsert.length} partidos guardados.`, "success"); 
+            matchesData = []; renderTable(); sessionStorage.removeItem('matchesToPreload'); 
+            if (typeof loadInitialData === 'function') { 
+                try { await loadInitialData(); } catch(err) {} 
+            } 
+        }
     }
    // --- Fin cuerpo ---
 

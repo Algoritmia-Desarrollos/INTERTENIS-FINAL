@@ -1,4 +1,4 @@
-import { supabase } from './supabase.js';
+import { supabase, showToast } from './supabase.js';
 
 /**
  * Orquesta el proceso de importación de partidos desde un archivo Excel.
@@ -26,15 +26,15 @@ export async function importMatchesFromFile(allPlayers, allTournaments, tourname
         
         if (matchesToSave && matchesToSave.length > 0) {
             await saveMatchesToDB(matchesToSave, sheetType);
-            alert(`${matchesToSave.length} partidos importados con éxito.`);
+            showToast(`${matchesToSave.length} partidos importados con éxito.`, "success");
             return true;
         } else if (matchesToSave) { // El usuario confirmó pero no había filas válidas
-             alert("No se importó ningún partido.");
+             showToast("No se importó ningún partido.", "info");
         }
 
     } catch (error) {
         console.error("Error en el proceso de importación:", error);
-        alert("Ocurrió un error inesperado: " + error.message);
+        showToast("Ocurrió un error inesperado: " + error.message, "error");
     }
     return false;
 }
@@ -77,7 +77,10 @@ function readFileToJSON(file) {
                 const workbook = XLSX.read(data, { type: 'array', cellDates: true });
                 const worksheet = workbook.Sheets[workbook.SheetNames[0]];
                 resolve(XLSX.utils.sheet_to_json(worksheet, { defval: "" }));
-            } catch (e) { reject(new Error("Error al leer el archivo Excel.")); }
+            } catch (e) { 
+                showToast("Error al leer el archivo Excel.", "error");
+                reject(new Error("Error al leer el archivo Excel.")); 
+            }
         };
         reader.onerror = reject;
         reader.readAsArrayBuffer(file);
@@ -404,6 +407,9 @@ async function saveMatchesToDB(matchesToSave, type) {
 
     if (dataToInsert.length > 0) {
         const { error } = await supabase.from('matches').insert(dataToInsert);
-        if (error) { throw new Error("Error al guardar los partidos: " + error.message); }
+        if (error) { 
+            showToast("Error al guardar los partidos: " + error.message, "error");
+            throw new Error("Error al guardar los partidos: " + error.message); 
+        }
     }
 }

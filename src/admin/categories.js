@@ -1,6 +1,6 @@
 import { renderHeader } from '../common/header.js';
 import { requireRole } from '../common/router.js';
-import { supabase } from '../common/supabase.js';
+import { supabase, showToast } from '../common/supabase.js';
 
 requireRole('admin');
 
@@ -72,7 +72,7 @@ async function handleFormSubmit(e) {
     const color = categoryColorInput ? categoryColorInput.value : '#e5e7eb';
 
     if (!name) {
-        alert("El nombre de la categoría es obligatorio.");
+        showToast("El nombre de la categoría es obligatorio.", "error");
         return;
     }
 
@@ -86,8 +86,9 @@ async function handleFormSubmit(e) {
     }
 
     if (error) {
-        alert(`Error al guardar la categoría: ${error.message}`);
+        showToast(`Error al guardar la categoría: ${error.message}`, "error");
     } else {
+        showToast(id ? 'Categoría actualizada.' : 'Categoría creada.', 'success');
         resetForm();
         await renderCategories();
     }
@@ -125,8 +126,9 @@ categoriesList.addEventListener('click', async (e) => {
         if (confirm('¿Está seguro de que desea eliminar esta categoría?')) {
             const { error } = await supabase.from('categories').delete().eq('id', id);
             if (error) {
-                alert('Error al eliminar. Es posible que la categoría esté en uso en algún torneo o jugador.');
+                showToast('Error al eliminar. Es posible que la categoría esté en uso.', 'error');
             } else {
+                showToast('Categoría eliminada.', 'success');
                 await renderCategories();
             }
         }

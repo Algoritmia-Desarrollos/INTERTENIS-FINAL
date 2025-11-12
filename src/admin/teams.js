@@ -1,6 +1,6 @@
 import { renderHeader } from '../common/header.js';
 import { requireRole } from '../common/router.js';
-import { supabase } from '../common/supabase.js';
+import { supabase, showToast } from '../common/supabase.js';
 import { uploadTeamLogo } from './upload-team-logo.js';
 
 requireRole('admin');
@@ -101,7 +101,7 @@ async function handleFormSubmit(e) {
         try {
             image_url = await uploadTeamLogo(file);
         } catch (err) {
-            alert("Error al subir la imagen: " + err);
+            showToast("Error al subir la imagen: " + err, "error");
             btnSave.disabled = false;
             btnSave.textContent = id ? 'Actualizar Equipo' : 'Guardar Equipo';
             return;
@@ -123,8 +123,9 @@ async function handleFormSubmit(e) {
     }
 
     if (error) {
-        alert(`Error al guardar el equipo: ${error.message}`);
+        showToast(`Error al guardar el equipo: ${error.message}`, "error");
     } else {
+        showToast(id ? 'Equipo actualizado con éxito.' : 'Equipo creado con éxito.', 'success');
         resetForm();
         await renderTeams();
     }
@@ -165,8 +166,9 @@ teamsList.addEventListener('click', async (e) => {
         if (confirm('¿Está seguro de que desea eliminar este equipo?')) {
             const { error } = await supabase.from('teams').delete().eq('id', id);
             if (error) {
-                alert('Error al eliminar el equipo. Es posible que tenga jugadores asociados.');
+                showToast('Error al eliminar el equipo. Es posible que tenga jugadores asociados.', "error");
             } else {
+                showToast('Equipo eliminado.', 'success');
                 await renderTeams();
             }
         }

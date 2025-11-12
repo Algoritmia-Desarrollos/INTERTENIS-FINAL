@@ -1,19 +1,17 @@
 import { renderHeader } from '../common/header.js';
 import { supabase } from '../common/supabase.js';
-import { calculatePoints } from './calculatePoints.js';
+// import { calculatePoints } from './calculatePoints.js'; // ELIMINADO
+import { renderMatchesTable } from '../common/components/matchesTable.js'; // AÑADIDO
 
 const header = document.getElementById('header');
 const container = document.getElementById('player-dashboard-container');
 
+/*
+// --- FUNCIÓN isColorLight ELIMINADA ---
 function isColorLight(hex) {
-    if (!hex) return false;
-    let c = hex.replace('#', '');
-    if (c.length === 3) c = c.split('').map(x => x + x).join('');
-    const r = parseInt(c.substr(0, 2), 16),
-          g = parseInt(c.substr(2, 2), 16),
-          b = parseInt(c.substr(4, 2), 16);
-    return ((0.299 * r + 0.587 * g + 0.114 * b) > 150);
+    // ... (código eliminado)
 }
+*/
 
 async function loadPlayerData() {
     container.innerHTML = '<div class="flex justify-center items-center p-8"><div class="spinner"></div></div>';
@@ -102,138 +100,12 @@ function renderDashboard(player, stats, pendingMatches, matchHistory, individual
         </div>
     `;
 
+    // AHORA LLAMA A LA FUNCIÓN IMPORTADA
     renderMatchesTable(pendingMatches, document.getElementById('pending-matches-container'), 'No hay partidos pendientes.');
     renderMatchesTable(matchHistory, document.getElementById('history-matches-container'), 'No hay partidos en el historial.');
 }
 
-// REEMPLAZA esta función en src/admin/player-dashboard.js y public/public-player-dashboard.js
-function renderMatchesTable(matchesToRender, containerElement, emptyMessage) {
-    if (!matchesToRender || matchesToRender.length === 0) {
-        containerElement.innerHTML = `<div class="bg-[#222222] p-6 rounded-xl"><p class="text-center text-gray-500 py-4">${emptyMessage}</p></div>`;
-        return;
-    }
-    const groupedByDate = matchesToRender.reduce((acc, match) => {
-        const date = match.match_date || 'Sin fecha';
-        if (!acc[date]) acc[date] = [];
-        acc[date].push(match);
-        return acc;
-    }, {});
-    const sortedDates = Object.keys(groupedByDate).sort((a, b) => new Date(a) - new Date(b));
-    let tableHTML = '';
-
-    for (const date of sortedDates) {
-        const groupedBySede = groupedByDate[date].reduce((acc, match) => {
-            const sede = (match.location ? match.location.split(' - ')[0] : 'Sede no definida').trim();
-            if(!acc[sede]) acc[sede] = [];
-            acc[sede].push(match);
-            return acc;
-        }, {});
-        for(const sede in groupedBySede) {
-            const matchesInSede = groupedBySede[sede];
-            const dateObj = new Date(date + 'T00:00:00');
-            
-            let formattedDate = new Intl.DateTimeFormat('es-AR', { weekday: 'long', day: 'numeric', month: 'long' }).format(dateObj);
-            formattedDate = formattedDate.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ').replace(' De ', ' de ');
-
-            const headerBgColor = sede.toLowerCase() === 'centro' ? '#222222' : '#fdc100';
-            const headerTextColor = sede.toLowerCase() === 'centro' ? '#ffc000' : '#000000';
-            
-            tableHTML += `
-                <tr>
-                    <td colspan="2" style="background-color: ${headerBgColor}; color: ${headerTextColor}; font-weight: 700; text-align: center; vertical-align: middle; padding: 12px 0; font-size: 15pt; border-right: 1px solid #000;">${sede.toUpperCase()}</td>
-                    <td colspan="6" style="background-color: ${headerBgColor}; color: ${headerTextColor}; font-weight: 700; text-align: center; vertical-align: middle; padding: 12px 0; font-size: 15pt;">${formattedDate}</td>
-                </tr>`;
-
-            for (const match of matchesInSede) {
-                const { p1_points, p2_points } = calculatePoints(match);
-                const isDoubles = match.player3 && match.player4;
-                const team1_winner = isDoubles ? (match.winner_id === match.player1.id || match.winner_id === match.player3.id) : (match.winner_id === match.player1.id);
-                
-                let team1_class = '';
-                let team2_class = '';
-                if (match.winner_id) {
-                    if (team1_winner) {
-                        team1_class = 'winner';
-                        team2_class = 'loser';
-                    } else {
-                        team1_class = 'loser';
-                        team2_class = 'winner';
-                    }
-                }
-
-                let team1_names = `<span class="player-name-text">${match.player1.name}</span>`;
-                if (isDoubles && match.player3) team1_names += ` / <span class="player-name-text">${match.player3.name}</span>`;
-                let team2_names = `<span class="player-name-text">${match.player2.name}</span>`;
-                if (isDoubles && match.player4) team2_names += ` / <span class="player-name-text">${match.player4.name}</span>`;
-                
-                let hora = match.match_time ? match.match_time.substring(0, 5) : 'HH:MM';
-                
-                const setsDisplayRaw = (match.sets || []).map(s => {
-                    if (match.winner_id && !team1_winner) {
-                        return `${s.p2}/${s.p1}`;
-                    }
-                    return `${s.p1}/${s.p2}`;
-                }).join(' ');
-
-                let resultadoDisplay;
-                if (match.status === 'completado_wo') {
-                    resultadoDisplay = 'W.O.';
-                } else if (match.status === 'suspendido') {
-                    resultadoDisplay = 'Suspendido';
-                } else if (match.status === 'completado_ret') {
-                    resultadoDisplay = `${setsDisplayRaw} ret.`;
-                } else {
-                    resultadoDisplay = setsDisplayRaw;
-                }
-
-                const p1TeamColor = match.player1.team?.color;
-                const p2TeamColor = match.player2.team?.color;
-                const p1TextColor = isColorLight(p1TeamColor) ? '#000' : '#fff';
-                const p2TextColor = isColorLight(p2TeamColor) ? '#000' : '#fff';
-                let cancha = match.location ? (match.location.split(' - ')[1] || 'N/A') : 'N/A';
-                const matchNum = cancha.match(/\d+/);
-                if (matchNum) cancha = matchNum[0];
-
-                const canchaBackgroundColor = sede.toLowerCase() === 'centro' ? '#222222' : '#ffc000';
-                const canchaTextColor = sede.toLowerCase() === 'centro' ? '#ffc000' : '#222';
-                const categoryDisplay = match.category?.name || '';
-                
-                const played = !!match.winner_id;
-                let team1PointsDisplay = '';
-                let team2PointsDisplay = '';
-
-                if (played) {
-                    team1PointsDisplay = p1_points ?? '';
-                    if (team1PointsDisplay === 0) team1PointsDisplay = '0';
-                    team2PointsDisplay = p2_points ?? '';
-                    if (team2PointsDisplay === 0) team2PointsDisplay = '0';
-                } else {
-                    if (match.player1.team?.image_url) team1PointsDisplay = `<img src="${match.player1.team.image_url}" alt="" style="height: 20px; object-fit: contain; margin: auto; display: block;">`;
-                    if (match.player2.team?.image_url) team2PointsDisplay = `<img src="${match.player2.team.image_url}" alt="" style="height: 20px; object-fit: contain; margin: auto; display: block;">`;
-                }
-
-                tableHTML += `
-                    <tr class="data-row">
-                        <td style="background-color: ${canchaBackgroundColor} !important; color: ${canchaTextColor} !important; font-weight: bold; border-left: 1px solid #4a4a4a;">${cancha}</td>
-                        <td style="background:#000;color:#fff;">${hora}</td>
-                        <td class="player-name player-name-right ${team1_class}" style='background:#000; font-size:${isDoubles ? '9pt' : '11pt'};'>${team1_names}</td>
-                        <td class="pts-col" style='background:${p1TeamColor || '#3a3838'};color:${p1TextColor};'>${team1PointsDisplay}</td>
-                        <td class="font-mono" style="background:#000; font-weight: bold; color: #fff;">${resultadoDisplay}</td>
-                        <td class="pts-col" style='background:${p2TeamColor || '#3a3838'};color:${p2TextColor};'>${team2PointsDisplay}</td>
-                        <td class="player-name player-name-left ${team2_class}" style='background:#000; font-size:${isDoubles ? '9pt' : '11pt'};'>${team2_names}</td>
-                        <td class="cat-col" style="background:#000;color:${match.category?.color || '#b45309'};">${categoryDisplay}</td>
-                    </tr>`;
-            }
-        }
-    }
-    containerElement.innerHTML = `
-        <div class="bg-[#18191b] p-2 sm:p-4 rounded-xl shadow-lg overflow-x-auto">
-            <table class="matches-report-style">
-                <colgroup><col style="width: 5%"><col style="width: 7%"><col style="width: 25%"><col style="width: 5%"><col style="width: 16%"><col style="width: 5%"><col style="width: 25%"><col style="width: 12%"></colgroup>
-                <tbody>${tableHTML}</tbody>
-            </table>
-        </div>`;
-}
+// --- FUNCIÓN renderMatchesTable ELIMINADA DE AQUÍ ---
 
 document.addEventListener('DOMContentLoaded', () => {
     header.innerHTML = renderHeader();

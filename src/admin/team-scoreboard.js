@@ -1,4 +1,4 @@
-import { supabase } from '../common/supabase.js';
+import { supabase, showToast } from '../common/supabase.js';
 import { calculatePoints } from './calculatePoints.js';
 
 // --- ESTADO Y LÓGICA DE EDICIÓN ---
@@ -280,9 +280,9 @@ function setupEventListeners(container, tournamentId) {
 
         if (error) {
             console.error("Error al guardar en Supabase:", error);
-            alert('Error al guardar los puntos. Revisa los permisos de la tabla en Supabase. Detalles en la consola.');
+            showToast('Error al guardar los puntos. Revisa los permisos de la tabla. Detalles en la consola.', "error");
         } else {
-            alert('Puntos guardados correctamente.');
+            showToast('Puntos guardados correctamente.', "success");
             isEditMode = false;
             // Recargar todo el componente para reflejar los datos guardados
             renderTeamScoreboard(container, tournamentId, { isAdmin: true });

@@ -1,7 +1,7 @@
 import { calculatePoints } from './calculatePoints.js';
 import { renderHeader } from '../common/header.js';
 import { requireRole } from '../common/router.js';
-import { supabase } from '../common/supabase.js';
+import { supabase, showToast } from '../common/supabase.js';
 import { importMatchesFromFile } from '../common/excel-importer.js';
 import { setupMassMatchLoader } from './mass-match-loader.js';
 import { setupDoublesMatchLoader } from './doubles-match-loader.js';
@@ -605,7 +605,8 @@ async function handleRetirement(match, retiringSide) { /* ... (sin cambios) ... 
         }
     }
     if (sets.length === 0) {
-        return alert("Por favor, ingrese el resultado de al menos un game antes de registrar un retiro.");
+        showToast("Por favor, ingrese el resultado de al menos un game antes de registrar un retiro.", "error");
+        return;
     }
     const winner_id = retiringSide === 'p1' ? match.player2_id : match.player1_id;
     const bonus_loser = (retiringSide === 'p1' && p1SetsWon >= 1) || (retiringSide === 'p2' && p2SetsWon >= 1);
@@ -616,9 +617,9 @@ async function handleRetirement(match, retiringSide) { /* ... (sin cambios) ... 
     const updateData = { winner_id, sets, status: 'completado_ret', bonus_loser };
     const { error } = await supabase.from('matches').update(updateData).eq('id', match.id);
     if (error) {
-        alert("Error al registrar el retiro: " + error.message);
+        showToast("Error al registrar el retiro: " + error.message, "error");
     } else {
-        alert("Retiro registrado con éxito.");
+        showToast("Retiro registrado con éxito.", "success");
         closeModal();
         await loadInitialData();
     }
@@ -642,9 +643,9 @@ async function handleWoWin(match, winnerSide) { /* ... (sin cambios) ... */
     const updateData = { winner_id: winner_id, sets: null, status: 'completado_wo', bonus_loser: false };
     const { error } = await supabase.from('matches').update(updateData).eq('id', match.id);
     if (error) {
-        alert("Error al registrar el WO: " + error.message);
+        showToast("Error al registrar el WO: " + error.message, "error");
     } else {
-        alert("Walkover registrado con éxito.");
+        showToast("Walkover registrado con éxito.", "success");
         closeModal();
         await loadInitialData();
     }
@@ -696,11 +697,15 @@ async function saveScores(match) { /* ... (sin cambios) ... */
     const p3_id = isDoubles ? document.getElementById('player3-select-modal').value : null;
     const p4_id = isDoubles ? document.getElementById('player4-select-modal').value : null;
     if (p1_id === p2_id || (isDoubles && (p1_id === p3_id || p1_id === p4_id || p2_id === p3_id || p2_id === p4_id || p3_id === p4_id))) {
-        return alert("Los jugadores no pueden repetirse.");
+        showToast("Los jugadores no pueden repetirse.", "error");
+        return;
     }
     let winner_id = null;
     if (sets.length > 0) {
-        if (sets.length < 2 || (p1SetsWon < 2 && p2SetsWon < 2)) return alert("El resultado no es válido. Un equipo debe ganar al menos 2 sets.");
+        if (sets.length < 2 || (p1SetsWon < 2 && p2SetsWon < 2)) {
+            showToast("El resultado no es válido. Un equipo debe ganar al menos 2 sets.", "error");
+            return;
+        }
         winner_id = p1SetsWon > p2SetsWon ? p1_id : p2_id;
     }
     const newDate = document.getElementById('match-date-modal').value;
@@ -716,23 +721,38 @@ async function saveScores(match) { /* ... (sin cambios) ... */
         match_date: newDate || null, match_time: newTime || null, location: newLocation || null
     };
     const { error } = await supabase.from('matches').update(matchData).eq('id', matchId);
-    if (error) alert("Error al guardar: " + error.message);
-    else { closeModal(); await loadInitialData(); }
+    if (error) {
+        showToast("Error al guardar: " + error.message, "error");
+    } else { 
+        showToast(winner_id ? "Resultado guardado." : "Partido actualizado.", "success");
+        closeModal(); 
+        await loadInitialData(); 
+    }
 }
 
 async function clearScore(matchId) { /* ... (sin cambios) ... */
     if (confirm("¿Limpiar el resultado de este partido?")) {
         const { error } = await supabase.from('matches').update({ sets: null, winner_id: null, bonus_loser: false, status: 'programado' }).eq('id', matchId);
-        if (error) alert("Error: " + error.message);
-        else { closeModal(); await loadInitialData(); }
+        if (error) {
+            showToast("Error: " + error.message, "error");
+        } else { 
+            showToast("Resultado limpiado.", "success");
+            closeModal(); 
+            await loadInitialData(); 
+        }
     }
 }
 
 async function deleteMatch(matchId) { /* ... (sin cambios) ... */
     if (confirm("¿ELIMINAR este partido permanentemente?")) {
         const { error } = await supabase.from('matches').delete().eq('id', matchId);
-        if (error) alert("Error: " + error.message);
-        else { closeModal(); await loadInitialData(); }
+        if (error) {
+            showToast("Error: " + error.message, "error");
+        } else { 
+            showToast("Partido eliminado.", "success");
+            closeModal(); 
+            await loadInitialData(); 
+        }
     }
 }
 
@@ -746,8 +766,13 @@ async function handleBulkDelete() { /* ... (sin cambios) ... */
     if (selectedMatches.size === 0) return;
     if (confirm(`¿Eliminar ${selectedMatches.size} partidos seleccionados?`)) {
         const { error } = await supabase.from('matches').delete().in('id', Array.from(selectedMatches));
-        if (error) alert("Error: " + error.message);
-        else { selectedMatches.clear(); await loadInitialData(); }
+        if (error) {
+            showToast("Error: " + error.message, "error");
+        } else { 
+            showToast(`${selectedMatches.size} partidos eliminados.`, "success");
+            selectedMatches.clear(); 
+            await loadInitialData(); 
+        }
     }
 }
 
@@ -758,8 +783,9 @@ async function handleBulkSuspend() { /* ... (sin cambios) ... */
             .update({ status: 'suspendido', sets: null, winner_id: null, bonus_loser: false })
             .in('id', Array.from(selectedMatches));
         if (error) {
-            alert("Error al suspender los partidos: " + error.message);
+            showToast("Error al suspender los partidos: " + error.message, "error");
         } else {
+            showToast(`${selectedMatches.size} partidos suspendidos.`, "success");
             selectedMatches.clear();
             await loadInitialData();
         }
@@ -768,7 +794,7 @@ async function handleBulkSuspend() { /* ... (sin cambios) ... */
 
 function handleBulkReport() { /* ... (sin cambios) ... */
     if (selectedMatches.size === 0) {
-        alert("No hay partidos seleccionados.");
+        showToast("No hay partidos seleccionados.", "warning");
         return;
     }
     const matchIds = Array.from(selectedMatches);

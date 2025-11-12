@@ -1,5 +1,5 @@
 import { renderHeader } from '../common/header.js';
-import { supabase } from '../common/supabase.js';
+import { supabase, showToast } from '../common/supabase.js';
 import { calculatePoints } from './calculatePoints.js';
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -330,10 +330,10 @@ async function renderReport() {
             const results = await Promise.all(updates);
             const errors = results.filter(res => res.error);
             if (errors.length > 0) {
-                alert(`Hubo un error al actualizar ${errors.length} partido(s).`);
+                showToast(`Hubo un error al actualizar ${errors.length} partido(s).`, "error");
                 console.error("Errores de actualización:", errors);
             } else {
-                alert(`${updates.length} cambio(s) guardado(s) con éxito.`);
+                showToast(`${updates.length} cambio(s) guardado(s) con éxito.`, "success");
             }
         }
         
@@ -444,15 +444,20 @@ async function renderReport() {
         const element = document.getElementById('report-pages-container'); html2pdf().set({ margin: 0, filename: `Reporte_partidos.pdf`, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } }).from(element).toPdf().get('pdf').then(function (pdf) { const totalPages = pdf.internal.getNumberOfPages(); if (totalPages > 1) { pdf.deletePage(totalPages); } }).save();
     });
     btnSaveReport.addEventListener('click', async () => {
-        if (!matchIdsForReport || matchIdsForReport.length === 0) return alert('No hay datos de reporte para guardar.');
+        if (!matchIdsForReport || matchIdsForReport.length === 0) {
+            showToast('No hay datos de reporte para guardar.', 'warning');
+            return;
+        }
         const title = prompt('Ingresa un título para guardar este reporte:', 'Reporte de Partidos ' + new Date().toLocaleDateString('es-AR'));
         if (!title) return;
         const { data, error } = await supabase.from('reports').insert({ title: title, report_data: matchIdsForReport }).select('id').single();
         if (error) {
-            alert('Error al guardar el reporte: ' + error.message);
+            showToast('Error al guardar el reporte: ' + error.message, "error");
         } else {
-            alert('Reporte guardado con éxito. Redirigiendo...');
-            window.location.href = `reportes.html?id=${data.id}`;
+            showToast('Reporte guardado con éxito. Redirigiendo...', "success");
+            setTimeout(() => {
+                window.location.href = `reportes.html?id=${data.id}`;
+            }, 1000);
         }
     });
 

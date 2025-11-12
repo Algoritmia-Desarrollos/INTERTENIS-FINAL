@@ -1,5 +1,5 @@
 import { renderHeader } from '../common/header.js';
-import { supabase } from '../common/supabase.js';
+import { supabase, showToast } from '../common/supabase.js';
 
 async function cargarReportes() {
   const cont = document.getElementById('reportes-list');
@@ -40,9 +40,9 @@ async function handleDelete(reportId) {
     const { error } = await supabase.from('reports').delete().eq('id', reportId);
 
     if (error) {
-        alert('Error al eliminar el reporte: ' + error.message);
+        showToast('Error al eliminar el reporte: ' + error.message, "error");
     } else {
-        alert('Reporte eliminado con éxito.');
+        showToast('Reporte eliminado con éxito.', "success");
         cargarReportes(); // Recargar la lista
     }
 }

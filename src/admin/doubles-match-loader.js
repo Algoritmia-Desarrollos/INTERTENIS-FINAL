@@ -1,4 +1,4 @@
-import { supabase } from '../common/supabase.js';
+import { supabase, showToast } from '../common/supabase.js';
 
 export function setupDoublesMatchLoader({
   container,
@@ -445,16 +445,16 @@ export function setupDoublesMatchLoader({
     const matchesToInsert = [];
     for (const match of matchesData) {
       if (!match.tournament_id || !match.playerA1_id || !match.playerA2_id || !match.playerB1_id || !match.playerB2_id || !match.match_date || !match.sede || !match.cancha) {
-        alert(`Fila incompleta. Revisa que todas tengan torneo, los 4 jugadores, fecha, sede y cancha.`);
+        showToast(`Fila incompleta. Revisa que todas tengan torneo, los 4 jugadores, fecha, sede y cancha.`, "error");
         return;
       }
       const playerIds = [match.playerA1_id, match.playerA2_id, match.playerB1_id, match.playerB2_id];
       if (new Set(playerIds).size !== playerIds.length) {
-        alert('Un jugador no puede estar en más de una posición en el mismo partido.');
+        showToast('Un jugador no puede estar en más de una posición en el mismo partido.', "error");
         return;
       }
       if (match.teamA_id === match.teamB_id) {
-          alert('Un equipo no puede enfrentarse a sí mismo.');
+          showToast('Un equipo no puede enfrentarse a sí mismo.', "error");
           return;
       }
       
@@ -477,11 +477,11 @@ export function setupDoublesMatchLoader({
     btnSave.textContent = 'Guardando...';
     const { error } = await supabase.from('matches').insert(matchesToInsert);
     if (error) {
-      alert('Error al guardar: ' + error.message);
+      showToast('Error al guardar: ' + error.message, "error");
       btnSave.disabled = false;
       updateSaveButton();
     } else {
-      alert(`${matchesToInsert.length} partidos guardados con éxito.`);
+      showToast(`${matchesToInsert.length} partidos guardados con éxito.`, "success");
       matchesData = [];
       renderTable();
       if (typeof loadInitialData === 'function') await loadInitialData();
