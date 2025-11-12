@@ -33,13 +33,17 @@ async function loadDashboardData() {
     summaryContainer.innerHTML = '<p class="text-gray-400">Cargando estadísticas...</p>';
     matchesContainer.innerHTML = '<p class="text-gray-400">Cargando partidos...</p>';
 
+    // --- ** INICIO DE LA MODIFICACIÓN ** ---
+    // 1. Eliminamos la consulta lenta de 'allMatchesForChart'
+    // 2. Añadimos la llamada a la RPC 'get_match_status_counts'
     const [
         { count: tournamentCount },
         { count: playerCount },
         { count: matchCount },
         { data: lastMatches, error: matchesError },
         { data: players, error: playersError },
-        { data: tournaments } // Cargar torneos para el gráfico
+        { data: tournaments }, 
+        { data: statusCountData, error: statusCountError } // NUEVA RPC
     ] = await Promise.all([
         supabase.from('tournaments').select('*', { count: 'exact', head: true }),
         supabase.from('players').select('*', { count: 'exact', head: true }),
@@ -53,12 +57,14 @@ async function loadDashboardData() {
         .order('match_time', { ascending: false, nullsFirst: false })
         .limit(15),
         supabase.from('players').select('*, category:category_id(name)').order('name'),
-        supabase.from('tournaments').select('*, category:category_id(name)') // Cargar categorías
+        supabase.from('tournaments').select('*, category:category_id(name)'),
+        supabase.rpc('get_match_status_counts') // Llama a la nueva función rápida
     ]);
+    // --- ** FIN DE LA MODIFICACIÓN ** ---
     
     lastMatchesData = lastMatches || [];
     allPlayers = players || [];
-    allTournaments = tournaments || []; // Guardar torneos
+    allTournaments = tournaments || []; 
 
     summaryContainer.innerHTML = `
         <a href="tournaments.html" class="block bg-[#222222] p-6 rounded-xl shadow-lg border border-transparent flex items-center gap-4 transition hover:shadow-md hover:border-yellow-400">
@@ -97,26 +103,22 @@ async function loadDashboardData() {
         renderLastMatches(lastMatchesData);
     }
 
-    // --- ** LLAMADA A LOS GRÁFICOS ** ---
-    // Procesar datos para los gráficos
+    // --- ** LLAMADA A LOS GRÁFICOS (MODIFICADA) ** ---
     const activeTournaments = allTournaments.filter(t => t.category && t.category.name !== 'Equipos');
     const categoryData = {};
     activeTournaments.forEach(t => {
         const catName = t.category.name || 'Sin Categoría';
         categoryData[catName] = (categoryData[catName] || 0) + 1;
     });
-
-    const statusData = { 'Pendientes': 0, 'Completados': 0, 'Suspendidos': 0 };
-    // Usar 'allMatches' para el gráfico de estado (no solo los últimos 15)
-    const { data: allMatchesForChart } = await supabase.from('matches').select('winner_id, status');
-    (allMatchesForChart || []).forEach(m => {
-        if (m.status === 'suspendido') statusData['Suspendidos']++;
-        else if (m.winner_id) statusData['Completados']++;
-        else statusData['Pendientes']++;
-    });
+    
+    // Ahora usamos los datos de la RPC directamente
+    if (statusCountError) {
+        console.error("Error al cargar contador de partidos:", statusCountError);
+    } else {
+        renderStatusChart(statusCountData); // Pasamos el JSON directo al gráfico
+    }
 
     renderCategoryChart(categoryData);
-    renderStatusChart(statusData);
 }
 
 
@@ -284,6 +286,9 @@ function openScoreModal(match) {
     const modalContainer = document.getElementById('score-modal-container');
     const sets = match.sets || [];
     const isPlayed = !!match.winner_id;
+    
+    // --- ** CORRECCIÓN: Usar allPlayers en lugar de playersInCategory ** ---
+    // (playersInCategory no estaba definida en este scope)
     const playersInCategory = allPlayers.filter(p => p.category_id === match.category_id);
 
     modalContainer.innerHTML = `
@@ -566,7 +571,8 @@ document.getElementById('matches-container').addEventListener('click', (e) => {
     }
 });
 
-// --- ** FUNCIONES Y LÓGICA PARA LOS GRÁFICOS ** ---
+
+// --- ** FUNCIONES DE GRÁFICOS (MODIFICADAS) ** ---
 
 // Configuración global para los gráficos de Chart.js
 Chart.defaults.color = '#e5e7eb'; // Color de fuente (etiquetas, ejes)
@@ -638,6 +644,7 @@ function renderStatusChart(statusData) {
     const ctx = document.getElementById('statusChart')?.getContext('2d');
     if (!ctx) return;
 
+    // --- ** MODIFICACIÓN: Extraer datos del JSON de la RPC ** ---
     const labels = Object.keys(statusData);
     const data = Object.values(statusData);
 
