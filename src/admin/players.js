@@ -206,18 +206,20 @@ function resetForm() {
     formContainer.classList.add('hidden');
     btnShowForm.innerHTML = '<span class="material-icons">add</span> Crear Nuevo Jugador';
     
-    // Mostrar campos de login para CREAR
+    // Mostrar campos de login para CREAR, pero OPCIONALES
     loginFieldsContainer.classList.remove('hidden');
     resetPasswordContainer.classList.add('hidden');
-    loginTitle.textContent = 'Datos de Login (para crear nuevo)';
-    loginHelpText.textContent = '* Rellena esto para crear un nuevo jugador con su login.';
-    playerEmailInput.required = true;
-    playerPasswordInput.required = true;
+    
+    // CAMBIOS AQUÍ:
+    loginTitle.textContent = 'Datos de Login (Opcional)';
+    loginHelpText.textContent = '* Rellena esto SOLO si quieres que el jugador tenga acceso al sistema.';
+    playerEmailInput.required = false; // Ya no es obligatorio
+    playerPasswordInput.required = false; // Ya no es obligatorio
     
     btnSave.disabled = false;
 }
 
-// --- Lógica de guardado (MODIFICADA) ---
+// --- Lógica de guardado (MODIFICADA PARA HACER LOGIN OPCIONAL) ---
 async function handleFormSubmit(e) {
     e.preventDefault();
     btnSave.disabled = true;
@@ -229,6 +231,10 @@ async function handleFormSubmit(e) {
     const category_id = categorySelect.value ? Number(categorySelect.value) : null;
     const team_id = teamSelect.value ? Number(teamSelect.value) : null;
 
+    // Campos de login
+    const email = playerEmailInput.value.trim();
+    const password = playerPasswordInput.value.trim();
+
     if (!name) {
         showToast("El nombre del jugador es obligatorio.", "error");
         btnSave.disabled = false;
@@ -238,37 +244,32 @@ async function handleFormSubmit(e) {
 
     try {
         if (id) { 
-            // --- MODO EDICIÓN ---
+            // --- MODO EDICIÓN (Se mantiene igual) ---
             const { data: updatedPlayer, error } = await supabase
                 .from('players')
-                .update({ name, category_id, team_id, dni }) // Añadido DNI
+                .update({ name, category_id, team_id, dni }) 
                 .eq('id', id)
                 .select()
                 .single();
 
             if (error) throw error;
             
-            // Verificar si hay que VINCULAR un login (solo si no tiene uno ya)
-            const email = playerEmailInput.value;
-            const password = playerPasswordInput.value;
-            
+            // Vincular login si se rellenaron los campos en edición
             if (!currentEditingPlayer?.user_id && email && password) {
-                // El jugador no tenía login, pero se rellenaron los campos.
-                // Llamar a la Edge Function para VINCULAR.
                 showToast("Actualizando perfil... vinculando login...", "info");
                 const { data: linkData, error: linkError } = await supabase.functions.invoke('link-player-auth', {
                     body: { player_id: id, email, password },
                 });
-                if (linkError) throw new Error(`Jugador actualizado, pero error al vincular login: ${linkError.message}`);
-                if (linkData.error) throw new Error(`Jugador actualizado, pero error al vincular login: ${linkData.error}`);
+                if (linkError) throw new Error(`Error al vincular login: ${linkError.message}`);
+                if (linkData.error) throw new Error(`Error al vincular login: ${linkData.error}`);
             }
 
-            // Lógica de cambio de torneo (como antes)
+            // Lógica de cambio de torneo
             const originalPlayer = allPlayers.find(p => p.id == id);
             if (originalPlayer && originalPlayer.category_id !== updatedPlayer.category_id && updatedPlayer.category_id) {
                 const newTournament = allTournaments.find(t => t.category_id === updatedPlayer.category_id);
                 if (newTournament) {
-                    if (confirm(`Has cambiado la categoría del jugador.\n\n¿Quieres inscribirlo en el torneo "${newTournament.name}" y eliminarlo de sus torneos anteriores?`)) {
+                    if (confirm(`Has cambiado la categoría.\n\n¿Quieres inscribirlo en el torneo "${newTournament.name}" y eliminarlo de los anteriores?`)) {
                         await supabase.from('tournament_players').delete().eq('player_id', updatedPlayer.id);
                         await supabase.from('tournament_players').insert({ player_id: updatedPlayer.id, tournament_id: newTournament.id });
                     }
@@ -277,37 +278,56 @@ async function handleFormSubmit(e) {
             showToast("Jugador actualizado con éxito.", "success");
 
         } else { 
-            // --- MODO CREACIÓN: Llama a la Edge Function ---
-            const email = playerEmailInput.value;
-            const password = playerPasswordInput.value;
+            // --- MODO CREACIÓN (Lógica Nueva) ---
+            
+            let savedPlayer = null;
 
-            if (!email || !password) {
-                throw new Error("El email y la contraseña son obligatorios para crear un nuevo jugador.");
+            // OPCIÓN A: Con Login (Si rellenó email y pass)
+            if (email && password) {
+                const { data, error } = await supabase.functions.invoke('create-player-user', {
+                    body: { name, email, password, category_id, team_id, dni },
+                });
+
+                if (error) throw new Error(error.message || "Error desde la Edge Function.");
+                if (data.error) throw new Error(data.error);
+                
+                savedPlayer = data.player;
+                showToast("Jugador y login creados con éxito.", "success");
+
+            // OPCIÓN B: Sin Login (Solo base de datos)
+            } else {
+                // Validación: Si puso uno pero no el otro
+                if ((email && !password) || (!email && password)) {
+                    throw new Error("Para crear un login, necesitas Email Y Contraseña. Si no, deja ambos vacíos.");
+                }
+
+                // Insert directo en tabla players (user_id será null)
+                const { data, error } = await supabase
+                    .from('players')
+                    .insert({ name, category_id, team_id, dni }) // Sin user_id
+                    .select()
+                    .single();
+
+                if (error) throw error;
+                savedPlayer = data;
+                showToast("Jugador creado (sin login).", "success");
             }
 
-            // Llama a la Edge Function 'create-player-user'
-            const { data, error } = await supabase.functions.invoke('create-player-user', {
-                body: { name, email, password, category_id, team_id, dni }, // Añadido DNI
-            });
-
-            if (error) throw new Error(error.message || "Error desde la Edge Function.");
-            if (data.error) throw new Error(data.error);
-
-            // Lógica de inscripción a torneo
-            const savedPlayer = data.player;
+            // Lógica de inscripción a torneo (Compartida para ambos casos)
             if (savedPlayer && savedPlayer.category_id) {
                 const newTournament = allTournaments.find(t => t.category_id === savedPlayer.category_id);
                 if (newTournament) {
-                    if (confirm(`Jugador "${savedPlayer.name}" creado con éxito.\n\n¿Quieres inscribirlo en el torneo "${newTournament.name}"?`)) {
+                    // Quitamos el confirm si es creación masiva rápida, o lo dejamos si prefieres
+                    // Dejamos el confirm por seguridad
+                    if (confirm(`Jugador "${savedPlayer.name}" creado.\n\n¿Inscribirlo en el torneo "${newTournament.name}"?`)) {
                         await supabase.from('tournament_players').insert({ player_id: savedPlayer.id, tournament_id: newTournament.id });
                     }
                 }
             }
-            showToast("Jugador y login creados con éxito.", "success");
         }
 
         resetForm();
-        await loadInitialData(); // Recarga todo
+        await loadInitialData(); 
 
     } catch (error) {
         console.error("Error al guardar:", error);
