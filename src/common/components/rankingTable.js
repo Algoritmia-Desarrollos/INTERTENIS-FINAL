@@ -123,31 +123,33 @@ export function generateCategoryRankingsHTML(category, stats, playerToHighlight 
         return '';
     };
     
+    
+    
     let tableHTML = `
-        <table class="rankings-table min-w-full font-bold text-sm text-gray-200" style="border-spacing: 0; border-collapse: separate;">
+        <table class="rankings-table min-w-full font-bold text-xs md:text-sm text-gray-200" style="border-spacing: 0; border-collapse: separate;">
             <thead class="bg-black]">
                 <tr>
-                    <th colspan="2" class="category-header py-2 px-4 text-3xl font-bold text-white text-center" style=" border-width: 1px 0 3px 1px; background: #757170; border-color: black;">${category.name}</th>
-                    <th class="col-p-plus px-3 py-3 text-center text-[18px] font-bold text-white tracking-wider" style="border-width: 1px 0 3px 2px; background: #757170; border-color: black;">P+</th>
-                    <th class="col-p-minus px-3 py-3 text-center text-[18px] font-bold text-white tracking-wider" style="border-width: 1px 0 3px 0px; background: #757170; border-color: black;">P-</th>
-                    <th class="col-p-diff px-1 py-3 text-center text-[14px] font-light text-white tracking-wider" style="border-width: 1px 2px 3px 0px; background: #757170; border-color: black;">Dif.</th>
-                    <th class="col-s-plus px-3 py-3 text-center text-[18px] font-bold text-white tracking-wider" style="border-width: 1px 0 3px 1px; background: #757170; border-color: black;">S+</th>
-                    <th class="col-s-minus px-3 py-3 text-center text-[18px] font-bold text-white tracking-wider" style="border-width: 1px 0 3px 0px; background: #757170; border-color: black;">S-</th>
-                    <th class="col-s-diff px-1 py-3 text-center text-[14px] font-light text-white tracking-wider" style="border-width: 1px 2px 3px 0px; background: #757170; border-color: black;">Dif.</th>
-                    <th class="col-g-plus px-3 py-3 text-center text-[18px] font-bold text-white tracking-wider" style="border-width: 1px 0 3px 1px; background: #757170; border-color: black;">G+</th>
-                    <th class="col-g-minus px-3 py-3 text-center text-[18px] font-bold text-white tracking-wider" style="border-width: 1px 0 3px 0px; background: #757170; border-color: black;">G-</th>
-                    <th class="col-g-diff px-1 py-3 text-center text-[14px] font-light text-white tracking-wider" style="border-width: 1px 2px 3px 0px; background: #757170; border-color: black;">Dif.</th>
-                    <th class="col-bonus px-1 py-3 text-center text-[18px] font-bold text-white tracking-wider" style="border-width: 1px 2px 3px 1px; background: #757170; border-color: black;">Bon.</th>
-                    <th class="col-points px-3 py-3 text-center text-[18px] font-bold text-white tracking-wider" style="border-width: 1px 2px 3px 1px; background: #757170; border-color: black;">Pts.</th>
-                    <th class="col-partial px-1 py-3 text-center text-[18px] font-bold text-white tracking-wider" style="border-width: 1px 2px 3px 1px; background: #757170; border-color: black;">Parcial</th>
-                    <th class="col-prom px-3 py-3 text-center text-[18px] font-bold text-white tracking-wider" style="border-width: 1px 2px 3px 1px; background: #757170; border-color: black;">Prom. %</th>
-                    <th class="col-tag px-0 py-3 text-center text-[18px] font-bold text-white tracking-wider" style="border-width: 1px 1px 3px 1px; background: black; border-color: black; width: 50px;"></th>
+                    <th colspan="2" class="category-header py-1 px-2 md:py-2 md:px-4 text-xl md:text-3xl font-bold text-white text-center" style=" border-width: 1px 0 3px 1px; background: #757170; border-color: black;">${category.name}</th>
+                    <th class="col-p-plus px-1 py-1 md:px-3 md:py-3 text-center text-sm md:text-[18px] font-bold text-white tracking-wider" style="border-width: 1px 0 3px 2px; background: #757170; border-color: black;">P+</th>
+                    <th class="col-p-minus px-1 py-1 md:px-3 md:py-3 text-center text-sm md:text-[18px] font-bold text-white tracking-wider" style="border-width: 1px 0 3px 0px; background: #757170; border-color: black;">P-</th>
+                    <th class="col-p-diff px-1 py-1 md:px-1 md:py-3 text-center text-xs md:text-[14px] font-light text-white tracking-wider" style="border-width: 1px 2px 3px 0px; background: #757170; border-color: black;">Dif.</th>
+                    <th class="col-s-plus px-1 py-1 md:px-3 md:py-3 text-center text-sm md:text-[18px] font-bold text-white tracking-wider" style="border-width: 1px 0 3px 1px; background: #757170; border-color: black;">S+</th>
+                    <th class="col-s-minus px-1 py-1 md:px-3 md:py-3 text-center text-sm md:text-[18px] font-bold text-white tracking-wider" style="border-width: 1px 0 3px 0px; background: #757170; border-color: black;">S-</th>
+                    <th class="col-s-diff px-1 py-1 md:px-1 md:py-3 text-center text-xs md:text-[14px] font-light text-white tracking-wider" style="border-width: 1px 2px 3px 0px; background: #757170; border-color: black;">Dif.</th>
+                    <th class="col-g-plus px-1 py-1 md:px-3 md:py-3 text-center text-sm md:text-[18px] font-bold text-white tracking-wider" style="border-width: 1px 0 3px 1px; background: #757170; border-color: black;">G+</th>
+                    <th class="col-g-minus px-1 py-1 md:px-3 md:py-3 text-center text-sm md:text-[18px] font-bold text-white tracking-wider" style="border-width: 1px 0 3px 0px; background: #757170; border-color: black;">G-</th>
+                    <th class="col-g-diff px-1 py-1 md:px-1 md:py-3 text-center text-xs md:text-[14px] font-light text-white tracking-wider" style="border-width: 1px 2px 3px 0px; background: #757170; border-color: black;">Dif.</th>
+                    <th class="col-bonus px-1 py-1 md:px-1 md:py-3 text-center text-sm md:text-[18px] font-bold text-white tracking-wider" style="border-width: 1px 2px 3px 1px; background: #757170; border-color: black;">Bon.</th>
+                    <th class="col-points px-1 py-1 md:px-3 md:py-3 text-center text-sm md:text-[18px] font-bold text-white tracking-wider" style="border-width: 1px 2px 3px 1px; background: #757170; border-color: black;">Pts.</th>
+                    <th class="col-partial px-1 py-1 md:px-1 md:py-3 text-center text-sm md:text-[18px] font-bold text-white tracking-wider" style="border-width: 1px 2px 3px 1px; background: #757170; border-color: black;">Parcial</th>
+                    <th class="col-prom px-1 py-1 md:px-3 md:py-3 text-center text-sm md:text-[18px] font-bold text-white tracking-wider" style="border-width: 1px 2px 3px 1px; background: #757170; border-color: black;">Prom. %</th>
+                    <th class="col-tag px-0 py-1 md:px-0 md:py-3 text-center text-sm md:text-[18px] font-bold text-white tracking-wider" style="border-width: 1px 1px 3px 1px; background: black; border-color: black; width: 40px md:w-50px;"></th>
                     </tr>
             </thead>
             <tbody>`;
     
     if (stats.length === 0) {
-        tableHTML += '<tr><td colspan="16" class="text-center font-bold p-8 text-gray-400">No hay jugadores en esta categoría para mostrar.</td></tr>';
+        tableHTML += '<tr><td colspan="16" class="text-center font-bold p-4 md:p-8 text-gray-400 text-sm md:text-base">No hay jugadores en esta categoría para mostrar.</td></tr>';
     } else {
         stats.forEach((s, index) => {
             if (!s.playerId) {
@@ -167,32 +169,32 @@ export function generateCategoryRankingsHTML(category, stats, playerToHighlight 
 
             tableHTML += `
                 <tr class="${highlightClass}">
-                    <td class="col-rank px-2 py-2 text-xl font-bold text-white text-center" style="border-width: 0 0 3px 1px; background-color: #757170; border-color: black; vertical-align: middle;">${rank_position}°</td>
+                    <td class="col-rank px-1 py-1 md:px-2 md:py-2 text-lg md:text-xl font-bold text-white text-center" style="border-width: 0 0 3px 1px; background-color: #757170; border-color: black; vertical-align: middle;">${rank_position}°</td>
                     <td class="col-player bg-black px-0 py-0 whitespace-nowrap" style="border-width: 0 0 2px 1px; border-color: #4b556352; vertical-align: middle;">
                         <div class="flex items-center bg-black font-light player-cell-content">
-                            <span class="flex-grow bg-black font-bold text-gray-100 player-name-container text-center">
+                            <span class="flex-grow bg-black font-bold text-gray-100 player-name-container text-center text-sm md:text-base">
                                 ${s.name}
                                 </span>
-                            <img src="${s.teamImageUrl || 'https://via.placeholder.com/40'}" alt="${s.teamName}" class="h-10 w-10 object-cover bg-black team-logo ml-4">
+                            <img src="${s.teamImageUrl || 'https://via.placeholder.com/40'}" alt="${s.teamName}" class="h-8 w-8 md:h-10 md:w-10 object-cover bg-black team-logo ml-2 md:ml-4">
                         </div>
                     </td>
-                    <td class="col-p-plus px-2 py-2 text-center text-2xl font-bold bg-black" style="border-width: 0px 0 2px 1px;  border-color: #4b556352; vertical-align: middle;">${hasPlayed ? s.pg : ''}</td>
-                    <td class="col-p-minus px-2 py-2 text-center text-2xl font-bold bg-black" style="border-width: 0 0 2px 1px; border-color: #4b556352; vertical-align: middle;">${hasPlayed ? s.pp : ''}</td>
-                    <td class="col-p-diff px-2 py-2 text-center bg-black font-bold ${difPClass}" style="border-width: 0 1px 2px 1px; border-color: #4b556352; vertical-align: middle;">${hasPlayed ? s.difP : ''}</td>
-                    <td class="col-s-plus px-2 py-2 text-center text-2xl font-bold bg-black" style="border-width: 0 0 2px 1px; border-color: #4b556352; vertical-align: middle;">${hasPlayed ? s.sg : ''}</td>
-                    <td class="col-s-minus px-2 py-2 text-center text-2xl bg-black font-bold" style="border-width: 0 0 2px 1px; border-color: #4b556352; vertical-align: middle;">${hasPlayed ? s.sp : ''}</td>
-                    <td class="col-s-diff px-2 py-2 text-center bg-black font-bold ${difSClass}" style="border-width: 0 1px 2px 1px; border-color: #4b556352; vertical-align: middle;">${hasPlayed ? s.difS : ''}</td>
-                    <td class="col-g-plus px-2 py-2 text-center text-2xl bg-black font-bold" style="border-width: 0 0 2px 1px; border-color: #4b556352; vertical-align: middle;">${hasPlayed ? s.gg : ''}</td>
-                    <td class="col-g-minus px-2 py-2 text-center text-2xl bg-black font-bold" style="border-width: 0 0 2px 1px; border-color: #4b556352; vertical-align: middle;">${hasPlayed ? s.gp : ''}</td>
-                    <td class="col-g-diff px-2 py-2 text-center bg-black font-bold ${difGClass}" style="border-width: 0 1px 2px 1px; border-color: #4b556352; vertical-align: middle;">${hasPlayed ? s.difG : ''}</td>
-                    <td class="col-bonus px-1 py-2 text-center bg-black font-bold text-red-500" style="border-width: 0 1px 2px 1px; border-color: #4b556352; vertical-align: middle;">${hasPlayed ? s.bonus : ''}</td>
-                    <td class="col-points px-2 py-2 text-center text-2xl bg-black font-bold text-lg text-[#e8b83a]" style="border-width: 0 1px 2px 1px; border-color: #4b556352; vertical-align: middle;">${hasPlayed ? s.puntos : '0'}</td>
-                    <td class="col-partial px-1 py-2 text-center bg-black font-bold" style="border-width: 0 1px 2px 1px; border-color: #4b556352; vertical-align: middle;">${hasPlayed ? s.parcial.toFixed(2) : ''}</td>
-                    <td class="col-prom px-2 py-2 text-center text-2xl bg-black font-bold text-[yellow]" style="border-width: 0 1px 1px 1px; border-color: #4b556352; vertical-align: middle;">
+                    <td class="col-p-plus px-1 py-1 md:px-2 md:py-2 text-center text-lg md:text-2xl font-bold bg-black" style="border-width: 0px 0 2px 1px;  border-color: #4b556352; vertical-align: middle;">${hasPlayed ? s.pg : ''}</td>
+                    <td class="col-p-minus px-1 py-1 md:px-2 md:py-2 text-center text-lg md:text-2xl font-bold bg-black" style="border-width: 0 0 2px 1px; border-color: #4b556352; vertical-align: middle;">${hasPlayed ? s.pp : ''}</td>
+                    <td class="col-p-diff px-1 py-1 md:px-2 md:py-2 text-center bg-black font-bold text-sm md:text-base ${difPClass}" style="border-width: 0 1px 2px 1px; border-color: #4b556352; vertical-align: middle;">${hasPlayed ? s.difP : ''}</td>
+                    <td class="col-s-plus px-1 py-1 md:px-2 md:py-2 text-center text-lg md:text-2xl font-bold bg-black" style="border-width: 0 0 2px 1px; border-color: #4b556352; vertical-align: middle;">${hasPlayed ? s.sg : ''}</td>
+                    <td class="col-s-minus px-1 py-1 md:px-2 md:py-2 text-center text-lg md:text-2xl bg-black font-bold" style="border-width: 0 0 2px 1px; border-color: #4b556352; vertical-align: middle;">${hasPlayed ? s.sp : ''}</td>
+                    <td class="col-s-diff px-1 py-1 md:px-2 md:py-2 text-center bg-black font-bold text-sm md:text-base ${difSClass}" style="border-width: 0 1px 2px 1px; border-color: #4b556352; vertical-align: middle;">${hasPlayed ? s.difS : ''}</td>
+                    <td class="col-g-plus px-1 py-1 md:px-2 md:py-2 text-center text-lg md:text-2xl bg-black font-bold" style="border-width: 0 0 2px 1px; border-color: #4b556352; vertical-align: middle;">${hasPlayed ? s.gg : ''}</td>
+                    <td class="col-g-minus px-1 py-1 md:px-2 md:py-2 text-center text-lg md:text-2xl bg-black font-bold" style="border-width: 0 0 2px 1px; border-color: #4b556352; vertical-align: middle;">${hasPlayed ? s.gp : ''}</td>
+                    <td class="col-g-diff px-1 py-1 md:px-2 md:py-2 text-center bg-black font-bold text-sm md:text-base ${difGClass}" style="border-width: 0 1px 2px 1px; border-color: #4b556352; vertical-align: middle;">${hasPlayed ? s.difG : ''}</td>
+                    <td class="col-bonus px-1 py-1 md:px-1 md:py-2 text-center bg-black font-bold text-red-500 text-sm md:text-base" style="border-width: 0 1px 2px 1px; border-color: #4b556352; vertical-align: middle;">${hasPlayed ? s.bonus : ''}</td>
+                    <td class="col-points px-1 py-1 md:px-2 md:py-2 text-center text-lg md:text-2xl bg-black font-bold text-base md:text-lg text-[#e8b83a]" style="border-width: 0 1px 2px 1px; border-color: #4b556352; vertical-align: middle;">${hasPlayed ? s.puntos : '0'}</td>
+                    <td class="col-partial px-1 py-1 md:px-1 md:py-2 text-center bg-black font-bold text-sm md:text-base" style="border-width: 0 1px 2px 1px; border-color: #4b556352; vertical-align: middle;">${hasPlayed ? s.parcial.toFixed(2) : ''}</td>
+                    <td class="col-prom px-1 py-1 md:px-2 md:py-2 text-center text-lg md:text-2xl bg-black font-bold text-[yellow]" style="border-width: 0 1px 1px 1px; border-color: #4b556352; vertical-align: middle;">
                         ${s.promedio.toFixed(2)}
-                        <span class="text-xs text-gray-500">/${s.partidosParaPromediar}</span>
+                        <span class="text-[10px] md:text-xs text-gray-500">/${s.partidosParaPromediar}</span>
                     </td>
-                    <td class="col-tag bg-black px-1 py-2 text-center" style="border-width: 0 1px 1px 1px; border-color: #4b556352; vertical-align: middle;">
+                    <td class="col-tag bg-black px-1 py-1 md:px-1 md:py-2 text-center" style="border-width: 0 1px 1px 1px; border-color: #4b556352; vertical-align: middle;">
                         ${tagHTML}
                     </td>
                     </tr>`;
