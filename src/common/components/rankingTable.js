@@ -143,7 +143,7 @@ export function generateCategoryRankingsHTML(category, stats, playerToHighlight 
                     <th class="col-points px-1 py-1 md:px-3 md:py-3 text-center text-sm md:text-[18px] font-bold text-white tracking-wider" style="border-width: 1px 2px 3px 1px; background: #757170; border-color: black;">Pts.</th>
                     <th class="col-partial px-1 py-1 md:px-1 md:py-3 text-center text-sm md:text-[18px] font-bold text-white tracking-wider" style="border-width: 1px 2px 3px 1px; background: #757170; border-color: black;">Parcial</th>
                     <th class="col-prom px-1 py-1 md:px-3 md:py-3 text-center text-sm md:text-[18px] font-bold text-white tracking-wider" style="border-width: 1px 2px 3px 1px; background: #757170; border-color: black;">Prom. %</th>
-                    <th class="col-tag px-0 py-1 md:px-0 md:py-3 text-center text-sm md:text-[18px] font-bold text-white tracking-wider" style="border-width: 1px 1px 3px 1px; background: black; border-color: black; width: 40px md:w-50px;"></th>
+                    <th class="col-tag px-0 py-1 md:px-0 md:py-3 text-center text-sm md:text-[18px] font-bold text-white tracking-wider w-[40px] md:w-[50px]" style="border-width: 1px 1px 3px 1px; background: black; border-color: black;"></th>
                     </tr>
             </thead>
             <tbody>`;

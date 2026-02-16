@@ -55,18 +55,18 @@ function renderMatches(matchesToRender) {
             
             tableHTML += `
                 <tr>
-                    <td colspan="2" style="background-color: ${headerBgColor}; color: ${headerTextColor}; font-weight: 700; text-align: left; vertical-align: middle; padding: 12px 1rem; font-size: 15pt; border-radius: 0; letter-spacing: 1px;">${sede.toUpperCase()}</td>
-                    <td colspan="6" style="background-color: ${headerBgColor}; color: ${headerTextColor}; font-weight: 700; text-align: center; vertical-align: middle; padding: 12px 1rem; padding-right: 155px; font-size: 15pt; border-radius: 0; letter-spacing: 1px;">${formattedDate}</td>
+                    <td colspan="2" class="text-sm md:text-2xl p-2 md:p-4" style="background-color: ${headerBgColor}; color: ${headerTextColor}; font-weight: 700; text-align: left; vertical-align: middle; border-radius: 0; letter-spacing: 1px;">${sede.toUpperCase()}</td>
+                    <td colspan="6" class="text-sm md:text-2xl p-2 md:p-4" style="background-color: ${headerBgColor}; color: ${headerTextColor}; font-weight: 700; text-align: center; vertical-align: middle; padding-right: 155px; border-radius: 0; letter-spacing: 1px;">${formattedDate}</td>
                 </tr>
-                <tr style="font-size: 8px; color: #a0a0a0; font-weight: normal;">
-                    <th style="font-size: 12px; padding-bottom: 2px;background: black; text-align: center;">Cancha</th>
-                    <th style="font-size: 12px; padding-bottom: 2px;background: black;  text-align: center;">Horario</th>
+                <tr style="color: #a0a0a0; font-weight: normal;">
+                    <th style="padding-bottom: 2px;background: black; text-align: center;">Cancha</th>
+                    <th style="padding-bottom: 2px;background: black;  text-align: center;">Horario</th>
                     <th style="padding-bottom: 2px;background: black;  text-align: center;"></th>
                     <th style="background: black;"></th>
                     <th style="background: black;"></th>
                     <th style="background: black;"></th>
                     <th style="background: black;"></th>
-                    <th style="padding-bottom: 2px;background: black;  font-size: 12px; text-left: center;">Categoría</th>
+                    <th style="padding-bottom: 2px;background: black; text-left: center;">Categoría</th>
                 </tr>
                 `;
 
@@ -132,14 +132,14 @@ function renderMatches(matchesToRender) {
 
                 tableHTML += `
                     <tr class="data-row ${suspendedClass}">
-                        <td style="background-color: ${canchaBackgroundColor} !important; color: ${canchaTextColor} !important; font-weight: bold; font-size: 16px; font-weight:600">${cancha}</td>
-                        <td style="background:#000;color:#fff; font-size: 16px; font-weight:600">${hora}</td>
-                        <td class="player-name player-name-right ${team1_class}" style='background:#000;color:#fff;${team1NameStyle};  font-size: 16px !important;'>${team1_names}</td>
-                        <td class="pts-col" style='background:${p1TeamColor || '#3a3838'};color:${p1TextColor}; font-size: 20px; font-weight: 800'>${team1PointsDisplay}</td>
-                        <td class="font-mono" style="background:#000;color:#fff; font-size: 16px; font-weight: 700;">${resultadoDisplay}</td>
-                        <td class="pts-col" style='background:${p2TeamColor || '#3a3838'};color:${p2TextColor}; font-size: 20px; font-weight: 800'>${team2PointsDisplay}</td>
-                        <td class="player-name player-name-left ${team2_class}" style='background:#000;color:#fff;${team2NameStyle}; font-size: 16px !important;'>${team2_names}</td>
-                        <td class="cat-col" style="background:#000;color:${match.category?.color || '#b45309'}; font-size: 18px; font-weight: 800">${match.category?.name || 'N/A'}</td>
+                        <td class="text-xs md:text-base" style="background-color: ${canchaBackgroundColor} !important; color: ${canchaTextColor} !important; font-weight: bold; font-weight:600">${cancha}</td>
+                        <td class="text-xs md:text-base" style="background:#000;color:#fff; font-weight:600">${hora}</td>
+                        <td class="player-name player-name-right ${team1_class} text-xs md:text-base" style='background:#000;color:#fff;${team1NameStyle};'>${team1_names}</td>
+                        <td class="pts-col text-sm md:text-xl" style='background:${p1TeamColor || '#3a3838'};color:${p1TextColor}; font-weight: 800'>${team1PointsDisplay}</td>
+                        <td class="font-mono text-xs md:text-base" style="background:#000;color:#fff; font-weight: 700;">${resultadoDisplay}</td>
+                        <td class="pts-col text-sm md:text-xl" style='background:${p2TeamColor || '#3a3838'};color:${p2TextColor}; font-weight: 800'>${team2PointsDisplay}</td>
+                        <td class="player-name player-name-left ${team2_class} text-xs md:text-base" style='background:#000;color:#fff;${team2NameStyle};'>${team2_names}</td>
+                        <td class="cat-col text-xs md:text-lg" style="background:#000;color:${match.category?.color || '#b45309'}; font-weight: 800">${match.category?.name || 'N/A'}</td>
                     </tr>`;
             }
         }

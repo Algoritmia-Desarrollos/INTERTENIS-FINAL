@@ -29,13 +29,20 @@
         }
         .matches-report-style th,
         .matches-report-style td {
-            padding: 8px 4px;
-            font-size: 11pt;
+            padding: 4px 2px; /* Mobile padding */
+            font-size: 10px; /* Mobile font size */
             border-bottom: 2px solid #4a4a4a;
             text-align: center;
             vertical-align: middle;
             background: #222222;
             color: #ffffff;
+        }
+        @media (min-width: 768px) {
+            .matches-report-style th,
+            .matches-report-style td {
+                padding: 8px 4px; /* Desktop padding */
+                font-size: 11pt; /* Desktop font size */
+            }
         }
         .matches-report-style tr td {
             border-right: 1px solid #4a4a4a;
@@ -47,22 +54,36 @@
             border-bottom: none;
         }
         .matches-report-style thead th {
-            font-size: 8pt;
+            font-size: 8px; /* Mobile header font size */
             color: #a0a0a0;
             text-transform: uppercase;
             font-weight: 600;
-            padding-top: 8px;
-            padding-bottom: 8px;
+            padding-top: 4px;
+            padding-bottom: 4px;
             border: none;
             background: #000;
+        }
+        @media (min-width: 768px) {
+            .matches-report-style thead th {
+                font-size: 8pt; /* Desktop header font size */
+                padding-top: 8px;
+                padding-bottom: 8px;
+            }
         }
         .matches-report-style .winner {
             font-weight: 700 !important;
             color: #f4ec05 !important;
         }
-        .matches-report-style .player-name { font-weight: 700; font-size: 16px; }
-        .matches-report-style .player-name-right { text-align: right; padding-right: 8px;}
-        .matches-report-style .player-name-left { text-align: left; padding-left: 8px;}
+        .matches-report-style .player-name { font-weight: 700; font-size: 12px; } /* Mobile font size */
+        @media (min-width: 768px) {
+            .matches-report-style .player-name { font-size: 16px; } /* Desktop font size */
+        }
+        .matches-report-style .player-name-right { text-align: right; padding-right: 4px; }
+        .matches-report-style .player-name-left { text-align: left; padding-left: 4px; }
+        @media (min-width: 768px) {
+            .matches-report-style .player-name-right { padding-right: 8px; }
+            .matches-report-style .player-name-left { padding-left: 8px; }
+        }
         .matches-report-style .font-mono { 
             font-family: 'Consolas', 'Menlo', 'Courier New', monospace;
             font-size: 11pt;
