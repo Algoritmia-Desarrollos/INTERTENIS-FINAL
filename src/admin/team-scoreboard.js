@@ -177,8 +177,9 @@ function generateScoreboardHTML(sortedTeams, fortnights, tournamentId, isAdmin) 
         gridHTML += `<div class="sub-header-group"><span>Singles</span><span>Dobles</span><span class="total-col">TOTAL</span></div>`;
     });
 
-    Object.keys(fortnights).forEach(label => {
-        gridHTML += `<div class="date-label-cell">${label}</div>`;
+    Object.keys(fortnights).forEach((label, i) => {
+        const displayLabel = label === 'Sin Reporte' ? 'Pendiente' : `${i + 1}°`;
+        gridHTML += `<div class="date-label-cell">${displayLabel}</div>`;
         sortedTeams.forEach(team => {
             const data = team.byFortnight[label] || { singles: 0, doubles: 0, total: 0 };
             gridHTML += `
