@@ -70,6 +70,26 @@ function renderMatches(matchesToRender) {
                 </tr>
                 `;
 
+            // SORT BY TIME THEN LOCATION
+            matchesInSede.sort((a, b) => {
+                const timeA = a.match_time || 'HH:MM';
+                const timeB = b.match_time || 'HH:MM';
+                
+                if (timeA !== timeB) {
+                    return timeA.localeCompare(timeB);
+                }
+                
+                const getCourtNum = (loc) => {
+                    if (!loc) return 0;
+                    const parts = loc.split(' - ');
+                    const endPart = parts[1] || parts[0];
+                    const numMatch = endPart.match(/\d+/);
+                    return numMatch ? parseInt(numMatch[0], 10) : 0;
+                };
+                
+                return getCourtNum(a.location) - getCourtNum(b.location);
+            });
+
             for (const match of matchesInSede) {
                 const { p1_points, p2_points } = calculatePoints(match);
                 const isDoubles = match.player3 && match.player4;

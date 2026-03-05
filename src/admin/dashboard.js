@@ -403,8 +403,14 @@ async function handleRetirement(match, retiringSide) {
             const p1 = parseInt(p1Score, 10);
             const p2 = parseInt(p2Score, 10);
             sets.push({ p1, p2 });
-            if (p1 > p2) p1SetsWon++;
-            if (p2 > p1) p2SetsWon++;
+            const isCompleted = (p1 >= 6 && p1 - p2 >= 2) || (p2 >= 6 && p2 - p1 >= 2) || p1 >= 7 || p2 >= 7;
+            if (isCompleted) {
+                if (p1 > p2) p1SetsWon++;
+                if (p2 > p1) p2SetsWon++;
+            } else {
+                if (retiringSide === 'p1') p2SetsWon++;
+                else p1SetsWon++;
+            }
         }
     }
 

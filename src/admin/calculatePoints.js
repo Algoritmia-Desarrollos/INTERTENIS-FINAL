@@ -20,12 +20,21 @@ export function calculatePoints(match) {
 
         // Caso 2: Partido ganado por Retiro
         if (match.status === 'completado_ret') {
+            let loserSetsWon = 0;
+            (match.sets || []).forEach(s => {
+                const isCompleted = (s.p1 >= 6 && s.p1 - s.p2 >= 2) || (s.p2 >= 6 && s.p2 - s.p1 >= 2) || s.p1 >= 7 || s.p2 >= 7;
+                if (isCompleted) {
+                    if (winnerIsSide1 && s.p2 > s.p1) loserSetsWon++;
+                    if (!winnerIsSide1 && s.p1 > s.p2) loserSetsWon++;
+                }
+            });
+
             if (winnerIsSide1) {
-                p1_points = 2; // Ganador recibe 2 puntos
-                p2_points = match.bonus_loser ? 1 : 0; // Perdedor recibe 1 punto SI ganó un set
+                p1_points = 2;
+                p2_points = loserSetsWon >= 1 ? 1 : 0;
             } else {
-                p2_points = 2; // Ganador recibe 2 puntos
-                p1_points = match.bonus_loser ? 1 : 0; // Perdedor recibe 1 punto SI ganó un set
+                p2_points = 2;
+                p1_points = loserSetsWon >= 1 ? 1 : 0;
             }
             return { p1_points, p2_points };
         }

@@ -164,6 +164,27 @@ async function renderReport() {
 
         for (const sede in sedes) {
             const matches = sedes[sede];
+            
+            // SORT BY TIME THEN LOCATION
+            matches.sort((a, b) => {
+                const timeA = a.time || 'HH:MM';
+                const timeB = b.time || 'HH:MM';
+                
+                if (timeA !== timeB) {
+                    return timeA.localeCompare(timeB);
+                }
+                
+                const getCourtNum = (loc) => {
+                    if (!loc) return 0;
+                    const parts = loc.split(' - ');
+                    const endPart = parts[1] || parts[0];
+                    const numMatch = endPart.match(/\d+/);
+                    return numMatch ? parseInt(numMatch[0], 10) : 0;
+                };
+                
+                return getCourtNum(a.location) - getCourtNum(b.location);
+            });
+            
             const tableHeight = HEADER_ROW_HEIGHT_MM + (matches.length * ROW_HEIGHT_MM);
             const spacerHeight = (currentHeight > 0) ? SPACER_HEIGHT_MM : 0;
 

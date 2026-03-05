@@ -145,7 +145,18 @@ function calculateCategoryStats(players, matches) {
         (match.sets || []).forEach(set => {
             p1TotalGames += set.p1;
             p2TotalGames += set.p2;
-            if(set.p1 > set.p2) p1SetsWon++; else p2SetsWon++;
+            
+            if (match.status === 'completado_ret') {
+                const isCompleted = (set.p1 >= 6 && set.p1 - set.p2 >= 2) || (set.p2 >= 6 && set.p2 - set.p1 >= 2) || set.p1 >= 7 || set.p2 >= 7;
+                if (isCompleted) {
+                    if (set.p1 > set.p2) p1SetsWon++; else p2SetsWon++;
+                } else {
+                    const winnerIsSide1 = match.winner_id === match.player1_id || match.winner_id === match.player3_id;
+                    if (winnerIsSide1) p1SetsWon++; else p2SetsWon++;
+                }
+            } else {
+                if(set.p1 > set.p2) p1SetsWon++; else p2SetsWon++;
+            }
         });
 
         p1Stat.gg += p1TotalGames;
