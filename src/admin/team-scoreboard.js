@@ -25,10 +25,11 @@ export async function renderTeamScoreboard(container, teamTournamentId, options 
     container.innerHTML = '<p class="text-center p-8 text-gray-400">Calculando marcador de equipos...</p>';
 
     // ... (El resto de la lógica de carga de datos no cambia) ...
-    const [{ data: linked }, { data: teams }, { data: manualPointsData }] = await Promise.all([
+    const [{ data: linked }, { data: teams }, { data: manualPointsData }, { data: reportsData }] = await Promise.all([
         supabase.from('linked_tournaments').select('source_tournament_id').eq('team_tournament_id', teamTournamentId),
         supabase.from('teams').select('*'),
-        supabase.from('team_tournament_manual_points').select('*').eq('team_tournament_id', teamTournamentId)
+        supabase.from('team_tournament_manual_points').select('*').eq('team_tournament_id', teamTournamentId),
+        supabase.from('reports').select('id, title, created_at, report_data').order('created_at', { ascending: true })
     ]);
 
     if (!linked || !teams) {
@@ -60,14 +61,24 @@ export async function renderTeamScoreboard(container, teamTournamentId, options 
         return acc;
     }, {});
     
-    const fortnights = getFortnights(matches);
-
+    const validReports = (reportsData || []).filter(r => Array.isArray(r.report_data) && r.report_data.length > 0);
+    const reportLabelsOrdered = [];
+    
     matches.filter(m => !m.player3_id).forEach(match => {
-        const fortnightLabel = getFortnightLabelForDate(new Date(match.match_date), fortnights);
-        if (!fortnightLabel) return;
+        let fortnightLabel = 'Sin Reporte';
+        const associatedReport = validReports.find(r => r.report_data.includes(match.id));
+        if (associatedReport) {
+            fortnightLabel = associatedReport.title;
+        }
+
+        if (!reportLabelsOrdered.includes(fortnightLabel)) {
+            reportLabelsOrdered.push(fortnightLabel);
+        }
+
         const { p1_points, p2_points } = calculatePoints(match);
         const team1_id = match.player1?.team_id;
         const team2_id = match.player2?.team_id;
+
         if (team1_id && teamStats[team1_id]) {
             const team = teamStats[team1_id];
             if (!team.byFortnight[fortnightLabel]) team.byFortnight[fortnightLabel] = { singles: 0, doubles: 0, total: 0 };
@@ -79,6 +90,17 @@ export async function renderTeamScoreboard(container, teamTournamentId, options 
             team.byFortnight[fortnightLabel].singles += p2_points;
         }
     });
+
+    const hasPendingMatches = reportLabelsOrdered.includes('Sin Reporte');
+    const finalLabels = validReports
+        .map(r => r.title)
+        .filter(title => reportLabelsOrdered.includes(title));
+    if (hasPendingMatches) finalLabels.push('Sin Reporte');
+    
+    const fortnights = finalLabels.reduce((acc, label) => {
+        acc[label] = { start: new Date(), end: new Date() }; // Dummy dates as we no longer use them
+        return acc;
+    }, {});
 
     Object.values(teamStats).forEach(team => {
         Object.keys(fortnights).forEach(label => {
@@ -104,36 +126,6 @@ export async function renderTeamScoreboard(container, teamTournamentId, options 
 
 
 // --- LÓGICA DE CÁLCULO Y RENDERIZADO ---
-// ... (Las funciones getFortnights, getFortnightLabelForDate, calculateAllTotals no cambian) ...
-function getFortnights(matches) {
-    const matchDates = matches.map(m => new Date(m.match_date)).sort((a, b) => a - b);
-    const fortnights = {};
-    if (matchDates.length === 0) return fortnights;
-    
-    const firstDay = matchDates[0];
-    let currentFortnightStart = new Date(firstDay.getFullYear(), firstDay.getMonth(), firstDay.getDate() <= 15 ? 1 : 16);
-    const lastDay = matchDates[matchDates.length - 1];
-
-    while (currentFortnightStart <= lastDay) {
-        let nextFortnightStart;
-        if (currentFortnightStart.getDate() === 1) {
-            nextFortnightStart = new Date(currentFortnightStart.getFullYear(), currentFortnightStart.getMonth(), 16);
-        } else {
-            nextFortnightStart = new Date(currentFortnightStart.getFullYear(), currentFortnightStart.getMonth() + 1, 1);
-        }
-        const startDateStr = currentFortnightStart.toLocaleDateString('es-AR', {day: 'numeric', month: 'numeric'});
-        const endDate = new Date(nextFortnightStart.getTime() - 1);
-        const endDateStr = endDate.toLocaleDateString('es-AR', {day: 'numeric', month: 'numeric'});
-        const label = `${startDateStr} al ${endDateStr}`;
-        fortnights[label] = { start: currentFortnightStart, end: endDate };
-        currentFortnightStart = nextFortnightStart;
-    }
-    return fortnights;
-}
-
-function getFortnightLabelForDate(date, fortnights) {
-    return Object.keys(fortnights).find(label => date >= fortnights[label].start && date <= fortnights[label].end);
-}
 
 function calculateAllTotals(teamStats) {
     Object.values(teamStats).forEach(team => {
