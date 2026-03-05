@@ -590,10 +590,12 @@ function generateCategoryRankingsHTML(category, stats, playerToHighlight = null,
             // --- CAMBIO: Usar 'data-rank-position' en la fila y botones ---
             tableHTML += `
                 <tr class="${highlightClass}" data-rank-position="${rank_position}" data-player-id="${s.playerId}">
-                    <td class="admin-actions" style="border-width: 0 0 2px 1px; border-color: #4b556352; vertical-align: middle; padding: 0.5rem 0.25rem;">
-                        <button class="admin-btn toggle-divider-btn ${isDividerActive ? 'active' : ''}" data-action="toggle-divider" data-rank-position="${rank_position}" title="Poner/Quitar línea divisoria">
-                            <span class="material-icons">horizontal_rule</span>
-                        </button>
+                    <td style="border-width: 0 0 2px 1px; border-color: #4b556352; vertical-align: middle; padding: 0.5rem 0.25rem;">
+                        <div class="admin-actions">
+                            <button class="admin-btn toggle-divider-btn ${isDividerActive ? 'active' : ''}" data-action="toggle-divider" data-rank-position="${rank_position}" title="Poner/Quitar línea divisoria">
+                                <span class="material-icons">horizontal_rule</span>
+                            </button>
+                        </div>
                     </td>
                     <td class="col-rank px-2 py-2 text-xl font-bold text-white text-center" style="border-width: 0 0 3px 1px; background-color: #757170; border-color: black; vertical-align: middle;">${rank_position}°</td>
                     <td class="col-player bg-black px-0 py-0 whitespace-nowrap" style="border-width: 0 0 2px 1px; border-color: #4b556352; vertical-align: middle;">
