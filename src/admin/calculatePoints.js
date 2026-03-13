@@ -21,7 +21,13 @@ export function calculatePoints(match) {
         // Caso 2: Partido ganado por Retiro
         if (match.status === 'completado_ret') {
             let loserSetsWon = 0;
+            let p1TotalGames = 0;
+            let p2TotalGames = 0;
+
             (match.sets || []).forEach(s => {
+                p1TotalGames += s.p1 || 0;
+                p2TotalGames += s.p2 || 0;
+
                 const isCompleted = (s.p1 >= 6 && s.p1 - s.p2 >= 2) || (s.p2 >= 6 && s.p2 - s.p1 >= 2) || s.p1 >= 7 || s.p2 >= 7;
                 if (isCompleted) {
                     if (winnerIsSide1 && s.p2 > s.p1) loserSetsWon++;
@@ -31,9 +37,15 @@ export function calculatePoints(match) {
 
             if (winnerIsSide1) {
                 p1_points = 2;
+                if (p2TotalGames <= 3) {
+                    p1_points += 1; // Bonus ganador si el perdedor hizo 3 games o menos
+                }
                 p2_points = loserSetsWon >= 1 ? 1 : 0;
             } else {
                 p2_points = 2;
+                if (p1TotalGames <= 3) {
+                    p2_points += 1; // Bonus ganador si el perdedor hizo 3 games o menos
+                }
                 p1_points = loserSetsWon >= 1 ? 1 : 0;
             }
             return { p1_points, p2_points };
