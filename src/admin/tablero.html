@@ -26,20 +26,6 @@
     .checkbox-list-item input { margin-right: 0.6rem; accent-color: #facc15; cursor: pointer; }
     .checkbox-list-item label { color: #e5e7eb; font-size: 0.875rem; cursor: pointer; }
 
-    /* --- Player cards (draggable) --- */
-    .player-card {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      background: #2d2d2d;
-      border: 1px solid #374151;
-      border-radius: 6px;
-      padding: 6px 8px;
-      cursor: grab;
-      user-select: none;
-      margin-bottom: 5px;
-      transition: transform 0.1s, opacity 0.2s;
-    }
     .player-card:hover { transform: translateY(-1px); border-color: #6b7280; }
     .player-card.dragging { opacity: 0.3; cursor: grabbing; }
     .player-card .cat-dot {
@@ -167,6 +153,21 @@
       font-size: 0.8rem;
       text-align: center;
       padding: 16px 8px;
+    }
+
+    /* --- Player card --- */
+    .player-card {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: #2d2d2d;
+      border: 1px solid #374151;
+      border-radius: 6px;
+      padding: 6px 8px;
+      cursor: grab;
+      user-select: none;
+      margin-bottom: 5px;
+      transition: transform 0.1s, opacity 0.2s;
     }
   </style>
 </head>

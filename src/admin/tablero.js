@@ -577,9 +577,12 @@ async function saveAssignments() {
       errors.push(`${p1?.name || asgn.p1Id} vs ${p2?.name || asgn.p2Id}`);
       return;
     }
+    const tournament = allTournaments.find(t => t.id === tournamentId);
     matchesToInsert.push({
       player1_id: asgn.p1Id, player2_id: asgn.p2Id,
-      tournament_id: tournamentId, match_date: date, match_time: time,
+      tournament_id: tournamentId,
+      category_id: tournament?.category_id ?? null,
+      match_date: date, match_time: time,
       location: `${sedeLabel} - Cancha ${court}`,
     });
   });
