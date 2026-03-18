@@ -7,11 +7,11 @@ requireRole('admin');
 // ─── PLANTILLAS ──────────────────────────────────────────────────────────────
 const PRESETS = {
   'funes-viernes':  { sede: 'funes',  label: 'FUNES — Viernes',  dayOffset: 4, courts: 6, slots: ['17:00','17:30','19:00','19:30','21:00'] },
-  'funes-sabado':   { sede: 'funes',  label: 'FUNES — Sábado',   dayOffset: 5, courts: 6, slots: ['08:00','08:30','10:15','10:30','11:45','13:15','15:00','17:00'] },
-  'funes-domingo':  { sede: 'funes',  label: 'FUNES — Domingo',  dayOffset: 6, courts: 6, slots: ['09:00','09:30','10:00','11:00','11:30','13:00','15:00','17:00'] },
+  'funes-sabado':   { sede: 'funes',  label: 'FUNES — Sábado',   dayOffset: 5, courts: 6, slots: ['08:00','08:30','10:15','10:30','11:45','13:15','14:00','15:00','17:00'] },
+  'funes-domingo':  { sede: 'funes',  label: 'FUNES — Domingo',  dayOffset: 6, courts: 6, slots: ['09:00','09:30','10:00','11:00','11:30','13:00','14:00','15:00','17:00'] },
   'centro-viernes': { sede: 'centro', label: 'CENTRO — Viernes', dayOffset: 4, courts: 4, slots: ['17:00','17:30','19:00','19:30','21:00'] },
-  'centro-sabado':  { sede: 'centro', label: 'CENTRO — Sábado',  dayOffset: 5, courts: 4, slots: ['08:00','08:30','10:15','10:30','11:45','13:15','15:00','17:00'] },
-  'centro-domingo': { sede: 'centro', label: 'CENTRO — Domingo', dayOffset: 6, courts: 6, slots: ['09:00','09:30','10:00','11:00','11:30','13:00','15:00','17:00'] },
+  'centro-sabado':  { sede: 'centro', label: 'CENTRO — Sábado',  dayOffset: 5, courts: 4, slots: ['08:00','08:30','10:15','10:30','11:45','13:15','14:00','15:00','17:00'] },
+  'centro-domingo': { sede: 'centro', label: 'CENTRO — Domingo', dayOffset: 6, courts: 6, slots: ['09:00','09:30','10:00','11:00','11:30','13:00','14:00','15:00','17:00'] },
 };
 
 // ─── ESTADO ───────────────────────────────────────────────────────────────────
@@ -31,8 +31,10 @@ let availablePlayers = [];
 // assignments: "date|time|court" → {p1Id, p2Id, p3Id, p4Id}
 let assignments = new Map();
 
-// customSlots: presetKey → array of time strings (overrides PRESETS[key].slots)
-let customSlots = new Map();
+// selectedSlots: presetKey → Set<string> of user-selected times
+let selectedSlots  = new Map();
+// lockedSlotTimes: presetKey → Set<string> of times that already have matches (can't remove)
+let lockedSlotTimes = new Map();
 
 // cellModes: slotKey → 'singles'|'dobles' (default 'singles')
 let cellModes = new Map();
@@ -145,7 +147,25 @@ function isPlayerAssigned(pid) {
   return false;
 }
 function getSlotsForPreset(key) {
-  return customSlots.get(key) || [...PRESETS[key].slots];
+  const locked   = lockedSlotTimes.get(key) || new Set();
+  const selected = selectedSlots.get(key)   || new Set(PRESETS[key].slots);
+  return [...new Set([...locked, ...selected])].sort();
+}
+function initSelectedSlots(key) {
+  if (!selectedSlots.has(key)) selectedSlots.set(key, new Set(PRESETS[key].slots));
+}
+async function loadPresetMatchTimes(key) {
+  const preset = PRESETS[key];
+  const date = formatYMD(addDays(currentWeekStart, preset.dayOffset));
+  const { data } = await supabase
+    .from('matches').select('match_time')
+    .eq('match_date', date).ilike('location', `%${preset.sede}%`);
+  const times = new Set((data || []).map(m => m.match_time.substring(0, 5)));
+  lockedSlotTimes.set(key, times);
+  // Ensure locked times are also in selectedSlots
+  const sel = selectedSlots.get(key) || new Set(PRESETS[key].slots);
+  times.forEach(t => sel.add(t));
+  selectedSlots.set(key, sel);
 }
 function isComplete(slotKey) {
   const asgn = assignments.get(slotKey);
@@ -596,8 +616,18 @@ function assignPairToCell(slotKey, p1Id, p2Id) {
 }
 
 // ─── SCHEDULE EDIT ────────────────────────────────────────────────────────────
+const ALL_TIMES_15MIN = (() => {
+  const t = [];
+  for (let h = 7; h <= 18; h++)
+    for (let m = 0; m < 60; m += 15) {
+      if (h === 18 && m > 0) break;
+      t.push(`${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`);
+    }
+  return t;
+})();
+
 function renderScheduleEdit() {
-  const section = document.getElementById('schedule-edit-section');
+  const section   = document.getElementById('schedule-edit-section');
   const container = document.getElementById('schedule-edit-container');
   if (!activePresets.size) { section.classList.add('hidden'); return; }
   section.classList.remove('hidden');
@@ -605,68 +635,113 @@ function renderScheduleEdit() {
 
   [...activePresets].forEach(presetKey => {
     const preset = PRESETS[presetKey];
-    const slots = getSlotsForPreset(presetKey);
+    const block = document.createElement('div');
+    block.className = 'schedule-edit-block';
 
-    const row = document.createElement('div');
-    row.style.cssText = 'display:flex;align-items:center;gap:10px;flex-wrap:wrap;';
-
-    const lbl = document.createElement('span');
-    lbl.style.cssText = 'font-size:0.75rem;font-weight:700;color:#9ca3af;min-width:140px;flex-shrink:0;';
+    // Label
+    const lbl = document.createElement('div');
+    lbl.className = 'schedule-edit-label';
     lbl.textContent = preset.label;
-    row.appendChild(lbl);
+    block.appendChild(lbl);
 
-    const chipsWrap = document.createElement('div');
-    chipsWrap.style.cssText = 'display:flex;gap:4px;flex-wrap:wrap;align-items:center;';
+    // ── Top: chips of selected times ──
+    const chipsRow = document.createElement('div');
+    chipsRow.className = 'sched-chips-row';
+    block.appendChild(chipsRow);
+
+    // ── Bottom: compact hour picker ──
+    const pickerRow = document.createElement('div');
+    pickerRow.className = 'sched-picker-row';
+    block.appendChild(pickerRow);
 
     function renderChips() {
-      chipsWrap.innerHTML = '';
-      const current = getSlotsForPreset(presetKey);
-      current.forEach(t => {
+      chipsRow.innerHTML = '';
+      const locked   = lockedSlotTimes.get(presetKey) || new Set();
+      const selected = selectedSlots.get(presetKey)   || new Set(PRESETS[presetKey].slots);
+      const active   = [...new Set([...locked, ...selected])].sort();
+
+      if (!active.length) {
+        chipsRow.innerHTML = '<span style="font-size:0.7rem;color:#4b5563">Sin horarios seleccionados</span>';
+        return;
+      }
+      active.forEach(t => {
+        const isLocked = locked.has(t);
         const chip = document.createElement('span');
-        chip.className = 'time-chip';
-        chip.innerHTML = `${t}<button class="remove-time" title="Quitar">×</button>`;
-        chip.querySelector('.remove-time').addEventListener('click', () => {
-          const arr = getSlotsForPreset(presetKey).filter(s => s !== t);
-          customSlots.set(presetKey, arr);
-          renderChips();
-        });
-        chipsWrap.appendChild(chip);
+        chip.className = `sched-chip${isLocked ? ' locked' : ''}`;
+        if (isLocked) {
+          chip.innerHTML = `<span class="material-icons" style="font-size:9px;vertical-align:middle;margin-right:2px">lock</span>${t}`;
+          chip.title = 'Hay un partido a esta hora — no se puede quitar';
+        } else {
+          chip.innerHTML = `${t}<button class="sched-chip-remove" title="Quitar">×</button>`;
+          chip.querySelector('.sched-chip-remove').addEventListener('click', () => {
+            const sel = selectedSlots.get(presetKey) || new Set(PRESETS[presetKey].slots);
+            sel.delete(t);
+            selectedSlots.set(presetKey, sel);
+            renderChips();
+            // Update picker button state
+            const btn = pickerRow.querySelector(`[data-time="${t}"]`);
+            if (btn) btn.classList.remove('active');
+          });
+        }
+        chipsRow.appendChild(chip);
+      });
+    }
+
+    function renderPicker() {
+      pickerRow.innerHTML = '';
+      const locked   = lockedSlotTimes.get(presetKey) || new Set();
+      const selected = selectedSlots.get(presetKey)   || new Set(PRESETS[presetKey].slots);
+
+      // Extra locked times outside the standard 15-min grid
+      const extra = [...locked].filter(t => !ALL_TIMES_15MIN.includes(t));
+      const allTimes = [...ALL_TIMES_15MIN, ...extra].sort();
+
+      // Group by hour
+      const byHour = new Map();
+      allTimes.forEach(t => {
+        const h = t.substring(0, 2);
+        if (!byHour.has(h)) byHour.set(h, []);
+        byHour.get(h).push(t);
       });
 
-      // Add input + button
-      const inp = document.createElement('input');
-      inp.className = 'time-add-input';
-      inp.type = 'text';
-      inp.placeholder = 'HH:MM';
-      inp.maxLength = 5;
+      byHour.forEach((times, hour) => {
+        const grp = document.createElement('span');
+        grp.className = 'sched-picker-group';
 
-      const addBtn = document.createElement('button');
-      addBtn.className = 'time-add-btn';
-      addBtn.textContent = '+';
+        const hlbl = document.createElement('span');
+        hlbl.className = 'sched-picker-hlabel';
+        hlbl.textContent = `${parseInt(hour)}h`;
+        grp.appendChild(hlbl);
 
-      const doAdd = () => {
-        const val = inp.value.trim();
-        if (!/^\d{2}:\d{2}$/.test(val)) { inp.style.borderColor = '#ef4444'; return; }
-        inp.style.borderColor = '';
-        const arr = [...getSlotsForPreset(presetKey)];
-        if (!arr.includes(val)) {
-          arr.push(val);
-          arr.sort();
-          customSlots.set(presetKey, arr);
-        }
-        inp.value = '';
-        renderChips();
-      };
-      addBtn.addEventListener('click', doAdd);
-      inp.addEventListener('keydown', e => { if (e.key === 'Enter') doAdd(); });
-
-      chipsWrap.appendChild(inp);
-      chipsWrap.appendChild(addBtn);
+        times.forEach(t => {
+          const isLocked   = locked.has(t);
+          const isSelected = isLocked || selected.has(t);
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = `sched-picker-btn${isLocked ? ' locked' : isSelected ? ' active' : ''}`;
+          btn.dataset.time = t;
+          btn.textContent = t.substring(3);
+          btn.title = t;
+          if (isLocked) {
+            btn.disabled = true;
+          } else {
+            btn.addEventListener('click', () => {
+              const sel = selectedSlots.get(presetKey) || new Set(PRESETS[presetKey].slots);
+              if (sel.has(t)) sel.delete(t); else sel.add(t);
+              selectedSlots.set(presetKey, sel);
+              btn.classList.toggle('active', sel.has(t));
+              renderChips();
+            });
+          }
+          grp.appendChild(btn);
+        });
+        pickerRow.appendChild(grp);
+      });
     }
 
     renderChips();
-    row.appendChild(chipsWrap);
-    container.appendChild(row);
+    renderPicker();
+    container.appendChild(block);
   });
 }
 
@@ -1039,13 +1114,16 @@ function updateCounter() {
 // ─── EVENT LISTENERS ──────────────────────────────────────────────────────────
 function setupEventListeners() {
   document.getElementById('btn-prev-week').addEventListener('click', () => {
-    currentWeekStart = addDays(currentWeekStart, -7); updateWeekDisplay(); updateActiveDateLabel();
+    currentWeekStart = addDays(currentWeekStart, -7); lockedSlotTimes.clear(); selectedSlots.clear();
+    updateWeekDisplay(); updateActiveDateLabel(); renderScheduleEdit();
   });
   document.getElementById('btn-next-week').addEventListener('click', () => {
-    currentWeekStart = addDays(currentWeekStart, 7); updateWeekDisplay(); updateActiveDateLabel();
+    currentWeekStart = addDays(currentWeekStart, 7); lockedSlotTimes.clear(); selectedSlots.clear();
+    updateWeekDisplay(); updateActiveDateLabel(); renderScheduleEdit();
   });
   document.getElementById('btn-today').addEventListener('click', () => {
-    currentWeekStart = getStartOfWeek(new Date()); updateWeekDisplay(); updateActiveDateLabel();
+    currentWeekStart = getStartOfWeek(new Date()); lockedSlotTimes.clear(); selectedSlots.clear();
+    updateWeekDisplay(); updateActiveDateLabel(); renderScheduleEdit();
   });
 
   // Multi-select preset toggle
@@ -1056,13 +1134,18 @@ function setupEventListeners() {
     if (activePresets.has(key)) {
       activePresets.delete(key);
       btn.classList.remove('active');
+      updateActiveDateLabel();
+      updateGenerateButton();
+      renderScheduleEdit();
     } else {
       activePresets.add(key);
       btn.classList.add('active');
+      initSelectedSlots(key);
+      updateActiveDateLabel();
+      updateGenerateButton();
+      renderScheduleEdit();
+      loadPresetMatchTimes(key).then(() => renderScheduleEdit());
     }
-    updateActiveDateLabel();
-    updateGenerateButton();
-    renderScheduleEdit();
   });
 
   btnSelectAll.addEventListener('click', () => {
@@ -1113,6 +1196,8 @@ function setupEventListeners() {
     configPanel.classList.remove('hidden');
     assignments.clear();
     cellModes = new Map();
+    selectedSlots.clear();
+    lockedSlotTimes.clear();
     activePresets.clear();
     document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
     updateGenerateButton();

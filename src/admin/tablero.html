@@ -139,12 +139,38 @@
     .cat-filter-chip.all-chip.active { border-color: #facc15; color: #facc15; }
 
     /* --- Editable schedule section --- */
-    .time-chip { display: inline-flex; align-items: center; gap: 4px; background: #374151; border: 1px solid #4b5563; border-radius: 4px; padding: 2px 8px; font-size: 0.75rem; font-weight: 600; color: #e5e7eb; }
-    .time-chip .remove-time { background: none; border: none; color: #6b7280; cursor: pointer; padding: 0; line-height: 1; font-size: 0.8rem; }
-    .time-chip .remove-time:hover { color: #ef4444; }
-    .time-add-input { background: #374151; border: 1px solid #4b5563; border-radius: 4px; padding: 3px 8px; font-size: 0.75rem; color: #e5e7eb; width: 80px; }
-    .time-add-btn { background: #374151; border: 1px solid #4b5563; border-radius: 4px; padding: 3px 10px; font-size: 0.75rem; color: #facc15; cursor: pointer; }
-    .time-add-btn:hover { background: #4b5563; }
+    .schedule-edit-block { margin-bottom: 14px; }
+    .schedule-edit-label {
+      font-size: 0.7rem; font-weight: 700; color: #9ca3af;
+      text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;
+    }
+    /* Chips row (selected times) */
+    .sched-chips-row { display: flex; flex-wrap: wrap; gap: 4px; min-height: 26px; margin-bottom: 8px; align-items: center; }
+    .sched-chip {
+      display: inline-flex; align-items: center; gap: 4px;
+      background: #162316; border: 1px solid #16a34a; border-radius: 5px;
+      padding: 2px 8px; font-size: 0.72rem; font-weight: 700; color: #4ade80;
+    }
+    .sched-chip.locked { background: #1f1200; border-color: #d97706; color: #fbbf24; }
+    .sched-chip-remove {
+      background: none; border: none; color: #16a34a; cursor: pointer;
+      padding: 0; line-height: 1; font-size: 1rem; opacity: 0.7;
+    }
+    .sched-chip-remove:hover { color: #ef4444; opacity: 1; }
+    /* Picker row (full 15-min grid) */
+    .sched-picker-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; border-top: 1px solid #2d3748; padding-top: 10px; }
+    .sched-picker-group { display: inline-flex; align-items: center; gap: 3px; }
+    .sched-picker-hlabel { font-size: 0.75rem; font-weight: 800; color: #9ca3af; margin-right: 3px; min-width: 24px; text-align: right; }
+    .sched-picker-btn {
+      width: 34px; height: 26px; border-radius: 5px;
+      background: #1f2937; border: 1px solid #374151;
+      font-size: 0.68rem; font-weight: 700; color: #6b7280;
+      cursor: pointer; transition: all 0.1s;
+    }
+    .sched-picker-btn:hover:not(:disabled) { border-color: #6b7280; color: #d1d5db; background: #2d3748; }
+    .sched-picker-btn.active { background: #162316; border-color: #16a34a; color: #4ade80; }
+    .sched-picker-btn.active:hover { border-color: #4ade80; }
+    .sched-picker-btn.locked { background: #1f1200; border-color: #d97706; color: #fbbf24; cursor: not-allowed; }
 
     /* --- Doubles mode --- */
     .mode-toggle {
