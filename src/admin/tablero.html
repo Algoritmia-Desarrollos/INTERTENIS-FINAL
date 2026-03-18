@@ -28,37 +28,62 @@
 
     .player-card:hover { transform: translateY(-1px); border-color: #6b7280; }
     .player-card.dragging { opacity: 0.3; cursor: grabbing; }
-    .player-card .cat-dot {
+    .player-card .cat-dot, .pair-card .cat-dot {
       font-size: 0.6rem; font-weight: 900;
       padding: 1px 5px; border-radius: 3px;
       white-space: nowrap; flex-shrink: 0;
     }
-    .player-card .pname { font-size: 0.8rem; font-weight: 600; color: #f3f4f6; flex: 1; }
-    .player-card .pbadges { display: flex; gap: 3px; flex-shrink: 0; }
-    .avail-badge { font-size: 0.58rem; font-weight: 700; padding: 1px 4px; border-radius: 3px; }
+    .player-card .pname { font-size: 0.82rem; font-weight: 600; color: #f3f4f6; flex: 1; line-height: 1.2; }
+    .player-card .pbadges { display: flex; gap: 3px; flex-wrap: wrap; }
+    .avail-badge { font-size: 0.6rem; font-weight: 700; padding: 2px 5px; border-radius: 3px; }
     .avail-badge.mañana { background: #065f46; color: #6ee7b7; }
     .avail-badge.tarde   { background: #7c2d12; color: #fdba74; }
-    .playing-badge { font-size: 0.58rem; font-weight: 700; padding: 1px 5px; border-radius: 3px; background: #7f1d1d; color: #fca5a5; white-space: nowrap; flex-shrink: 0; }
-    .player-card.already-playing { opacity: 0.55; cursor: not-allowed; border-color: #7f1d1d; }
+    .playing-badge { font-size: 0.6rem; font-weight: 700; padding: 2px 5px; border-radius: 3px; background: #7f1d1d; color: #fca5a5; white-space: nowrap; flex-shrink: 0; }
+    .player-card.already-playing { opacity: 0.5; cursor: not-allowed; border-color: #7f1d1d; }
+
+    /* --- Pair suggestion cards --- */
+    .pair-card {
+      display: flex; align-items: flex-start; gap: 7px;
+      background: #1a2a1a; border: 1px solid #2d4a2d;
+      border-radius: 8px; padding: 8px 9px;
+      cursor: grab; user-select: none; margin-bottom: 5px;
+      transition: transform 0.1s, opacity 0.2s;
+    }
+    .pair-card:hover { transform: translateY(-1px); border-color: #4ade80; }
+    .pair-card.dragging { opacity: 0.3; cursor: grabbing; }
+    .pair-players { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
+    .pair-pname { font-size: 0.8rem; font-weight: 600; color: #f3f4f6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .pair-vs { font-size: 0.6rem; color: #6b7280; font-weight: 500; padding: 0 2px; }
+    .pair-names { font-size: 0.78rem; font-weight: 600; color: #f3f4f6; flex: 1; }
+    .panel-section-label { font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
 
     /* --- Grid --- */
-    .schedule-table { border-collapse: separate; border-spacing: 3px; }
+    .schedule-table { border-collapse: separate; border-spacing: 3px; table-layout: fixed; width: 100%; }
     .schedule-table th {
-      background: #111; color: #9ca3af; font-size: 0.7rem; font-weight: 700;
+      background: #111; color: #9ca3af; font-size: 0.68rem; font-weight: 700;
       text-transform: uppercase; letter-spacing: 0.5px;
-      padding: 8px 6px; white-space: nowrap; text-align: center;
+      padding: 8px 4px; white-space: nowrap; text-align: center;
     }
     .schedule-table .time-col {
-      background: #1a1a1a; color: #facc15; font-size: 0.75rem; font-weight: 700;
-      padding: 6px 10px; white-space: nowrap; text-align: center; min-width: 60px;
+      background: #1a1a1a; color: #facc15; font-size: 0.72rem; font-weight: 700;
+      padding: 6px 6px; white-space: nowrap; text-align: center; width: 58px;
     }
     .grid-cell {
       background: #1f2937; border: 2px dashed #374151; border-radius: 6px;
-      min-width: 140px; padding: 3px; vertical-align: top;
+      padding: 3px; vertical-align: top; overflow: hidden;
       transition: border-color 0.15s;
     }
     .grid-cell.has-player  { border-style: solid; border-color: #4b5563; }
     .grid-cell.complete    { border-color: #16a34a; background: #0f1f13; }
+    .grid-cell.just-assigned { animation: cellPop 1.2s ease forwards; }
+    @keyframes cellPop {
+      0%   { border-color: #facc15; box-shadow: 0 0 0 3px #facc1560; background: #2a2500; }
+      100% { border-color: #16a34a; box-shadow: none; background: #0f1f13; }
+    }
+    .grid-cell.locked      { border-style: solid; border-color: #374151; background: #161b22; opacity: 0.75; }
+    .cell-slot.filled.locked { background: #1c2330; cursor: default; }
+    .cell-inner.locked-cell .slot-name { color: #9ca3af; }
+    .lock-icon { display: flex; align-items: center; padding: 2px 4px; }
 
     /* --- Cell inner layout --- */
     .cell-inner { display: flex; flex-direction: column; gap: 0; }
@@ -86,7 +111,7 @@
       outline: 1px dashed #facc15;
     }
     .slot-hint { font-size: 0.62rem; color: #4b5563; pointer-events: none; }
-    .slot-name { font-size: 0.75rem; font-weight: 700; color: #f3f4f6; flex: 1; }
+    .slot-name { font-size: 0.7rem; font-weight: 700; color: #f3f4f6; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
     .slot-remove {
       background: transparent; border: none; color: #4b5563;
       cursor: pointer; padding: 0 1px; line-height: 1; flex-shrink: 0;
@@ -96,9 +121,9 @@
 
     /* --- Category filter chips --- */
     .cat-filter-chip {
-      font-size: 0.65rem;
+      font-size: 0.62rem;
       font-weight: 700;
-      padding: 2px 8px;
+      padding: 2px 6px;
       border-radius: 20px;
       border: 2px solid transparent;
       cursor: pointer;
@@ -113,6 +138,27 @@
     }
     .cat-filter-chip.all-chip.active { border-color: #facc15; color: #facc15; }
 
+    /* --- Editable schedule section --- */
+    .time-chip { display: inline-flex; align-items: center; gap: 4px; background: #374151; border: 1px solid #4b5563; border-radius: 4px; padding: 2px 8px; font-size: 0.75rem; font-weight: 600; color: #e5e7eb; }
+    .time-chip .remove-time { background: none; border: none; color: #6b7280; cursor: pointer; padding: 0; line-height: 1; font-size: 0.8rem; }
+    .time-chip .remove-time:hover { color: #ef4444; }
+    .time-add-input { background: #374151; border: 1px solid #4b5563; border-radius: 4px; padding: 3px 8px; font-size: 0.75rem; color: #e5e7eb; width: 80px; }
+    .time-add-btn { background: #374151; border: 1px solid #4b5563; border-radius: 4px; padding: 3px 10px; font-size: 0.75rem; color: #facc15; cursor: pointer; }
+    .time-add-btn:hover { background: #4b5563; }
+
+    /* --- Doubles mode --- */
+    .mode-toggle {
+      background: #1f2937; border: 1px solid #374151; border-radius: 4px;
+      padding: 1px 6px; font-size: 0.6rem; font-weight: 700; color: #6b7280;
+      cursor: pointer; margin-bottom: 2px; width: 100%; text-align: center;
+      opacity: 0; pointer-events: none; transition: opacity 0.15s;
+    }
+    .grid-cell:hover .mode-toggle { opacity: 1; pointer-events: auto; }
+    .mode-toggle:hover { border-color: #facc15; color: #facc15; }
+    .mode-toggle.dobles-mode { border-color: #3b82f6; color: #93c5fd; background: #1e3a5f; opacity: 0.7; pointer-events: auto; }
+    .grid-cell:hover .mode-toggle.dobles-mode { opacity: 1; }
+    .team-label { font-size: 0.55rem; font-weight: 700; color: #6b7280; text-transform: uppercase; padding: 1px 4px; letter-spacing: 0.5px; }
+
     /* --- Drop placeholder text --- */
     .drop-hint {
       color: #4b5563;
@@ -125,15 +171,15 @@
     /* --- Panels layout --- */
     #tablero-layout {
       display: flex;
-      gap: 16px;
+      gap: 10px;
       align-items: flex-start;
     }
-    #suggestions-panel {
-      width: 260px;
+    #suggestions-panel, #pairs-panel {
+      width: 190px;
       flex-shrink: 0;
       background: #1a1a1a;
       border-radius: 12px;
-      padding: 14px;
+      padding: 12px;
       max-height: calc(100vh - 200px);
       overflow-y: auto;
       position: sticky;
@@ -141,13 +187,22 @@
     }
     #grid-panel {
       flex: 1;
+      min-width: 0;
       background: #1a1a1a;
       border-radius: 12px;
-      padding: 16px;
-      overflow-x: auto;
+      padding: 12px;
+      overflow-x: hidden;
     }
     #suggestions-list:empty::after {
-      content: "No hay sugerencias disponibles para este día y sede.";
+      content: "No hay jugadores disponibles.";
+      display: block;
+      color: #6b7280;
+      font-size: 0.8rem;
+      text-align: center;
+      padding: 16px 8px;
+    }
+    #pairs-list:empty::after {
+      content: "No hay sugerencias.";
       display: block;
       color: #6b7280;
       font-size: 0.8rem;
@@ -158,23 +213,34 @@
     /* --- Player card --- */
     .player-card {
       display: flex;
-      align-items: center;
-      gap: 6px;
-      background: #2d2d2d;
+      flex-direction: column;
+      gap: 3px;
+      background: #242424;
       border: 1px solid #374151;
-      border-radius: 6px;
-      padding: 6px 8px;
+      border-radius: 8px;
+      padding: 7px 9px;
       cursor: grab;
       user-select: none;
       margin-bottom: 5px;
       transition: transform 0.1s, opacity 0.2s;
+    }
+    .player-card .prow1 {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .player-card .prow2 {
+      display: flex;
+      align-items: center;
+      gap: 3px;
+      flex-wrap: wrap;
     }
   </style>
 </head>
 <body class="bg-black text-gray-200">
   <header id="header"></header>
   <main class="flex-1 py-8">
-    <div class="content-container max-w-7xl mx-auto space-y-6">
+    <div class="content-container max-w-screen-2xl mx-auto space-y-6">
       <h1 class="text-3xl font-bold text-gray-100">Tablero de Programación</h1>
 
       <!-- CONFIG PANEL -->
@@ -222,6 +288,11 @@
           </div>
         </div>
 
+        <div id="schedule-edit-section" class="hidden border-t border-gray-700 pt-4">
+          <label class="block text-base font-semibold text-gray-100 mb-3">4. Horarios</label>
+          <div id="schedule-edit-container" class="space-y-3"></div>
+        </div>
+
         <div class="pt-4 border-t border-gray-700 text-center">
           <button id="btn-generate" class="btn btn-primary !h-14 w-full md:w-1/2 text-lg" disabled>
             <span class="material-icons">grid_view</span>
@@ -245,24 +316,28 @@
         </div>
 
         <div id="tablero-layout">
-          <!-- Suggestions panel -->
+          <!-- Players panel (left) -->
           <div id="suggestions-panel">
-            <div class="flex items-center justify-between mb-3">
+            <div class="flex items-center justify-between mb-2">
               <h3 class="font-bold text-gray-100 text-sm">Jugadores</h3>
-              <span id="sug-counter" class="text-xs text-gray-400">0 disponibles</span>
+              <span id="sug-counter" class="text-xs text-gray-400">0</span>
             </div>
-            <div id="cat-filters" class="flex flex-wrap gap-1 mb-3"></div>
+            <div id="cat-filters" class="flex flex-wrap gap-1 mb-2"></div>
             <div id="suggestions-list"></div>
           </div>
 
-          <!-- Grid panel -->
+          <!-- Grid panel (center) -->
           <div id="grid-panel">
-            <div id="grid-container" class="overflow-x-auto">
-              <table class="schedule-table" id="schedule-table">
-                <thead id="grid-thead"></thead>
-                <tbody id="grid-tbody"></tbody>
-              </table>
-            </div>
+            <table class="schedule-table" id="schedule-table">
+              <thead id="grid-thead"></thead>
+              <tbody id="grid-tbody"></tbody>
+            </table>
+          </div>
+
+          <!-- Pairs panel (right) -->
+          <div id="pairs-panel">
+            <h3 class="font-bold text-gray-100 text-sm mb-2">Sugerencias</h3>
+            <div id="pairs-list"></div>
           </div>
         </div>
       </div>

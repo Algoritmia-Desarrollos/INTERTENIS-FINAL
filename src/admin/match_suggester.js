@@ -845,9 +845,7 @@ function renderResults(suggestionsList, oddPlayerInfo) {
 
             for (const sede in sedesInDate) {
                 const matchesInSede = sedesInDate[sede];
-                // --- INICIO: CAMBIO ORDEN (PUNTO 2) ---
                 matchesInSede.sort((a, b) => a.time.localeCompare(b.time) || a.canchaNum - b.canchaNum);
-                // --- FIN: CAMBIO ORDEN (PUNTO 2) ---
 
                 const dateObj = new Date(date + 'T00:00:00Z');
                 const weekday = dateObj.toLocaleDateString('es-AR', { weekday: 'long', timeZone: 'UTC' });
@@ -902,7 +900,6 @@ function renderResults(suggestionsList, oddPlayerInfo) {
     if (loadingSuggestionsDiv) loadingSuggestionsDiv.classList.add('hidden');
     updateProgramButtonState();
 }
-
 function renderSuggestionRow(match) {
     const player1 = match.player1_info;
     const player2 = match.player2_info;
