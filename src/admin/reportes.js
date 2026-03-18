@@ -1,6 +1,9 @@
 import { renderHeader } from '../common/header.js';
+import { requireRole } from '../common/router.js';
 import { supabase, showToast } from '../common/supabase.js';
 import { calculatePoints } from './calculatePoints.js';
+
+requireRole('admin');
 
 document.addEventListener('DOMContentLoaded', async () => {
     // --- ESTADO Y DATOS GLOBALES ---

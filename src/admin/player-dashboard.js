@@ -1,7 +1,10 @@
 import { renderHeader } from '../common/header.js';
+import { requireRole } from '../common/router.js';
 import { supabase } from '../common/supabase.js';
 // import { calculatePoints } from './calculatePoints.js'; // ELIMINADO
 import { renderMatchesTable } from '../common/components/matchesTable.js'; // AÑADIDO
+
+requireRole('admin');
 
 const header = document.getElementById('header');
 const container = document.getElementById('player-dashboard-container');

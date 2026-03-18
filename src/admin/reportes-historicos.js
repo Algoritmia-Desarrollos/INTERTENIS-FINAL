@@ -1,5 +1,8 @@
 import { renderHeader } from '../common/header.js';
+import { requireRole } from '../common/router.js';
 import { supabase, showToast } from '../common/supabase.js';
+
+requireRole('admin');
 
 async function cargarReportes() {
   const cont = document.getElementById('reportes-list');
