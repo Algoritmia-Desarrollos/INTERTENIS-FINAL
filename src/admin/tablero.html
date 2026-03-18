@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Club de Tenis - Tablero de Programación</title>
+  <link rel="icon" href="/logo_2021_02.png" type="image/png">
+  <link rel="stylesheet" href="../common/styles.css" />
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"/>
+  <style>
+    /* --- Semana nav --- */
+    .week-nav-button { background-color: #374151; border: 1px solid #4b5563; color: #e5e7eb; padding: 0.3rem 0.6rem; border-radius: 0.3rem; font-size: 1rem; cursor: pointer; }
+    .week-nav-button:hover { background-color: #4b5563; }
+    #current-week-display { font-weight: 600; color: #facc15; min-width: 180px; text-align: center; }
+
+    /* --- Preset buttons --- */
+    .preset-btn { padding: 0.5rem 1.25rem; border-radius: 0.5rem; border: 2px solid #4b5563; background: #1f2937; color: #d1d5db; font-weight: 600; cursor: pointer; transition: all 0.15s; }
+    .preset-btn:hover { border-color: #facc15; color: #facc15; }
+    .preset-btn.active { border-color: #facc15; background: #facc15; color: #111; }
+
+    /* --- Checkboxes --- */
+    .checkbox-list-container { max-height: 150px; overflow-y: auto; background-color: #374151; border: 1px solid #4b5563; border-radius: 0.375rem; padding: 0.5rem; }
+    .checkbox-list-item { display: block; padding: 0.4rem 0.75rem; border-radius: 0.25rem; cursor: pointer; }
+    .checkbox-list-item:hover { background-color: #4b5563; }
+    .checkbox-list-item input { margin-right: 0.6rem; accent-color: #facc15; cursor: pointer; }
+    .checkbox-list-item label { color: #e5e7eb; font-size: 0.875rem; cursor: pointer; }
+
+    /* --- Player cards (draggable) --- */
+    .player-card {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: #2d2d2d;
+      border: 1px solid #374151;
+      border-radius: 6px;
+      padding: 6px 8px;
+      cursor: grab;
+      user-select: none;
+      margin-bottom: 5px;
+      transition: transform 0.1s, opacity 0.2s;
+    }
+    .player-card:hover { transform: translateY(-1px); border-color: #6b7280; }
+    .player-card.dragging { opacity: 0.3; cursor: grabbing; }
+    .player-card .cat-dot {
+      font-size: 0.6rem; font-weight: 900;
+      padding: 1px 5px; border-radius: 3px;
+      white-space: nowrap; flex-shrink: 0;
+    }
+    .player-card .pname { font-size: 0.8rem; font-weight: 600; color: #f3f4f6; flex: 1; }
+    .player-card .pbadges { display: flex; gap: 3px; flex-shrink: 0; }
+    .avail-badge { font-size: 0.58rem; font-weight: 700; padding: 1px 4px; border-radius: 3px; }
+    .avail-badge.mañana { background: #065f46; color: #6ee7b7; }
+    .avail-badge.tarde   { background: #7c2d12; color: #fdba74; }
+    .playing-badge { font-size: 0.58rem; font-weight: 700; padding: 1px 5px; border-radius: 3px; background: #7f1d1d; color: #fca5a5; white-space: nowrap; flex-shrink: 0; }
+    .player-card.already-playing { opacity: 0.55; cursor: not-allowed; border-color: #7f1d1d; }
+
+    /* --- Grid --- */
+    .schedule-table { border-collapse: separate; border-spacing: 3px; }
+    .schedule-table th {
+      background: #111; color: #9ca3af; font-size: 0.7rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.5px;
+      padding: 8px 6px; white-space: nowrap; text-align: center;
+    }
+    .schedule-table .time-col {
+      background: #1a1a1a; color: #facc15; font-size: 0.75rem; font-weight: 700;
+      padding: 6px 10px; white-space: nowrap; text-align: center; min-width: 60px;
+    }
+    .grid-cell {
+      background: #1f2937; border: 2px dashed #374151; border-radius: 6px;
+      min-width: 140px; padding: 3px; vertical-align: top;
+      transition: border-color 0.15s;
+    }
+    .grid-cell.has-player  { border-style: solid; border-color: #4b5563; }
+    .grid-cell.complete    { border-color: #16a34a; background: #0f1f13; }
+
+    /* --- Cell inner layout --- */
+    .cell-inner { display: flex; flex-direction: column; gap: 0; }
+    .cell-divider { height: 1px; background: #374151; margin: 0; }
+
+    /* --- Cell slot (each half of a cell) --- */
+    .cell-slot {
+      min-height: 34px; border-radius: 4px;
+      display: flex; align-items: center;
+      padding: 3px 5px; gap: 4px;
+      transition: background 0.12s;
+    }
+    .cell-slot.empty {
+      cursor: default;
+    }
+    .cell-slot.empty.drag-over {
+      background: #374151;
+      outline: 1px dashed #facc15;
+    }
+    .cell-slot.filled {
+      background: #111827;
+    }
+    .cell-slot.filled.drag-over {
+      background: #374151;
+      outline: 1px dashed #facc15;
+    }
+    .slot-hint { font-size: 0.62rem; color: #4b5563; pointer-events: none; }
+    .slot-name { font-size: 0.75rem; font-weight: 700; color: #f3f4f6; flex: 1; }
+    .slot-remove {
+      background: transparent; border: none; color: #4b5563;
+      cursor: pointer; padding: 0 1px; line-height: 1; flex-shrink: 0;
+      display: flex; align-items: center;
+    }
+    .slot-remove:hover { color: #ef4444; }
+
+    /* --- Category filter chips --- */
+    .cat-filter-chip {
+      font-size: 0.65rem;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 20px;
+      border: 2px solid transparent;
+      cursor: pointer;
+      transition: all 0.15s;
+      opacity: 0.55;
+    }
+    .cat-filter-chip:hover { opacity: 0.85; }
+    .cat-filter-chip.active { opacity: 1; border-color: #fff; }
+    .cat-filter-chip.all-chip {
+      background: #374151;
+      color: #d1d5db;
+    }
+    .cat-filter-chip.all-chip.active { border-color: #facc15; color: #facc15; }
+
+    /* --- Drop placeholder text --- */
+    .drop-hint {
+      color: #4b5563;
+      font-size: 0.65rem;
+      text-align: center;
+      padding: 20px 8px;
+      pointer-events: none;
+    }
+
+    /* --- Panels layout --- */
+    #tablero-layout {
+      display: flex;
+      gap: 16px;
+      align-items: flex-start;
+    }
+    #suggestions-panel {
+      width: 260px;
+      flex-shrink: 0;
+      background: #1a1a1a;
+      border-radius: 12px;
+      padding: 14px;
+      max-height: calc(100vh - 200px);
+      overflow-y: auto;
+      position: sticky;
+      top: 90px;
+    }
+    #grid-panel {
+      flex: 1;
+      background: #1a1a1a;
+      border-radius: 12px;
+      padding: 16px;
+      overflow-x: auto;
+    }
+    #suggestions-list:empty::after {
+      content: "No hay sugerencias disponibles para este día y sede.";
+      display: block;
+      color: #6b7280;
+      font-size: 0.8rem;
+      text-align: center;
+      padding: 16px 8px;
+    }
+  </style>
+</head>
+<body class="bg-black text-gray-200">
+  <header id="header"></header>
+  <main class="flex-1 py-8">
+    <div class="content-container max-w-7xl mx-auto space-y-6">
+      <h1 class="text-3xl font-bold text-gray-100">Tablero de Programación</h1>
+
+      <!-- CONFIG PANEL -->
+      <div id="config-panel" class="bg-[#222222] p-6 rounded-xl shadow-lg space-y-6">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
+
+          <!-- Semana -->
+          <div class="space-y-2">
+            <label class="block text-base font-semibold text-gray-100">1. Semana</label>
+            <div class="flex items-center gap-2 p-3 bg-gray-800 rounded-lg justify-center">
+              <button id="btn-prev-week" class="week-nav-button">&lt;</button>
+              <span id="current-week-display">Semana Actual</span>
+              <button id="btn-next-week" class="week-nav-button">&gt;</button>
+              <button id="btn-today" class="btn btn-secondary !py-1 !px-2 text-xs">Hoy</button>
+            </div>
+          </div>
+
+          <!-- Día / Plantilla -->
+          <div class="space-y-2">
+            <label class="block text-base font-semibold text-gray-100">2. Día y Sede</label>
+            <div class="flex flex-col gap-2" id="preset-buttons">
+              <div class="flex gap-2">
+                <button class="preset-btn flex-1" data-preset="funes-viernes">Vie — Funes</button>
+                <button class="preset-btn flex-1" data-preset="centro-viernes">Vie — Centro</button>
+              </div>
+              <div class="flex gap-2">
+                <button class="preset-btn flex-1" data-preset="funes-sabado">Sáb — Funes</button>
+                <button class="preset-btn flex-1" data-preset="centro-sabado">Sáb — Centro</button>
+              </div>
+              <div class="flex gap-2">
+                <button class="preset-btn flex-1" data-preset="funes-domingo">Dom — Funes</button>
+                <button class="preset-btn flex-1" data-preset="centro-domingo">Dom — Centro</button>
+              </div>
+            </div>
+            <p id="selected-date-label" class="text-xs text-yellow-400 mt-1"></p>
+          </div>
+
+          <!-- Categorías -->
+          <div class="space-y-2">
+            <label class="block text-base font-semibold text-gray-100">3. Categorías</label>
+            <div id="tournament-checkbox-list" class="checkbox-list-container">
+              <p class="text-gray-400 text-sm p-4 text-center">Cargando...</p>
+            </div>
+            <button id="btn-select-all" class="btn btn-secondary !py-1 !px-2 text-xs mt-1 w-full">Todos / Ninguno</button>
+          </div>
+        </div>
+
+        <div class="pt-4 border-t border-gray-700 text-center">
+          <button id="btn-generate" class="btn btn-primary !h-14 w-full md:w-1/2 text-lg" disabled>
+            <span class="material-icons">grid_view</span>
+            Generar Tablero
+          </button>
+        </div>
+      </div>
+
+      <!-- TABLERO LAYOUT (hidden initially) -->
+      <div id="tablero-container" class="hidden">
+        <div class="flex justify-between items-center mb-4">
+          <button id="btn-back" class="btn btn-secondary">
+            <span class="material-icons">arrow_back</span>
+            Volver
+          </button>
+          <h2 id="tablero-title" class="text-xl font-bold text-gray-100"></h2>
+          <button id="btn-save" class="btn btn-primary !py-2 !px-6 text-base" disabled>
+            <span class="material-icons">schedule_send</span>
+            Guardar (<span id="save-count">0</span>)
+          </button>
+        </div>
+
+        <div id="tablero-layout">
+          <!-- Suggestions panel -->
+          <div id="suggestions-panel">
+            <div class="flex items-center justify-between mb-3">
+              <h3 class="font-bold text-gray-100 text-sm">Jugadores</h3>
+              <span id="sug-counter" class="text-xs text-gray-400">0 disponibles</span>
+            </div>
+            <div id="cat-filters" class="flex flex-wrap gap-1 mb-3"></div>
+            <div id="suggestions-list"></div>
+          </div>
+
+          <!-- Grid panel -->
+          <div id="grid-panel">
+            <div id="grid-container" class="overflow-x-auto">
+              <table class="schedule-table" id="schedule-table">
+                <thead id="grid-thead"></thead>
+                <tbody id="grid-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+  <div id="toast-container"></div>
+  <script type="module" src="tablero.js"></script>
+</body>
+</html>

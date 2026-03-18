@@ -25,6 +25,7 @@ export function renderHeader() {
         <a class="${getLinkClasses('rankings')}" href="/src/admin/rankings">Ranking</a>
         <a class="${getLinkClasses('availability')}" href="/src/admin/availability">Disponibilidad</a>
         <a class="${getLinkClasses('match_suggester')}" href="/src/admin/match_suggester">Sugerencia de Partidos</a>
+        <a class="${getLinkClasses('tablero')}" href="/src/admin/tablero">Tablero</a>
         <a class="${getLinkClasses('players')}" href="/src/admin/players">Jugadores</a>
         <a class="${getLinkClasses('tournaments')}" href="/src/admin/tournaments">Torneos</a>
         <a class="${getLinkClasses('teams')}" href="/src/admin/teams">Equipos</a>
